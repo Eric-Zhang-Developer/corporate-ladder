@@ -1,0 +1,79 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden run > seed 1 with a scripted turn sequence reproduces the same state 1`] = `
+{
+  "ammo": {
+    "large": 0,
+    "medium": 0,
+    "small": 24,
+  },
+  "enemies": [
+    {
+      "alerted": false,
+      "defId": "janitor",
+      "hp": 14,
+      "x": 18,
+      "y": 24,
+    },
+    {
+      "alerted": false,
+      "defId": "rentacop",
+      "hp": 6,
+      "x": 5,
+      "y": 27,
+    },
+    {
+      "alerted": false,
+      "defId": "rentacop",
+      "hp": 6,
+      "x": 10,
+      "y": 12,
+    },
+    {
+      "alerted": false,
+      "defId": "camera",
+      "hp": 1,
+      "x": 11,
+      "y": 12,
+    },
+    {
+      "alerted": false,
+      "defId": "rentacop",
+      "hp": 6,
+      "x": 27,
+      "y": 25,
+    },
+    {
+      "alerted": false,
+      "defId": "taser",
+      "hp": 6,
+      "x": 28,
+      "y": 25,
+    },
+  ],
+  "floor": 1,
+  "itemCount": 4,
+  "log": [
+    "Find whoever signs the checks.",
+    "LOBBY — floor 1 of the tower.",
+    "No target in sight.",
+    "Magazine already full.",
+    "No target in sight.",
+  ],
+  "phase": "playing",
+  "player": {
+    "ammoInMag": 7,
+    "ap": 3,
+    "hp": 10,
+    "x": 24,
+    "y": 16,
+  },
+  "rngState": [
+    0.6180339884012938,
+    0.9895448891911656,
+    0.8759515448473394,
+    1,
+  ],
+  "turn": 6,
+}
+`;

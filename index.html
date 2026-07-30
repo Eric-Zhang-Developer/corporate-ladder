@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SEVERANCE PACKAGE</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --panel: #101014;
+        --line: #26262e;
+        --text: #d5d5dc;
+        --muted: #7d7d8a;
+        --accent: #ffee66;
+      }
+      html, body { margin: 0; height: 100%; background: #000; color: var(--text);
+        font-family: ui-monospace, Menlo, Consolas, monospace; }
+      #app { display: grid; grid-template-columns: minmax(0, 72fr) minmax(240px, 28fr);
+        gap: 8px; height: 100vh; padding: 8px; box-sizing: border-box; }
+      #viewport-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+      #floor-header { text-align: center; font-size: 14px; letter-spacing: 2px; color: var(--muted); }
+      #floor-header b { color: var(--text); }
+      #viewport { flex: 1 1 auto; min-height: 0; width: 100%; height: 100%;
+        image-rendering: pixelated; background: #000;
+        border: 1px solid var(--line); object-fit: contain; }
+      #log { border: 1px solid var(--line); background: var(--panel); padding: 6px 8px;
+        font-size: 12px; line-height: 1.5; height: 4.5em; overflow: hidden; }
+      #log .old { color: var(--muted); }
+      #sidebar { border: 1px solid var(--line); background: var(--panel); padding: 10px;
+        display: flex; flex-direction: column; gap: 10px; font-size: 13px; overflow-y: auto; }
+      #sidebar section { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+      #sidebar .label { color: var(--muted); margin-right: 6px; }
+      .hp-row, .ap-row { display: flex; align-items: center; gap: 6px; }
+      .hp-bar { flex: 1; height: 10px; background: #1c1c22; border: 1px solid var(--line); }
+      .hp-fill { height: 100%; background: #cc4444; transition: width 80ms linear; }
+      .ap-pips { color: var(--accent); letter-spacing: 3px; }
+      .floor-cell { margin-left: auto; color: var(--muted); }
+      .ammo { display: flex; gap: 6px; }
+      .ammo-cell { flex: 1; text-align: center; background: #1c1c22; border: 1px solid var(--line); padding: 4px 0; }
+      .ammo-cell .cal { display: block; font-size: 9px; color: var(--muted); letter-spacing: 1px; }
+      .ammo-cell .amt { font-size: 15px; }
+      .minimap-wrap { text-align: center; }
+      .minimap { width: 100%; image-rendering: pixelated; border: 1px solid var(--line); }
+      .minimap-placeholder { color: var(--muted); font-size: 11px; letter-spacing: 2px; padding: 14px 0; }
+      .equipped { display: flex; gap: 6px; }
+      .card { flex: 1; background: #1c1c22; border: 1px solid var(--line); padding: 6px; }
+      .card-name { font-weight: bold; }
+      .card-mag { color: var(--muted); font-size: 12px; }
+      .card-dpa { color: var(--accent); font-size: 11px; margin-top: 3px; }
+      .slots { display: flex; gap: 6px; }
+      .slot { flex: 1; background: #1c1c22; border: 1px solid var(--line); padding: 5px 6px; font-size: 11px;
+        display: flex; flex-direction: column; gap: 2px; }
+      .slot.active { border-color: var(--accent); }
+      .slot .key { color: var(--muted); }
+      .consumables { display: flex; gap: 6px; }
+      .consumable-empty { flex: 1; text-align: center; color: #333; background: #141419;
+        border: 1px dashed var(--line); padding: 8px 0; }
+      .run-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+      #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); display: grid; place-items: center; }
+      #overlay[hidden] { display: none; }
+      .end-box { text-align: center; border: 1px solid var(--line); background: var(--panel); padding: 28px 44px; }
+      .end-box h1 { letter-spacing: 4px; font-size: 22px; margin: 0 0 12px; }
+      .end-box.dead h1 { color: #ff5555; }
+      .end-box.won h1 { color: #66dd66; }
+      .end-box .hint { color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="viewport-col">
+        <div id="floor-header"></div>
+        <canvas id="viewport"></canvas>
+        <div id="log"></div>
+      </div>
+      <aside id="sidebar"></aside>
+    </div>
+    <div id="overlay" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
