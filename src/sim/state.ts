@@ -34,6 +34,10 @@ export interface Entity {
   alerted: boolean;
   /** Taser rule (§4.1): AP lost at the next refill, then cleared. */
   pendingApDrain?: number;
+  /** Camera only: turns until the response team arrives. */
+  alarmTimer?: number;
+  /** Set on response-team cops so the alive-cap can count them. */
+  spawnedBy?: string;
   /**
    * Player only: three carried guns (§9.5). weaponId/ammoInMag above mirror
    * the ACTIVE slot; the stored copy is written back on swap.
@@ -62,6 +66,8 @@ export interface GameState {
   floor: number;
   phase: GamePhase;
   map: GameMap;
+  /** Where the player entered this floor — response teams arrive here. */
+  entrance: { x: number; y: number };
   /** Parallel to map.tiles: currently in FOV. */
   visible: boolean[];
   /** Parallel to map.tiles: ever seen. */
@@ -161,6 +167,7 @@ export function newGame(seed: number): GameState {
     floor: 1,
     phase: "playing",
     map: gen.map,
+    entrance: { x: gen.playerStart.x, y: gen.playerStart.y },
     visible: new Array(gen.map.tiles.length).fill(false),
     explored: new Array(gen.map.tiles.length).fill(false),
     player,

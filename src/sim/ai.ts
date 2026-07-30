@@ -4,7 +4,20 @@ import { maxRange, weaponDef } from "../data/weapons";
 import { fireWeapon, meleeAttack } from "./combat";
 import { hasLos } from "./los";
 import type { SimRNG } from "./rng";
-import { distance, entityAt, isFloor, pushLog, type Entity, type GameState } from "./state";
+import {
+  distance,
+  entityAt,
+  isFloor,
+  pushLog,
+  spawnEnemy,
+  type Entity,
+  type GameState,
+} from "./state";
+
+/** Live cops a single floor's cameras may summon before alarms go quiet. */
+export const CAMERA_SPAWN_CAP = 4;
+const CAMERA_TEAM_SIZE = 2;
+const CAMERA_COUNTDOWN = 2;
 
 export function runEnemyTurns(state: GameState, rng: SimRNG): void {
   for (const enemy of [...state.enemies]) {
@@ -20,7 +33,7 @@ type Behavior = (state: GameState, rng: SimRNG, enemy: Entity) => void;
 const BEHAVIORS: Record<BehaviorId, Behavior> = {
   pursueAndShoot,
   meleeRush,
-  cameraAlarm: () => {}, // M3
+  cameraAlarm,
 };
 
 /**
@@ -112,6 +125,72 @@ function meleeRush(state: GameState, rng: SimRNG, enemy: Entity): void {
     if (!stepToward(state, enemy)) break;
     enemy.ap -= 1;
   }
+}
+
+/**
+ * Support "summoner" (§4.5): on LOS, start a visible countdown. Once
+ * started it runs even if LOS breaks — destroying the camera is the only
+ * off switch (a suppressor is the Stage 3 counterplay). On expiry a
+ * response team arrives at the floor entrance and the countdown re-arms.
+ */
+function cameraAlarm(state: GameState, _rng: SimRNG, enemy: Entity): void {
+  const def = enemyDef(enemy.defId);
+  const player = state.player;
+
+  if (enemy.alarmTimer === undefined) {
+    if (
+      distance(enemy, player) <= def.sightRange &&
+      hasLos(state.map, enemy.x, enemy.y, player.x, player.y)
+    ) {
+      enemy.alarmTimer = CAMERA_COUNTDOWN;
+      pushLog(state, "A camera swivels toward you. Red light. Response team inbound.");
+    }
+    return;
+  }
+
+  enemy.alarmTimer -= 1;
+  if (enemy.alarmTimer > 0) return;
+
+  delete enemy.alarmTimer; // re-arms on next LOS
+  const alive = state.enemies.filter((e) => e.spawnedBy === "camera").length;
+  const toSpawn = Math.min(CAMERA_TEAM_SIZE, CAMERA_SPAWN_CAP - alive);
+  if (toSpawn <= 0) return;
+
+  const tiles = freeTilesNear(state, state.entrance.x, state.entrance.y, toSpawn);
+  for (const [x, y] of tiles) {
+    const cop = spawnEnemy(state.nextId++, "rentacop", x, y);
+    cop.alerted = true;
+    cop.spawnedBy = "camera";
+    state.enemies.push(cop);
+  }
+  if (tiles.length > 0) {
+    pushLog(state, `Elevator chime. A response team fans out from the entrance.`);
+  }
+}
+
+/** BFS outward for the nearest n free floor tiles. */
+function freeTilesNear(state: GameState, x: number, y: number, n: number): Array<[number, number]> {
+  const found: Array<[number, number]> = [];
+  const seen = new Set<string>([`${x},${y}`]);
+  const queue: Array<[number, number]> = [[x, y]];
+  while (queue.length > 0 && found.length < n) {
+    const [cx, cy] = queue.shift()!;
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ] as const) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      const key = `${nx},${ny}`;
+      if (seen.has(key) || !isFloor(state.map, nx, ny)) continue;
+      seen.add(key);
+      queue.push([nx, ny]);
+      if (!entityAt(state, nx, ny) && found.length < n) found.push([nx, ny]);
+    }
+  }
+  return found;
 }
 
 /** One A* step toward the player; never steps onto an occupied tile. */

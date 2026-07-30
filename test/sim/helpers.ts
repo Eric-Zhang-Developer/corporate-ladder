@@ -83,6 +83,7 @@ export function makeState(
     floor: 1,
     phase: "playing",
     map,
+    entrance: { x: player.x, y: player.y },
     visible: new Array(map.tiles.length).fill(false),
     explored: new Array(map.tiles.length).fill(false),
     player,

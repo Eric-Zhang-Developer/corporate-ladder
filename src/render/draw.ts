@@ -36,7 +36,10 @@ export function renderState(display: Display, state: GameState): void {
     }
   }
   for (const e of state.enemies) {
-    if (state.visible[idx(map, e.x, e.y)]) display.draw(e.x, e.y, e.glyph, e.color, "#000");
+    if (!state.visible[idx(map, e.x, e.y)]) continue;
+    // Telegraph (§9): an armed camera shows its countdown instead of a glyph.
+    const glyph = e.alarmTimer !== undefined ? String(e.alarmTimer) : e.glyph;
+    display.draw(e.x, e.y, glyph, e.color, "#000");
   }
   display.draw(player.x, player.y, player.glyph, COLOR.player, "#000");
 
