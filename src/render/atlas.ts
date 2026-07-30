@@ -1,10 +1,10 @@
 import { ENEMIES } from "../data/enemies";
 
 /**
- * Programmatic placeholder atlas (Stage 2 decision): every sprite is a
- * colored cell + glyph drawn once to an offscreen canvas. Swapping in real
- * pixel art later means loading a PNG with the same keys — the renderer
- * only ever asks for a key and blits a cell.
+ * ASCII atlas: every sprite is a bare glyph on black, drawn once to an
+ * offscreen canvas. This is the working aesthetic until the MVP content
+ * is done — the renderer only asks for a key and blits a cell, so the
+ * eventual art pass is a PNG with the same keys, nothing else changes.
  */
 export const TILE = 24;
 
@@ -12,9 +12,6 @@ interface SpriteSpec {
   key: string;
   glyph: string;
   fg: string;
-  bg: string;
-  /** Draw a subtle inset border (walls read as solid). */
-  solid?: boolean;
 }
 
 export interface Atlas {
@@ -24,15 +21,15 @@ export interface Atlas {
 
 export function buildAtlas(): Atlas {
   const specs: SpriteSpec[] = [
-    { key: "floor", glyph: "", fg: "#2e2e36", bg: "#17171c" },
-    { key: "wall", glyph: "", fg: "#4a4a55", bg: "#34343e", solid: true },
-    { key: "stairs", glyph: ">", fg: "#ffffff", bg: "#17242b" },
-    { key: "player", glyph: "@", fg: "#ffffff", bg: "#17171c" },
-    { key: "item_weapon", glyph: "/", fg: "#66dddd", bg: "#17171c" },
-    { key: "item_ammo", glyph: "=", fg: "#ddcc55", bg: "#17171c" },
+    { key: "floor", glyph: ".", fg: "#4a4a55" },
+    { key: "wall", glyph: "#", fg: "#9a9aa5" },
+    { key: "stairs", glyph: ">", fg: "#ffffff" },
+    { key: "player", glyph: "@", fg: "#ffffff" },
+    { key: "item_weapon", glyph: "/", fg: "#66dddd" },
+    { key: "item_ammo", glyph: "=", fg: "#ddcc55" },
   ];
   for (const def of Object.values(ENEMIES)) {
-    specs.push({ key: def.id, glyph: def.glyph, fg: def.color, bg: "#17171c" });
+    specs.push({ key: def.id, glyph: def.glyph, fg: def.color });
   }
 
   const canvas = document.createElement("canvas");
@@ -45,24 +42,13 @@ export function buildAtlas(): Atlas {
   specs.forEach((spec, i) => {
     index.set(spec.key, i);
     const x = i * TILE;
-    ctx.fillStyle = spec.bg;
+    ctx.fillStyle = "#000000";
     ctx.fillRect(x, 0, TILE, TILE);
-    if (spec.solid) {
-      ctx.fillStyle = spec.fg;
-      ctx.fillRect(x, 0, TILE, TILE);
-      ctx.fillStyle = spec.bg;
-      ctx.fillRect(x + 2, 2, TILE - 4, TILE - 4);
-    } else if (spec.key === "floor") {
-      ctx.fillStyle = spec.fg;
-      ctx.fillRect(x + TILE / 2 - 1, TILE / 2 - 1, 2, 2);
-    }
-    if (spec.glyph) {
-      ctx.fillStyle = spec.fg;
-      ctx.font = `bold ${TILE - 7}px ui-monospace, Menlo, monospace`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(spec.glyph, x + TILE / 2, TILE / 2 + 1);
-    }
+    ctx.fillStyle = spec.fg;
+    ctx.font = `bold ${TILE - 6}px ui-monospace, Menlo, monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(spec.glyph, x + TILE / 2, TILE / 2 + 1);
   });
 
   return { canvas, index };
