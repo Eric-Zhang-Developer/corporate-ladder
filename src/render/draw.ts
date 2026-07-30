@@ -8,12 +8,13 @@ const COLOR = {
   wallDim: "#3d3d3d",
   floorLit: "#555555",
   floorDim: "#232323",
+  logOld: "#777777",
   player: "#ffffff",
 };
 
 export function renderState(display: Display, state: GameState): void {
   display.clear();
-  const { map } = state;
+  const { map, player } = state;
 
   for (let y = 0; y < map.height; y++) {
     for (let x = 0; x < map.width; x++) {
@@ -27,8 +28,18 @@ export function renderState(display: Display, state: GameState): void {
     }
   }
 
-  display.draw(state.player.x, state.player.y, "@", COLOR.player, "#000");
+  for (const e of state.enemies) {
+    if (state.visible[idx(map, e.x, e.y)]) display.draw(e.x, e.y, e.glyph, e.color, "#000");
+  }
+  display.draw(player.x, player.y, player.glyph, COLOR.player, "#000");
 
-  display.drawText(0, MAP_H + LOG_LINES, `Explore with arrows / WASD`);
+  const recent = state.log.slice(-LOG_LINES);
+  for (let i = 0; i < recent.length; i++) {
+    const isLatest = i === recent.length - 1;
+    display.drawText(0, MAP_H + i, `%c{${isLatest ? "#dddddd" : COLOR.logOld}}${recent[i]}`);
+  }
+
+  const pips = "◆".repeat(player.ap) + "◇".repeat(player.maxAp - player.ap);
+  display.drawText(0, MAP_H + LOG_LINES, `HP ${player.hp}/${player.maxHp}  AP ${pips}`);
   display.drawText(0, MAP_H + LOG_LINES + 1, `Seed ${state.seed}  Turn ${state.turn}`);
 }

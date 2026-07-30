@@ -1,9 +1,6 @@
-export interface MoveInput {
-  dx: -1 | 0 | 1;
-  dy: -1 | 0 | 1;
-}
+import type { Action } from "../sim/actions";
 
-const MOVES: Record<string, MoveInput> = {
+const MOVES: Record<string, { dx: -1 | 0 | 1; dy: -1 | 0 | 1 }> = {
   ArrowUp: { dx: 0, dy: -1 },
   w: { dx: 0, dy: -1 },
   ArrowDown: { dx: 0, dy: 1 },
@@ -14,7 +11,10 @@ const MOVES: Record<string, MoveInput> = {
   d: { dx: 1, dy: 0 },
 };
 
-export function moveForKey(e: KeyboardEvent): MoveInput | null {
+export function actionForKey(e: KeyboardEvent): Action | null {
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-  return MOVES[key] ?? null;
+  const move = MOVES[key];
+  if (move) return { type: "move", dx: move.dx, dy: move.dy };
+  if (key === " " || key === ".") return { type: "wait" };
+  return null;
 }
