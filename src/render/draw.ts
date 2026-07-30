@@ -2,7 +2,7 @@ import type { Display } from "rot-js";
 import { weaponDef } from "../data/weapons";
 import { idx, type GameState } from "../sim/state";
 import { MAP_H } from "../sim/mapgen";
-import { LOG_LINES } from "./display";
+import { LOG_LINES, VIEW_W } from "./display";
 
 const COLOR = {
   wallLit: "#9a9a9a",
@@ -48,4 +48,21 @@ export function renderState(display: Display, state: GameState): void {
     `HP ${player.hp}/${player.maxHp}  AP ${pips}  ${weapon.name} ${player.ammoInMag}/${weapon.magSize} [${weapon.caliber}]`,
   );
   display.drawText(0, MAP_H + LOG_LINES + 1, `Seed ${state.seed}  Turn ${state.turn}`);
+
+  if (state.phase === "dead") drawDeathScreen(display, state);
+}
+
+function drawDeathScreen(display: Display, state: GameState): void {
+  const lines: Array<[string, string]> = [
+    ["*** TERMINATED ***", "#ff5555"],
+    [state.killedBy ?? "You die.", "#dddddd"],
+    ["[Enter] new run    [S] same seed", "#999999"],
+  ];
+  const startY = Math.floor(MAP_H / 2) - 2;
+  lines.forEach(([text, color], i) => {
+    const x = Math.max(0, Math.floor((VIEW_W - text.length) / 2));
+    const y = startY + i * 2;
+    for (let cx = x - 1; cx <= x + text.length; cx++) display.draw(cx, y, " ", "#000", "#000");
+    display.drawText(x, y, `%c{${color}}${text}`);
+  });
 }

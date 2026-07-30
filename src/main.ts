@@ -16,9 +16,22 @@ let state = newGame(seed);
 renderState(display, state);
 
 window.addEventListener("keydown", (e) => {
-  const action = actionForKey(e);
-  if (!action) return;
-  e.preventDefault();
-  state = applyAction(state, action);
+  if (state.phase === "dead") {
+    if (e.key === "Enter") {
+      seed = randomSeed();
+      writeSeedToUrl(seed);
+      state = newGame(seed);
+    } else if (e.key.toLowerCase() === "s") {
+      state = newGame(seed);
+    } else {
+      return;
+    }
+    e.preventDefault();
+  } else {
+    const action = actionForKey(e);
+    if (!action) return;
+    e.preventDefault();
+    state = applyAction(state, action);
+  }
   renderState(display, state);
 });

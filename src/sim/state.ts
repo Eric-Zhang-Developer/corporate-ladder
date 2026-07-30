@@ -1,4 +1,5 @@
-import { WEAPONS } from "../data/weapons";
+import { enemyDef } from "../data/enemies";
+import { WEAPONS, weaponDef } from "../data/weapons";
 import { generateMap } from "./mapgen";
 import { recomputeFov } from "./fov";
 import { createSimRng } from "./rng";
@@ -15,6 +16,8 @@ export interface GameMap {
 
 export interface Entity {
   id: number;
+  /** "player" or a key into ENEMIES. */
+  defId: string;
   name: string;
   glyph: string;
   color: string;
@@ -26,6 +29,8 @@ export interface Entity {
   maxAp: number;
   weaponId: string;
   ammoInMag: number;
+  /** Enemies idle until they spot the player; always true for the player. */
+  alerted: boolean;
 }
 
 export type GamePhase = "playing" | "dead";
@@ -78,6 +83,27 @@ export function pushLog(state: GameState, message: string): void {
   if (state.log.length > LOG_LIMIT) state.log.splice(0, state.log.length - LOG_LIMIT);
 }
 
+export function spawnEnemy(id: number, defId: string, x: number, y: number): Entity {
+  const def = enemyDef(defId);
+  const weapon = weaponDef(def.weaponId);
+  return {
+    id,
+    defId,
+    name: def.name,
+    glyph: def.glyph,
+    color: def.color,
+    x,
+    y,
+    hp: def.hp,
+    maxHp: def.hp,
+    ap: def.ap,
+    maxAp: def.ap,
+    weaponId: def.weaponId,
+    ammoInMag: weapon.magSize,
+    alerted: false,
+  };
+}
+
 export function newGame(seed: number): GameState {
   const gen = generateMap(seed);
   // XOR keeps the sim stream distinct from the map stream under the same seed.
@@ -85,6 +111,7 @@ export function newGame(seed: number): GameState {
 
   const player: Entity = {
     id: 0,
+    defId: "player",
     name: "You",
     glyph: "@",
     color: "#ffffff",
@@ -96,6 +123,7 @@ export function newGame(seed: number): GameState {
     maxAp: PLAYER_MAX_AP,
     weaponId: WEAPONS.glock.id,
     ammoInMag: WEAPONS.glock.magSize,
+    alerted: true,
   };
 
   const state: GameState = {
@@ -107,7 +135,7 @@ export function newGame(seed: number): GameState {
     visible: new Array(gen.map.tiles.length).fill(false),
     explored: new Array(gen.map.tiles.length).fill(false),
     player,
-    enemies: [],
+    enemies: [spawnEnemy(1, "rentacop", gen.enemyStart.x, gen.enemyStart.y)],
     log: ["Floor 1. Find whoever signs the checks."],
   };
   recomputeFov(state);

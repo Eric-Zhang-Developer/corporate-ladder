@@ -27,6 +27,7 @@ export function makeEnemy(partial: Partial<Entity> = {}): Entity {
   const weaponId = partial.weaponId ?? WEAPONS.glock_cop.id;
   return {
     id: nextId++,
+    defId: "rentacop",
     name: "Rent-a-Cop",
     glyph: "c",
     color: "#8899ff",
@@ -38,6 +39,7 @@ export function makeEnemy(partial: Partial<Entity> = {}): Entity {
     maxAp: 2,
     weaponId,
     ammoInMag: weaponDef(weaponId).magSize,
+    alerted: true,
     ...partial,
   };
 }
@@ -55,6 +57,7 @@ export function makeState(
   const rng = createSimRng(seed);
   const player: Entity = {
     id: 0,
+    defId: "player",
     name: "You",
     glyph: "@",
     color: "#ffffff",
@@ -66,6 +69,7 @@ export function makeState(
     maxAp: 3,
     weaponId: WEAPONS.glock.id,
     ammoInMag: WEAPONS.glock.magSize,
+    alerted: true,
     ...opts.player,
   };
   const state: GameState = {

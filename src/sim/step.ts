@@ -1,6 +1,7 @@
 import { AP_COSTS } from "../data/costs";
 import { maxRange, weaponDef } from "../data/weapons";
 import type { Action } from "./actions";
+import { runEnemyTurns } from "./ai";
 import { fireWeapon } from "./combat";
 import { recomputeFov } from "./fov";
 import { hasLos } from "./los";
@@ -106,11 +107,4 @@ function pickTarget(state: GameState, targetId?: number): Entity | null {
   );
   if (candidates.length === 0) return null;
   return candidates.reduce((a, b) => (distance(player, a) <= distance(player, b) ? a : b));
-}
-
-function runEnemyTurns(state: GameState, _rng: SimRNG): void {
-  // Stage 1 M1.3 fills this in; the turn structure is already final.
-  for (const _enemy of state.enemies) {
-    if (state.phase !== "playing") return;
-  }
 }

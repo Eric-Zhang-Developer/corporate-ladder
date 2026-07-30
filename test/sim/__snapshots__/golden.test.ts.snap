@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden run > seed 1 with a scripted turn sequence reproduces the same state 1`] = `
+{
+  "enemies": [
+    {
+      "alerted": false,
+      "hp": 6,
+      "x": 14,
+      "y": 5,
+    },
+  ],
+  "log": [
+    "Floor 1. Find whoever signs the checks.",
+    "You bump into the wall.",
+    "No target in sight.",
+    "Magazine already full.",
+    "No target in sight.",
+  ],
+  "phase": "playing",
+  "player": {
+    "ammoInMag": 7,
+    "ap": 3,
+    "hp": 10,
+    "x": 29,
+    "y": 11,
+  },
+  "rngState": [
+    0.6180339884012938,
+    0.9895448891911656,
+    0.8759515448473394,
+    1,
+  ],
+  "turn": 5,
+}
+`;

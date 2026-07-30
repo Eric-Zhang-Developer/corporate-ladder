@@ -10,6 +10,9 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
   const weapon = weaponDef(attacker.weaponId);
   attacker.ap -= weapon.apFire;
   attacker.ammoInMag -= 1;
+  // Gunfire is loud: being shot at wakes the target regardless of outcome.
+  // (Stage 2's suppressor attachment is the counterplay to this rule.)
+  defender.alerted = true;
 
   const dist = distance(attacker, defender);
   const band = bandFor(weapon, dist);

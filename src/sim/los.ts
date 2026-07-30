@@ -1,11 +1,15 @@
 import { isFloor, type GameMap } from "./state";
 
 /**
- * Shooting line-of-sight: Bresenham between the two points, every cell
- * strictly between them must be floor. Owned by the sim — render FOV is a
- * separate concern.
+ * Shooting line-of-sight, symmetric: if A can shoot B, B can shoot A.
+ * Bresenham rounds differently per direction, so we accept either ray.
+ * Owned by the sim — render FOV is a separate concern.
  */
 export function hasLos(map: GameMap, x0: number, y0: number, x1: number, y1: number): boolean {
+  return ray(map, x0, y0, x1, y1) || ray(map, x1, y1, x0, y0);
+}
+
+function ray(map: GameMap, x0: number, y0: number, x1: number, y1: number): boolean {
   let x = x0;
   let y = y0;
   const dx = Math.abs(x1 - x0);
