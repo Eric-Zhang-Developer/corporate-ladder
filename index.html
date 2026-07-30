@@ -20,8 +20,9 @@
       #viewport-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
       #floor-header { text-align: center; font-size: 14px; letter-spacing: 2px; color: var(--muted); }
       #floor-header b { color: var(--text); }
-      #viewport { width: 100%; image-rendering: pixelated; background: #000;
-        border: 1px solid var(--line); flex: 0 1 auto; min-height: 0; object-fit: contain; }
+      #viewport { flex: 1 1 auto; min-height: 0; width: 100%; height: 100%;
+        image-rendering: pixelated; background: #000;
+        border: 1px solid var(--line); object-fit: contain; }
       #log { border: 1px solid var(--line); background: var(--panel); padding: 6px 8px;
         font-size: 12px; line-height: 1.5; height: 4.5em; overflow: hidden; }
       #log .old { color: var(--muted); }

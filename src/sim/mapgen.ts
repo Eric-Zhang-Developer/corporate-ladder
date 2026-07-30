@@ -1,8 +1,10 @@
 import { Map as RotMap, RNG } from "rot-js";
 import type { GameMap, Tile } from "./state";
 
-export const MAP_W = 60;
-export const MAP_H = 22;
+// Near-viewport aspect (taller, narrower than the old 60x22 strip) so the
+// map fills the play area instead of letterboxing into a band.
+export const MAP_W = 48;
+export const MAP_H = 30;
 
 export interface MapGenResult {
   map: GameMap;

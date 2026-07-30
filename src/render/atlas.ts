@@ -6,7 +6,7 @@ import { ENEMIES } from "../data/enemies";
  * is done — the renderer only asks for a key and blits a cell, so the
  * eventual art pass is a PNG with the same keys, nothing else changes.
  */
-export const TILE = 24;
+export const TILE = 28;
 
 interface SpriteSpec {
   key: string;

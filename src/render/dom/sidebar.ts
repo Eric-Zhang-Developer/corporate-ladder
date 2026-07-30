@@ -21,7 +21,7 @@ export function buildSidebar(root: HTMLElement): void {
       <div class="ammo-cell"><span class="cal">LARGE</span><span class="amt" data-cal="large"></span></div>
     </section>
     <section class="minimap-wrap">
-      <canvas class="minimap" width="120" height="44"></canvas>
+      <canvas class="minimap" width="144" height="90"></canvas>
       <div class="minimap-placeholder">UNEXPLORED</div>
     </section>
     <section class="equipped">
