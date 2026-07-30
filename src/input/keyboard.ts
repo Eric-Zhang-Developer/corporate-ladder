@@ -21,6 +21,7 @@ export function actionForKey(e: KeyboardEvent): Action | null {
   if (key === "1") return { type: "swap", slot: 0 };
   if (key === "2") return { type: "swap", slot: 1 };
   if (key === "3") return { type: "swap", slot: 2 };
+  if (key === ">") return { type: "ascend" };
   if (key === " " || key === ".") return { type: "wait" };
   return null;
 }

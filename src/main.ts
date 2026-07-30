@@ -2,7 +2,7 @@ import { createDisplay } from "./render/display";
 import { renderState } from "./render/draw";
 import { actionForKey } from "./input/keyboard";
 import { applyAction } from "./sim/step";
-import { newGame } from "./sim/state";
+import { newGame } from "./sim/floor";
 import { randomSeed, seedFromUrl, writeSeedToUrl } from "./seed";
 
 const display = createDisplay();
@@ -16,7 +16,7 @@ let state = newGame(seed);
 renderState(display, state);
 
 window.addEventListener("keydown", (e) => {
-  if (state.phase === "dead") {
+  if (state.phase === "dead" || state.phase === "won") {
     if (e.key === "Enter") {
       seed = randomSeed();
       writeSeedToUrl(seed);

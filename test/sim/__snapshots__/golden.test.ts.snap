@@ -2,17 +2,88 @@
 
 exports[`golden run > seed 1 with a scripted turn sequence reproduces the same state 1`] = `
 {
+  "ammo": {
+    "large": 0,
+    "medium": 0,
+    "small": 24,
+  },
   "enemies": [
     {
       "alerted": false,
+      "defId": "rentacop",
       "hp": 6,
-      "x": 14,
+      "x": 33,
+      "y": 2,
+    },
+    {
+      "alerted": false,
+      "defId": "dog",
+      "hp": 4,
+      "x": 34,
+      "y": 2,
+    },
+    {
+      "alerted": false,
+      "defId": "rentacop",
+      "hp": 6,
+      "x": 36,
+      "y": 17,
+    },
+    {
+      "alerted": false,
+      "defId": "taser",
+      "hp": 6,
+      "x": 11,
+      "y": 4,
+    },
+    {
+      "alerted": false,
+      "defId": "camera",
+      "hp": 1,
+      "x": 9,
+      "y": 4,
+    },
+    {
+      "alerted": false,
+      "defId": "rentacop",
+      "hp": 6,
+      "x": 10,
       "y": 5,
     },
+    {
+      "alerted": false,
+      "defId": "rentacop",
+      "hp": 6,
+      "x": 9,
+      "y": 9,
+    },
+    {
+      "alerted": false,
+      "defId": "camera",
+      "hp": 1,
+      "x": 10,
+      "y": 9,
+    },
+    {
+      "alerted": false,
+      "defId": "rentacop",
+      "hp": 6,
+      "x": 32,
+      "y": 2,
+    },
+    {
+      "alerted": false,
+      "defId": "taser",
+      "hp": 6,
+      "x": 33,
+      "y": 3,
+    },
   ],
+  "floor": 1,
+  "itemCount": 4,
   "log": [
-    "Floor 1. Find whoever signs the checks.",
-    "You bump into the wall.",
+    "Find whoever signs the checks.",
+    "LOBBY — floor 1 of the tower.",
     "No target in sight.",
     "Magazine already full.",
     "No target in sight.",
@@ -22,8 +93,8 @@ exports[`golden run > seed 1 with a scripted turn sequence reproduces the same s
     "ammoInMag": 7,
     "ap": 3,
     "hp": 10,
-    "x": 29,
-    "y": 11,
+    "x": 30,
+    "y": 12,
   },
   "rngState": [
     0.6180339884012938,
@@ -31,6 +102,6 @@ exports[`golden run > seed 1 with a scripted turn sequence reproduces the same s
     0.8759515448473394,
     1,
   ],
-  "turn": 5,
+  "turn": 6,
 }
 `;

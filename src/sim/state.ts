@@ -1,8 +1,5 @@
 import { enemyDef } from "../data/enemies";
-import { WEAPONS, weaponDef, type Caliber } from "../data/weapons";
-import { generateMap } from "./mapgen";
-import { recomputeFov } from "./fov";
-import { createSimRng } from "./rng";
+import { weaponDef, type Caliber } from "../data/weapons";
 
 /** 0 = wall, 1 = floor */
 export type Tile = 0 | 1;
@@ -56,7 +53,7 @@ export type GroundItem = { id: number; x: number; y: number } & (
   | { kind: "ammo"; caliber: Caliber; amount: number }
 );
 
-export type GamePhase = "playing" | "dead";
+export type GamePhase = "playing" | "dead" | "won";
 
 export interface GameState {
   seed: number;
@@ -68,6 +65,8 @@ export interface GameState {
   map: GameMap;
   /** Where the player entered this floor — response teams arrive here. */
   entrance: { x: number; y: number };
+  /** The way up. Standing here and ascending advances the floor. */
+  stairs: { x: number; y: number };
   /** Parallel to map.tiles: currently in FOV. */
   visible: boolean[];
   /** Parallel to map.tiles: ever seen. */
@@ -115,6 +114,8 @@ export function pushLog(state: GameState, message: string): void {
   if (state.log.length > LOG_LIMIT) state.log.splice(0, state.log.length - LOG_LIMIT);
 }
 
+// newGame lives in sim/floor.ts — it builds the first floor.
+
 export function spawnEnemy(id: number, defId: string, x: number, y: number): Entity {
   const def = enemyDef(defId);
   const weapon = def.weaponId ? weaponDef(def.weaponId) : null;
@@ -136,47 +137,3 @@ export function spawnEnemy(id: number, defId: string, x: number, y: number): Ent
   };
 }
 
-export function newGame(seed: number): GameState {
-  const gen = generateMap(seed);
-  // XOR keeps the sim stream distinct from the map stream under the same seed.
-  const rng = createSimRng((seed ^ 0x9e3779b9) >>> 0);
-
-  const player: Entity = {
-    id: 0,
-    defId: "player",
-    name: "You",
-    glyph: "@",
-    color: "#ffffff",
-    x: gen.playerStart.x,
-    y: gen.playerStart.y,
-    hp: PLAYER_MAX_HP,
-    maxHp: PLAYER_MAX_HP,
-    ap: PLAYER_MAX_AP,
-    maxAp: PLAYER_MAX_AP,
-    weaponId: WEAPONS.glock.id,
-    ammoInMag: WEAPONS.glock.magSize,
-    alerted: true,
-    slots: [{ weaponId: WEAPONS.glock.id, ammoInMag: WEAPONS.glock.magSize }, null, null],
-    activeSlot: 0,
-  };
-
-  const state: GameState = {
-    seed,
-    rngState: rng.getState(),
-    turn: 1,
-    floor: 1,
-    phase: "playing",
-    map: gen.map,
-    entrance: { x: gen.playerStart.x, y: gen.playerStart.y },
-    visible: new Array(gen.map.tiles.length).fill(false),
-    explored: new Array(gen.map.tiles.length).fill(false),
-    player,
-    enemies: [spawnEnemy(1, "rentacop", gen.enemyStart.x, gen.enemyStart.y)],
-    items: [],
-    ammo: { small: 24, medium: 0, large: 0 },
-    nextId: 2,
-    log: ["Floor 1. Find whoever signs the checks."],
-  };
-  recomputeFov(state);
-  return state;
-}

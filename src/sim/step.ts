@@ -3,6 +3,7 @@ import { maxRange, weaponDef } from "../data/weapons";
 import type { Action } from "./actions";
 import { runEnemyTurns } from "./ai";
 import { fireWeapon, meleeAttack } from "./combat";
+import { applyFloor, LAST_FLOOR } from "./floor";
 import { recomputeFov } from "./fov";
 import { hasLos } from "./los";
 import { simRngFromState, type SimRNG } from "./rng";
@@ -178,6 +179,20 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       player.ammoInMag = item.ammoInMag;
       slots[active] = { weaponId: item.weaponId, ammoInMag: item.ammoInMag };
       pushLog(state, `You take the ${weaponDef(item.weaponId).name}.`);
+      return;
+    }
+    case "ascend": {
+      if (player.x !== state.stairs.x || player.y !== state.stairs.y) {
+        pushLog(state, "No stairs here.");
+        return;
+      }
+      if (state.floor >= LAST_FLOOR) {
+        state.phase = "won";
+        pushLog(state, "You reach the roof access. To be continued.");
+        return;
+      }
+      applyFloor(state, state.floor + 1);
+      player.ap = player.maxAp; // fresh floor, fresh turn
       return;
     }
     case "wait": {

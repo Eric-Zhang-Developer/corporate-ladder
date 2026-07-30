@@ -52,6 +52,7 @@ export function makeState(
     seed?: number;
     ammo?: GameState["ammo"];
     items?: GameState["items"];
+    stairs?: { x: number; y: number };
   } = {},
 ): GameState {
   const map = opts.map ?? openMap();
@@ -84,6 +85,7 @@ export function makeState(
     phase: "playing",
     map,
     entrance: { x: player.x, y: player.y },
+    stairs: opts.stairs ?? { x: 0, y: 0 },
     visible: new Array(map.tiles.length).fill(false),
     explored: new Array(map.tiles.length).fill(false),
     player,

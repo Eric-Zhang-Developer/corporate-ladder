@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Action } from "../../src/sim/actions";
 import { applyAction } from "../../src/sim/step";
-import { newGame } from "../../src/sim/state";
+import { newGame } from "../../src/sim/floor";
 
 /**
  * Replay canary: a fixed seed plus a fixed action script must always
@@ -32,6 +32,7 @@ describe("golden run", () => {
 
     const summary = {
       turn: state.turn,
+      floor: state.floor,
       phase: state.phase,
       player: {
         x: state.player.x,
@@ -40,7 +41,9 @@ describe("golden run", () => {
         ap: state.player.ap,
         ammoInMag: state.player.ammoInMag,
       },
-      enemies: state.enemies.map((e) => ({ x: e.x, y: e.y, hp: e.hp, alerted: e.alerted })),
+      ammo: state.ammo,
+      itemCount: state.items.length,
+      enemies: state.enemies.map((e) => ({ defId: e.defId, x: e.x, y: e.y, hp: e.hp, alerted: e.alerted })),
       rngState: state.rngState,
       log: state.log,
     };

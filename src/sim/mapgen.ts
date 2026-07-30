@@ -7,8 +7,8 @@ export const MAP_H = 22;
 export interface MapGenResult {
   map: GameMap;
   playerStart: { x: number; y: number };
-  /** Center of the room farthest from the player — Stage 1 enemy spawn. */
-  enemyStart: { x: number; y: number };
+  /** All room centers; index 0 is the player's start room. */
+  rooms: Array<{ x: number; y: number }>;
 }
 
 /**
@@ -33,18 +33,7 @@ export function generateMap(seed: number, width = MAP_W, height = MAP_H): MapGen
       return { x: cx, y: cy };
     });
 
-    const playerStart = centers[0]!;
-    let enemyStart = playerStart;
-    let bestDist = -1;
-    for (const c of centers) {
-      const d = Math.hypot(c.x - playerStart.x, c.y - playerStart.y);
-      if (d > bestDist) {
-        bestDist = d;
-        enemyStart = c;
-      }
-    }
-
-    return { map: { width, height, tiles }, playerStart, enemyStart };
+    return { map: { width, height, tiles }, playerStart: centers[0]!, rooms: centers };
   } finally {
     RNG.setState(saved);
   }

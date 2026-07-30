@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyAction } from "../../src/sim/step";
-import { isFloor, newGame, type GameState } from "../../src/sim/state";
+import { newGame } from "../../src/sim/floor";
+import { isFloor, type GameState } from "../../src/sim/state";
 
 function legalMove(state: GameState): { dx: -1 | 0 | 1; dy: -1 | 0 | 1 } {
   const { player, map } = state;

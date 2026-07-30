@@ -29,6 +29,10 @@ export function renderState(display: Display, state: GameState): void {
     }
   }
 
+  // Stairs are architecture: remembered once explored.
+  if (state.explored[idx(map, state.stairs.x, state.stairs.y)]) {
+    display.draw(state.stairs.x, state.stairs.y, ">", "#ffffff", "#000");
+  }
   for (const item of state.items) {
     if (state.visible[idx(map, item.x, item.y)]) {
       const glyph = item.kind === "weapon" ? "/" : "=";
@@ -65,13 +69,20 @@ export function renderState(display: Display, state: GameState): void {
     `Floor ${state.floor}  Seed ${state.seed}  Turn ${state.turn}`,
   );
 
-  if (state.phase === "dead") drawDeathScreen(display, state);
+  if (state.phase === "dead") drawEndScreen(display, state);
+  if (state.phase === "won") drawEndScreen(display, state);
 }
 
-function drawDeathScreen(display: Display, state: GameState): void {
+function drawEndScreen(display: Display, state: GameState): void {
+  const won = state.phase === "won";
   const lines: Array<[string, string]> = [
-    ["*** TERMINATED ***", "#ff5555"],
-    [state.killedBy ?? "You die.", "#dddddd"],
+    [won ? "*** EXIT INTERVIEW PASSED ***" : "*** TERMINATED ***", won ? "#66dd66" : "#ff5555"],
+    [
+      won
+        ? `Cleared the slice — Seed ${state.seed} — Turn ${state.turn}`
+        : (state.killedBy ?? "You die."),
+      "#dddddd",
+    ],
     ["[Enter] new run    [S] same seed", "#999999"],
   ];
   const startY = Math.floor(MAP_H / 2) - 2;
