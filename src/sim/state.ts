@@ -1,5 +1,5 @@
 import { enemyDef } from "../data/enemies";
-import { WEAPONS, weaponDef } from "../data/weapons";
+import { WEAPONS, weaponDef, type Caliber } from "../data/weapons";
 import { generateMap } from "./mapgen";
 import { recomputeFov } from "./fov";
 import { createSimRng } from "./rng";
@@ -34,7 +34,23 @@ export interface Entity {
   alerted: boolean;
   /** Taser rule (§4.1): AP lost at the next refill, then cleared. */
   pendingApDrain?: number;
+  /**
+   * Player only: three carried guns (§9.5). weaponId/ammoInMag above mirror
+   * the ACTIVE slot; the stored copy is written back on swap.
+   */
+  slots?: (WeaponSlot | null)[];
+  activeSlot?: number;
 }
+
+export interface WeaponSlot {
+  weaponId: string;
+  ammoInMag: number;
+}
+
+export type GroundItem = { id: number; x: number; y: number } & (
+  | { kind: "weapon"; weaponId: string; ammoInMag: number }
+  | { kind: "ammo"; caliber: Caliber; amount: number }
+);
 
 export type GamePhase = "playing" | "dead";
 
@@ -52,6 +68,12 @@ export interface GameState {
   explored: boolean[];
   player: Entity;
   enemies: Entity[];
+  /** Weapons and ammo lying on the floor. */
+  items: GroundItem[];
+  /** Player's per-caliber ammo reserve — the soft clock (§4.3). */
+  ammo: Record<Caliber, number>;
+  /** Monotonic id source for spawned entities and items. */
+  nextId: number;
   log: string[];
   /** Shareable death line, set when phase becomes "dead". */
   killedBy?: string;
@@ -128,6 +150,8 @@ export function newGame(seed: number): GameState {
     weaponId: WEAPONS.glock.id,
     ammoInMag: WEAPONS.glock.magSize,
     alerted: true,
+    slots: [{ weaponId: WEAPONS.glock.id, ammoInMag: WEAPONS.glock.magSize }, null, null],
+    activeSlot: 0,
   };
 
   const state: GameState = {
@@ -141,6 +165,9 @@ export function newGame(seed: number): GameState {
     explored: new Array(gen.map.tiles.length).fill(false),
     player,
     enemies: [spawnEnemy(1, "rentacop", gen.enemyStart.x, gen.enemyStart.y)],
+    items: [],
+    ammo: { small: 24, medium: 0, large: 0 },
+    nextId: 2,
     log: ["Floor 1. Find whoever signs the checks."],
   };
   recomputeFov(state);

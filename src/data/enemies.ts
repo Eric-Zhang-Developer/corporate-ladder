@@ -7,6 +7,7 @@ import type { Caliber } from "./weapons";
 export type BehaviorId = "pursueAndShoot" | "meleeRush" | "cameraAlarm";
 
 export interface EnemyDrop {
+  /** 0..1 — rolled independently per entry. */
   chance: number;
   weaponId?: string;
   ammo?: { caliber: Caliber; min: number; max: number };
@@ -36,7 +37,7 @@ export interface EnemyDef {
   spotLine?: string;
   /** Death-screen prefix, e.g. "Bitten to death by". */
   killVerb?: string;
-  drop?: EnemyDrop;
+  drops?: EnemyDrop[];
 }
 
 export const ENEMIES = {
@@ -53,7 +54,7 @@ export const ENEMIES = {
     behavior: "pursueAndShoot",
     spotLine: `The Rent-a-Cop shouts, "Hey! You can't be up here!"`,
     killVerb: "Shot to death by",
-    drop: { chance: 1, ammo: { caliber: "small", min: 4, max: 8 } },
+    drops: [{ chance: 1, ammo: { caliber: "small", min: 4, max: 8 } }],
   },
   dog: {
     id: "dog",
@@ -83,7 +84,7 @@ export const ENEMIES = {
     behavior: "meleeRush",
     spotLine: `The Taser Guard yells, "Compliance is mandatory!"`,
     killVerb: "Tased into retirement by",
-    drop: { chance: 1, ammo: { caliber: "small", min: 2, max: 4 } },
+    drops: [{ chance: 1, ammo: { caliber: "small", min: 2, max: 4 } }],
   },
   janitor: {
     id: "janitor",

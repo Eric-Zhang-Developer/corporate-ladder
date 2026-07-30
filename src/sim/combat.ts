@@ -7,42 +7,59 @@ import { distance, pushLog, type Entity, type GameState } from "./state";
 /**
  * One firing path for everyone — the player and every enemy resolve shots
  * through here. Caller has already validated LOS, range, ammo, and AP.
+ * One trigger pull fires min(pellets, mag) rounds, each rolled
+ * independently, for a single apFire cost.
  */
 export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defender: Entity): void {
   if (!attacker.weaponId) return;
   const weapon = weaponDef(attacker.weaponId);
+  const pellets = Math.min(weapon.pellets ?? 1, attacker.ammoInMag);
   attacker.ap -= weapon.apFire;
-  attacker.ammoInMag -= 1;
+  attacker.ammoInMag -= pellets;
   // Gunfire is loud: being shot at wakes the target regardless of outcome.
-  // (Stage 2's suppressor attachment is the counterplay to this rule.)
+  // (Stage 3's suppressor attachment is the counterplay to this rule.)
   defender.alerted = true;
 
+  const isPlayer = attacker.id === state.player.id;
   const dist = distance(attacker, defender);
   const band = bandFor(weapon, dist);
   if (!band) {
-    pushLog(state, attacker.id === state.player.id ? "You fire wide." : `The ${attacker.name} fires wide.`);
+    pushLog(state, isPlayer ? "You fire wide." : `The ${attacker.name} fires wide.`);
     return;
   }
 
-  const hit = rng.next() < weapon.baseAccuracy * band.accMult;
-  if (!hit) {
+  const accuracy = weapon.baseAccuracy * band.accMult;
+  let hits = 0;
+  let totalDmg = 0;
+  for (let i = 0; i < pellets; i++) {
+    if (rng.next() < accuracy) {
+      hits += 1;
+      totalDmg += Math.round(weapon.damage * band.dmgMult);
+    }
+  }
+
+  if (pellets > 1) {
     pushLog(
       state,
-      attacker.id === state.player.id
-        ? `You miss the ${defender.name}.`
-        : `The ${attacker.name} fires and misses.`,
+      isPlayer
+        ? `You spray the ${defender.name} — ${hits}/${pellets} hit for ${totalDmg}.`
+        : `The ${attacker.name} sprays you — ${hits}/${pellets} hit for ${totalDmg}.`,
     );
-    return;
+  } else if (hits === 0) {
+    pushLog(
+      state,
+      isPlayer ? `You miss the ${defender.name}.` : `The ${attacker.name} fires and misses.`,
+    );
+  } else {
+    pushLog(
+      state,
+      isPlayer
+        ? `You hit the ${defender.name} for ${totalDmg}.`
+        : `The ${attacker.name} hits you for ${totalDmg}.`,
+    );
   }
 
-  const dmg = Math.round(weapon.damage * band.dmgMult);
-  pushLog(
-    state,
-    attacker.id === state.player.id
-      ? `You hit the ${defender.name} for ${dmg}.`
-      : `The ${attacker.name} hits you for ${dmg}.`,
-  );
-  dealDamage(state, attacker, defender, dmg, killVerbFor(attacker));
+  if (totalDmg > 0) dealDamage(state, rng, attacker, defender, totalDmg, killVerbFor(attacker));
 }
 
 /**
@@ -50,7 +67,7 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
  * behavior land through here. Auto-hit — melee tension comes from
  * positioning, not rolls. Caller spends the AP.
  */
-export function meleeAttack(state: GameState, attacker: Entity, defender: Entity): void {
+export function meleeAttack(state: GameState, rng: SimRNG, attacker: Entity, defender: Entity): void {
   defender.alerted = true;
   const isPlayer = attacker.id === state.player.id;
   const def = isPlayer ? null : enemyDef(attacker.defId);
@@ -69,28 +86,54 @@ export function meleeAttack(state: GameState, attacker: Entity, defender: Entity
     pushLog(state, `Your muscles seize. (-${drain} AP next turn)`);
   }
 
-  dealDamage(state, attacker, defender, dmg, killVerbFor(attacker));
+  dealDamage(state, rng, attacker, defender, dmg, killVerbFor(attacker));
 }
 
 export function dealDamage(
   state: GameState,
+  rng: SimRNG,
   attacker: Entity,
   defender: Entity,
   dmg: number,
   killVerb: string,
 ): void {
   defender.hp -= dmg;
-  if (defender.hp <= 0) kill(state, attacker, defender, killVerb);
+  if (defender.hp <= 0) kill(state, rng, attacker, defender, killVerb);
 }
 
-function kill(state: GameState, attacker: Entity, defender: Entity, killVerb: string): void {
+function kill(state: GameState, rng: SimRNG, attacker: Entity, defender: Entity, killVerb: string): void {
   if (defender.id === state.player.id) {
     state.phase = "dead";
     state.killedBy = `${killVerb} ${attacker.name} — Floor ${state.floor} — Seed ${state.seed}`;
     pushLog(state, "You die. HR has been notified.");
-  } else {
-    state.enemies = state.enemies.filter((e) => e.id !== defender.id);
-    pushLog(state, `The ${defender.name} collapses.`);
+    return;
+  }
+
+  state.enemies = state.enemies.filter((e) => e.id !== defender.id);
+  pushLog(state, `The ${defender.name} collapses.`);
+  rollDrops(state, rng, defender);
+}
+
+function rollDrops(state: GameState, rng: SimRNG, corpse: Entity): void {
+  const def = enemyDef(corpse.defId);
+  for (const drop of def.drops ?? []) {
+    if (rng.next() >= drop.chance) continue;
+    if (drop.ammo) {
+      const { caliber, min, max } = drop.ammo;
+      const amount = min + Math.floor(rng.next() * (max - min + 1));
+      state.items.push({ id: state.nextId++, x: corpse.x, y: corpse.y, kind: "ammo", caliber, amount });
+    }
+    if (drop.weaponId) {
+      const weapon = weaponDef(drop.weaponId);
+      state.items.push({
+        id: state.nextId++,
+        x: corpse.x,
+        y: corpse.y,
+        kind: "weapon",
+        weaponId: drop.weaponId,
+        ammoInMag: weapon.magSize,
+      });
+    }
   }
 }
 

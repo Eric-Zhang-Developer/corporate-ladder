@@ -17,6 +17,10 @@ export function actionForKey(e: KeyboardEvent): Action | null {
   if (move) return { type: "move", dx: move.dx, dy: move.dy };
   if (key === "f") return { type: "fire" };
   if (key === "r") return { type: "reload" };
+  if (key === "g") return { type: "pickup" };
+  if (key === "1") return { type: "swap", slot: 0 };
+  if (key === "2") return { type: "swap", slot: 1 };
+  if (key === "3") return { type: "swap", slot: 2 };
   if (key === " " || key === ".") return { type: "wait" };
   return null;
 }

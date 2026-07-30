@@ -90,7 +90,7 @@ function pursueAndShoot(state: GameState, rng: SimRNG, enemy: Entity): void {
  * Melee: close the distance and strike, at most attacksPerTurn hits per
  * activation. A 3-AP dog = move 2 + bite: the "lunge" is just AP.
  */
-function meleeRush(state: GameState, _rng: SimRNG, enemy: Entity): void {
+function meleeRush(state: GameState, rng: SimRNG, enemy: Entity): void {
   const def = enemyDef(enemy.defId);
   if (!checkSpotted(state, enemy, def)) return;
   const player = state.player;
@@ -103,7 +103,7 @@ function meleeRush(state: GameState, _rng: SimRNG, enemy: Entity): void {
     if (adjacent && attacks < maxAttacks) {
       enemy.ap -= 1;
       attacks += 1;
-      meleeAttack(state, enemy, player);
+      meleeAttack(state, rng, enemy, player);
       continue;
     }
 

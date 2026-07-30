@@ -50,6 +50,8 @@ export function makeState(
     player?: Partial<Entity>;
     enemies?: Entity[];
     seed?: number;
+    ammo?: GameState["ammo"];
+    items?: GameState["items"];
   } = {},
 ): GameState {
   const map = opts.map ?? openMap();
@@ -70,6 +72,8 @@ export function makeState(
     weaponId: WEAPONS.glock.id,
     ammoInMag: WEAPONS.glock.magSize,
     alerted: true,
+    slots: [{ weaponId: WEAPONS.glock.id, ammoInMag: WEAPONS.glock.magSize }, null, null],
+    activeSlot: 0,
     ...opts.player,
   };
   const state: GameState = {
@@ -83,6 +87,9 @@ export function makeState(
     explored: new Array(map.tiles.length).fill(false),
     player,
     enemies: opts.enemies ?? [],
+    items: opts.items ?? [],
+    ammo: opts.ammo ?? { small: 24, medium: 0, large: 0 },
+    nextId: 1000,
     log: [],
   };
   recomputeFov(state);

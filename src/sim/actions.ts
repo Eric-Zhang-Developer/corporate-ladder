@@ -3,4 +3,6 @@ export type Action =
   /** Fire at a specific enemy, or the nearest visible one when omitted. */
   | { type: "fire"; targetId?: number }
   | { type: "reload" }
+  | { type: "swap"; slot: 0 | 1 | 2 }
+  | { type: "pickup" }
   | { type: "wait" };

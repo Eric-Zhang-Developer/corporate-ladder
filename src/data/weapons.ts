@@ -17,15 +17,18 @@ export interface WeaponDef {
   name: string;
   apFire: number;
   apReload: number;
-  /** Per shot, before band multipliers. */
+  /** Per shot (per pellet), before band multipliers. */
   damage: number;
   /** Hit chance at point blank, before band multipliers. */
   baseAccuracy: number;
   /** Ordered by maxDist; ranges past the last band are out of range. */
   bands: RangeBand[];
   magSize: number;
-  /** Inert in Stage 1 — the ammo economy arrives in Stage 2. */
   caliber: Caliber;
+  /** Rounds per trigger pull, each rolled independently (Uzi volley). */
+  pellets?: number;
+  /** Index into bands: where this gun is meant to live (balance test). */
+  intendedBand?: number;
 }
 
 export const WEAPONS = {
@@ -44,9 +47,76 @@ export const WEAPONS = {
     ],
     magSize: 7,
     caliber: "small",
+    intendedBand: 1,
   },
-  // The rent-a-cop's sidearm — separate entry so enemy lethality tunes
-  // independently of the player's gun.
+  revolver: {
+    id: "revolver",
+    name: "Revolver",
+    apFire: 1,
+    apReload: 2,
+    damage: 5,
+    baseAccuracy: 0.8,
+    bands: [
+      { maxDist: 1, accMult: 1.0, dmgMult: 1.0 },
+      { maxDist: 4, accMult: 0.85, dmgMult: 1.0 },
+      { maxDist: 7, accMult: 0.45, dmgMult: 1.0 },
+    ],
+    magSize: 6,
+    caliber: "small",
+    intendedBand: 1,
+  },
+  uzi: {
+    id: "uzi",
+    name: "Micro Uzi",
+    apFire: 1,
+    apReload: 1,
+    damage: 2,
+    baseAccuracy: 0.5,
+    bands: [
+      { maxDist: 1, accMult: 0.9, dmgMult: 1.0 },
+      { maxDist: 3, accMult: 0.85, dmgMult: 1.0 },
+      { maxDist: 6, accMult: 0.4, dmgMult: 1.0 },
+    ],
+    magSize: 20,
+    caliber: "small",
+    pellets: 4,
+    intendedBand: 1,
+  },
+  serbu: {
+    id: "serbu",
+    name: "Serbu Shorty",
+    apFire: 1,
+    apReload: 2,
+    damage: 6,
+    baseAccuracy: 0.7,
+    bands: [
+      { maxDist: 1, accMult: 1.0, dmgMult: 1.0 },
+      { maxDist: 2, accMult: 0.9, dmgMult: 0.9 },
+      // Devastating at arm's length, a paperweight past it (§4.2).
+      { maxDist: 3, accMult: 0.5, dmgMult: 0.35 },
+    ],
+    magSize: 3,
+    caliber: "medium",
+    intendedBand: 0,
+  },
+  mosin: {
+    id: "mosin",
+    name: "Mosin-Nagant",
+    apFire: 2,
+    apReload: 2,
+    damage: 8,
+    baseAccuracy: 0.9,
+    bands: [
+      // Hates adjacency; sings at range — the kiting gun.
+      { maxDist: 2, accMult: 0.55, dmgMult: 1.0 },
+      { maxDist: 8, accMult: 1.0, dmgMult: 1.0 },
+    ],
+    magSize: 5,
+    caliber: "large",
+    intendedBand: 1,
+  },
+  // Enemy-tuned variants — separate entries so enemy lethality tunes
+  // independently of the player's guns.
   glock_cop: {
     id: "glock_cop",
     name: "Glock",
@@ -61,6 +131,21 @@ export const WEAPONS = {
     ],
     magSize: 5,
     caliber: "small",
+  },
+  serbu_guard: {
+    id: "serbu_guard",
+    name: "Serbu Shorty",
+    apFire: 1,
+    apReload: 2,
+    damage: 4,
+    baseAccuracy: 0.6,
+    bands: [
+      { maxDist: 1, accMult: 1.0, dmgMult: 1.0 },
+      { maxDist: 2, accMult: 0.9, dmgMult: 0.9 },
+      { maxDist: 4, accMult: 0.5, dmgMult: 0.35 },
+    ],
+    magSize: 3,
+    caliber: "medium",
   },
 } satisfies Record<string, WeaponDef>;
 
@@ -85,5 +170,6 @@ export function maxRange(def: WeaponDef): number {
 export function dmgPerAp(def: WeaponDef, dist: number): number {
   const band = bandFor(def, dist);
   if (!band) return 0;
-  return (def.damage * band.dmgMult * def.baseAccuracy * band.accMult) / def.apFire;
+  const pellets = def.pellets ?? 1;
+  return (pellets * def.damage * band.dmgMult * def.baseAccuracy * band.accMult) / def.apFire;
 }

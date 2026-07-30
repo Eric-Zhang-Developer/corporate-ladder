@@ -29,6 +29,12 @@ export function renderState(display: Display, state: GameState): void {
     }
   }
 
+  for (const item of state.items) {
+    if (state.visible[idx(map, item.x, item.y)]) {
+      const glyph = item.kind === "weapon" ? "/" : "=";
+      display.draw(item.x, item.y, glyph, item.kind === "weapon" ? "#66dddd" : "#ddcc55", "#000");
+    }
+  }
   for (const e of state.enemies) {
     if (state.visible[idx(map, e.x, e.y)]) display.draw(e.x, e.y, e.glyph, e.color, "#000");
   }
@@ -48,9 +54,13 @@ export function renderState(display: Display, state: GameState): void {
   display.drawText(
     0,
     MAP_H + LOG_LINES,
-    `HP ${player.hp}/${player.maxHp}  AP ${pips}  ${weaponText}`,
+    `HP ${player.hp}/${player.maxHp}  AP ${pips}  ${weaponText}  S${state.ammo.small} M${state.ammo.medium} L${state.ammo.large}`,
   );
-  display.drawText(0, MAP_H + LOG_LINES + 1, `Seed ${state.seed}  Turn ${state.turn}`);
+  display.drawText(
+    0,
+    MAP_H + LOG_LINES + 1,
+    `Floor ${state.floor}  Seed ${state.seed}  Turn ${state.turn}`,
+  );
 
   if (state.phase === "dead") drawDeathScreen(display, state);
 }
