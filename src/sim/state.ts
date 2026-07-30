@@ -27,10 +27,13 @@ export interface Entity {
   maxHp: number;
   ap: number;
   maxAp: number;
-  weaponId: string;
+  /** null for pure-melee and support enemies. */
+  weaponId: string | null;
   ammoInMag: number;
   /** Enemies idle until they spot the player; always true for the player. */
   alerted: boolean;
+  /** Taser rule (§4.1): AP lost at the next refill, then cleared. */
+  pendingApDrain?: number;
 }
 
 export type GamePhase = "playing" | "dead";
@@ -40,6 +43,7 @@ export interface GameState {
   /** SimRNG snapshot, updated after every action — replays stay exact. */
   rngState: number[];
   turn: number;
+  floor: number;
   phase: GamePhase;
   map: GameMap;
   /** Parallel to map.tiles: currently in FOV. */
@@ -85,7 +89,7 @@ export function pushLog(state: GameState, message: string): void {
 
 export function spawnEnemy(id: number, defId: string, x: number, y: number): Entity {
   const def = enemyDef(defId);
-  const weapon = weaponDef(def.weaponId);
+  const weapon = def.weaponId ? weaponDef(def.weaponId) : null;
   return {
     id,
     defId,
@@ -98,8 +102,8 @@ export function spawnEnemy(id: number, defId: string, x: number, y: number): Ent
     maxHp: def.hp,
     ap: def.ap,
     maxAp: def.ap,
-    weaponId: def.weaponId,
-    ammoInMag: weapon.magSize,
+    weaponId: def.weaponId ?? null,
+    ammoInMag: weapon?.magSize ?? 0,
     alerted: false,
   };
 }
@@ -130,6 +134,7 @@ export function newGame(seed: number): GameState {
     seed,
     rngState: rng.getState(),
     turn: 1,
+    floor: 1,
     phase: "playing",
     map: gen.map,
     visible: new Array(gen.map.tiles.length).fill(false),

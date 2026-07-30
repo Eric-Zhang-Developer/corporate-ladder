@@ -2,7 +2,7 @@ import { AP_COSTS } from "../data/costs";
 import { maxRange, weaponDef } from "../data/weapons";
 import type { Action } from "./actions";
 import { runEnemyTurns } from "./ai";
-import { fireWeapon } from "./combat";
+import { fireWeapon, meleeAttack } from "./combat";
 import { recomputeFov } from "./fov";
 import { hasLos } from "./los";
 import { simRngFromState, type SimRNG } from "./rng";
@@ -22,8 +22,8 @@ export function applyAction(state: GameState, action: Action): GameState {
   if (state.phase === "playing" && state.player.ap <= 0) {
     runEnemyTurns(state, rng);
     state.turn += 1;
-    state.player.ap = state.player.maxAp;
-    for (const e of state.enemies) e.ap = e.maxAp;
+    refillAp(state.player);
+    for (const e of state.enemies) refillAp(e);
   }
 
   recomputeFov(state);
@@ -44,7 +44,9 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       }
       const blocker = entityAt(state, nx, ny);
       if (blocker && blocker.id !== player.id) {
-        pushLog(state, `The ${blocker.name} is in the way.`);
+        // Bump-to-melee: moving into an enemy is the knife attack.
+        player.ap -= AP_COSTS.melee;
+        meleeAttack(state, player, blocker);
         return;
       }
       player.x = nx;
@@ -53,6 +55,10 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       return;
     }
     case "fire": {
+      if (!player.weaponId) {
+        pushLog(state, "You have no gun.");
+        return;
+      }
       const weapon = weaponDef(player.weaponId);
       if (player.ammoInMag <= 0) {
         pushLog(state, "Click. (R to reload)");
@@ -75,6 +81,10 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       return;
     }
     case "reload": {
+      if (!player.weaponId) {
+        pushLog(state, "Nothing to reload.");
+        return;
+      }
       const weapon = weaponDef(player.weaponId);
       if (player.ammoInMag >= weapon.magSize) {
         pushLog(state, "Magazine already full.");
@@ -107,4 +117,9 @@ function pickTarget(state: GameState, targetId?: number): Entity | null {
   );
   if (candidates.length === 0) return null;
   return candidates.reduce((a, b) => (distance(player, a) <= distance(player, b) ? a : b));
+}
+
+function refillAp(entity: { ap: number; maxAp: number; pendingApDrain?: number }): void {
+  entity.ap = Math.max(0, entity.maxAp - (entity.pendingApDrain ?? 0));
+  delete entity.pendingApDrain;
 }

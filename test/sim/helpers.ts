@@ -76,6 +76,7 @@ export function makeState(
     seed,
     rngState: rng.getState(),
     turn: 1,
+    floor: 1,
     phase: "playing",
     map,
     visible: new Array(map.tiles.length).fill(false),

@@ -1,8 +1,16 @@
+import type { Caliber } from "./weapons";
+
 /**
  * Enemies are data entries (handoff §6 rule 2): adding one later must be a
  * new entry here plus, at most, one behavior function in sim/ai.ts.
  */
-export type BehaviorId = "pursueAndShoot";
+export type BehaviorId = "pursueAndShoot" | "meleeRush" | "cameraAlarm";
+
+export interface EnemyDrop {
+  chance: number;
+  weaponId?: string;
+  ammo?: { caliber: Caliber; min: number; max: number };
+}
 
 export interface EnemyDef {
   id: string;
@@ -11,12 +19,24 @@ export interface EnemyDef {
   color: string;
   hp: number;
   ap: number;
-  weaponId: string;
+  /** Absent for pure-melee and support enemies. */
+  weaponId?: string;
   /** Spots the player at this distance (with LOS); spotting spends the turn. */
   sightRange: number;
-  /** Advances until this close before it starts shooting. */
-  preferredRange: number;
+  /** Ranged only: advances until this close before it starts shooting. */
+  preferredRange?: number;
+  /** Melee only: damage per hit. */
+  meleeDamage?: number;
+  /** Melee hits per turn regardless of AP left (default 1). */
+  attacksPerTurn?: number;
+  /** Taser rule (§4.1): victim loses this much AP at its next refill. */
+  apDrainOnHit?: number;
   behavior: BehaviorId;
+  /** Log line on spotting the player. */
+  spotLine?: string;
+  /** Death-screen prefix, e.g. "Bitten to death by". */
+  killVerb?: string;
+  drop?: EnemyDrop;
 }
 
 export const ENEMIES = {
@@ -31,6 +51,53 @@ export const ENEMIES = {
     sightRange: 8,
     preferredRange: 4,
     behavior: "pursueAndShoot",
+    spotLine: `The Rent-a-Cop shouts, "Hey! You can't be up here!"`,
+    killVerb: "Shot to death by",
+    drop: { chance: 1, ammo: { caliber: "small", min: 4, max: 8 } },
+  },
+  dog: {
+    id: "dog",
+    name: "Guard Dog",
+    glyph: "d",
+    color: "#cc8844",
+    hp: 4,
+    ap: 3,
+    sightRange: 9,
+    meleeDamage: 3,
+    attacksPerTurn: 1,
+    behavior: "meleeRush",
+    spotLine: "The Guard Dog snarls.",
+    killVerb: "Bitten to death by",
+  },
+  taser: {
+    id: "taser",
+    name: "Taser Guard",
+    glyph: "t",
+    color: "#ffee66",
+    hp: 6,
+    ap: 2,
+    sightRange: 8,
+    meleeDamage: 1,
+    attacksPerTurn: 1,
+    apDrainOnHit: 2,
+    behavior: "meleeRush",
+    spotLine: `The Taser Guard yells, "Compliance is mandatory!"`,
+    killVerb: "Tased into retirement by",
+    drop: { chance: 1, ammo: { caliber: "small", min: 2, max: 4 } },
+  },
+  janitor: {
+    id: "janitor",
+    name: "Janitor",
+    glyph: "j",
+    color: "#88bb88",
+    hp: 14,
+    ap: 2,
+    sightRange: 6,
+    meleeDamage: 4,
+    attacksPerTurn: 1,
+    behavior: "meleeRush",
+    spotLine: "The Janitor sighs and hefts his wrench. Thirty years of this.",
+    killVerb: "Mopped up by",
   },
 } satisfies Record<string, EnemyDef>;
 

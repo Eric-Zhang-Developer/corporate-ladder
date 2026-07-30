@@ -1,4 +1,6 @@
+import { enemyDef } from "../data/enemies";
 import { bandFor, weaponDef } from "../data/weapons";
+import { KNIFE } from "../data/costs";
 import type { SimRNG } from "./rng";
 import { distance, pushLog, type Entity, type GameState } from "./state";
 
@@ -7,6 +9,7 @@ import { distance, pushLog, type Entity, type GameState } from "./state";
  * through here. Caller has already validated LOS, range, ammo, and AP.
  */
 export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defender: Entity): void {
+  if (!attacker.weaponId) return;
   const weapon = weaponDef(attacker.weaponId);
   attacker.ap -= weapon.apFire;
   attacker.ammoInMag -= 1;
@@ -17,7 +20,7 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
   const dist = distance(attacker, defender);
   const band = bandFor(weapon, dist);
   if (!band) {
-    pushLog(state, describe(attacker, "fires wide.", "fire wide."));
+    pushLog(state, attacker.id === state.player.id ? "You fire wide." : `The ${attacker.name} fires wide.`);
     return;
   }
 
@@ -33,21 +36,57 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
   }
 
   const dmg = Math.round(weapon.damage * band.dmgMult);
-  defender.hp -= dmg;
   pushLog(
     state,
     attacker.id === state.player.id
       ? `You hit the ${defender.name} for ${dmg}.`
       : `The ${attacker.name} hits you for ${dmg}.`,
   );
-
-  if (defender.hp <= 0) kill(state, attacker, defender);
+  dealDamage(state, attacker, defender, dmg, killVerbFor(attacker));
 }
 
-function kill(state: GameState, attacker: Entity, defender: Entity): void {
+/**
+ * Melee for both sides: the player's knife bump and every enemy melee
+ * behavior land through here. Auto-hit — melee tension comes from
+ * positioning, not rolls. Caller spends the AP.
+ */
+export function meleeAttack(state: GameState, attacker: Entity, defender: Entity): void {
+  defender.alerted = true;
+  const isPlayer = attacker.id === state.player.id;
+  const def = isPlayer ? null : enemyDef(attacker.defId);
+  const dmg = isPlayer ? KNIFE.damage : (def?.meleeDamage ?? 1);
+
+  pushLog(
+    state,
+    isPlayer
+      ? `You knife the ${defender.name} for ${dmg}.`
+      : `The ${attacker.name} strikes you for ${dmg}.`,
+  );
+
+  const drain = def?.apDrainOnHit;
+  if (drain) {
+    defender.pendingApDrain = Math.max(defender.pendingApDrain ?? 0, drain);
+    pushLog(state, `Your muscles seize. (-${drain} AP next turn)`);
+  }
+
+  dealDamage(state, attacker, defender, dmg, killVerbFor(attacker));
+}
+
+export function dealDamage(
+  state: GameState,
+  attacker: Entity,
+  defender: Entity,
+  dmg: number,
+  killVerb: string,
+): void {
+  defender.hp -= dmg;
+  if (defender.hp <= 0) kill(state, attacker, defender, killVerb);
+}
+
+function kill(state: GameState, attacker: Entity, defender: Entity, killVerb: string): void {
   if (defender.id === state.player.id) {
     state.phase = "dead";
-    state.killedBy = `Shot to death by ${attacker.name} — Floor 1 — Seed ${state.seed}`;
+    state.killedBy = `${killVerb} ${attacker.name} — Floor ${state.floor} — Seed ${state.seed}`;
     pushLog(state, "You die. HR has been notified.");
   } else {
     state.enemies = state.enemies.filter((e) => e.id !== defender.id);
@@ -55,6 +94,7 @@ function kill(state: GameState, attacker: Entity, defender: Entity): void {
   }
 }
 
-function describe(attacker: Entity, third: string, second: string): string {
-  return attacker.name === "You" ? `You ${second}` : `The ${attacker.name} ${third}`;
+function killVerbFor(attacker: Entity): string {
+  if (attacker.defId === "player") return "Killed by";
+  return enemyDef(attacker.defId).killVerb ?? "Killed by";
 }

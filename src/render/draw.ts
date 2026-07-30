@@ -40,12 +40,15 @@ export function renderState(display: Display, state: GameState): void {
     display.drawText(0, MAP_H + i, `%c{${isLatest ? "#dddddd" : COLOR.logOld}}${recent[i]}`);
   }
 
-  const weapon = weaponDef(player.weaponId);
+  const weapon = player.weaponId ? weaponDef(player.weaponId) : null;
+  const weaponText = weapon
+    ? `${weapon.name} ${player.ammoInMag}/${weapon.magSize} [${weapon.caliber}]`
+    : "Unarmed";
   const pips = "◆".repeat(player.ap) + "◇".repeat(player.maxAp - player.ap);
   display.drawText(
     0,
     MAP_H + LOG_LINES,
-    `HP ${player.hp}/${player.maxHp}  AP ${pips}  ${weapon.name} ${player.ammoInMag}/${weapon.magSize} [${weapon.caliber}]`,
+    `HP ${player.hp}/${player.maxHp}  AP ${pips}  ${weaponText}`,
   );
   display.drawText(0, MAP_H + LOG_LINES + 1, `Seed ${state.seed}  Turn ${state.turn}`);
 
