@@ -1,4 +1,5 @@
 import type { Display } from "rot-js";
+import { weaponDef } from "../data/weapons";
 import { idx, type GameState } from "../sim/state";
 import { MAP_H } from "../sim/mapgen";
 import { LOG_LINES } from "./display";
@@ -39,7 +40,12 @@ export function renderState(display: Display, state: GameState): void {
     display.drawText(0, MAP_H + i, `%c{${isLatest ? "#dddddd" : COLOR.logOld}}${recent[i]}`);
   }
 
+  const weapon = weaponDef(player.weaponId);
   const pips = "◆".repeat(player.ap) + "◇".repeat(player.maxAp - player.ap);
-  display.drawText(0, MAP_H + LOG_LINES, `HP ${player.hp}/${player.maxHp}  AP ${pips}`);
+  display.drawText(
+    0,
+    MAP_H + LOG_LINES,
+    `HP ${player.hp}/${player.maxHp}  AP ${pips}  ${weapon.name} ${player.ammoInMag}/${weapon.magSize} [${weapon.caliber}]`,
+  );
   display.drawText(0, MAP_H + LOG_LINES + 1, `Seed ${state.seed}  Turn ${state.turn}`);
 }

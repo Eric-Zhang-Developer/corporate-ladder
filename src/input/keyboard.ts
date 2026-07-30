@@ -15,6 +15,8 @@ export function actionForKey(e: KeyboardEvent): Action | null {
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   const move = MOVES[key];
   if (move) return { type: "move", dx: move.dx, dy: move.dy };
+  if (key === "f") return { type: "fire" };
+  if (key === "r") return { type: "reload" };
   if (key === " " || key === ".") return { type: "wait" };
   return null;
 }

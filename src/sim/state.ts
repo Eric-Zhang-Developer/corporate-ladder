@@ -1,3 +1,4 @@
+import { WEAPONS } from "../data/weapons";
 import { generateMap } from "./mapgen";
 import { recomputeFov } from "./fov";
 import { createSimRng } from "./rng";
@@ -23,6 +24,8 @@ export interface Entity {
   maxHp: number;
   ap: number;
   maxAp: number;
+  weaponId: string;
+  ammoInMag: number;
 }
 
 export type GamePhase = "playing" | "dead";
@@ -91,6 +94,8 @@ export function newGame(seed: number): GameState {
     maxHp: PLAYER_MAX_HP,
     ap: PLAYER_MAX_AP,
     maxAp: PLAYER_MAX_AP,
+    weaponId: WEAPONS.glock.id,
+    ammoInMag: WEAPONS.glock.magSize,
   };
 
   const state: GameState = {
