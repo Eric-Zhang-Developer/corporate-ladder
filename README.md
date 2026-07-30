@@ -34,8 +34,11 @@ Death screens name the killer, floor, and seed — share them.
 ```
 npm run test        # vitest, sim-only (the sim is headless and pure)
 npm run typecheck
-npm run build       # relative-base build; zip dist/ to share a playtest build
+npm run build       # hashed assets — what CI deploys to GitHub Pages
+npm run build:zip   # one self-contained index.html — zip dist/ to email testers
 ```
+
+Pushes to `main` deploy automatically once the checks pass.
 
 Architecture rules (see handoff §6): the sim never touches the DOM or renderer;
 all content (weapons, enemies, floors, AP costs) lives in `src/data/` tables;

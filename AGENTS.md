@@ -82,7 +82,7 @@ Enemy behaviors are `while (enemy.ap > 0)` loops where every iteration either sp
 - **Being attacked alerts the target** (set in `fireWeapon`/`meleeAttack`). The Stage 3 suppressor attachment is the planned counterplay; removing this breaks camera/stealth logic.
 - **`slots[activeSlot]` is stale while a gun is in hand** — `player.weaponId/ammoInMag` mirror the active slot and are written back on swap. The sidebar special-cases this. If Stage 3 attachments make this painful, refactor to slots-as-authority *first*.
 - **Node can't run `src/` directly** (extensionless ESM imports) — run scratch scripts through vitest temp files instead.
-- **The playtest build must stay single-file** (`vite-plugin-singlefile`): Chrome blocks external module scripts on `file://`, and zip distribution is the current playtest channel.
+- **Two build modes, don't collapse them.** `npm run build` emits hashed assets for the Pages deploy (immutable caching, so nobody plays a stale build). `npm run build:zip` inlines everything into one `index.html`, because Chrome blocks external module scripts on `file://` and a zipped multi-file build won't run by double-click.
 - Non-obvious keys: `>` ascends stairs; bumping into an enemy *is* the melee attack (there is no melee action); `s` is both move-down and same-seed-restart (disambiguated by game phase).
 
 ## Workflow
