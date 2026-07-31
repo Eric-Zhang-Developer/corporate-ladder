@@ -140,6 +140,27 @@ dependency-free). Final ⟲ if tuning touched sim behavior. `npm run build`, dep
 main merge, external playtest with seed URLs + the §7-style kill-questions: does a
 run take ~30 minutes, do builds feel different, was every death legible?
 
+## Phase D — polish (M13+, post-playtest)
+
+The UX backlog (`ux-design.md`) lands here as a separate polish pass after the alpha
+playtest ships, in priority order:
+
+### M13 — Controls overlay + start screen *(~1.5 days)*
+`?`/`F1` overlay rendering the existing keymap; title screen with START, seed entry
+(replacing raw `?seed=` editing as the shared-run entry point), controls link, build
+stamp.
+
+### M14 — Dev panel *(~1 day, dev-only)*
+Gated by **`import.meta.env.DEV`** — dev-server only, dead-code-eliminated from every
+build output (Pages and zip never contain it; no hostname sniffing). Spawn by id,
+grant cash/XP/plates, floor jump, reveal, god mode, re-seed — all as `{type: "debug"}`
+actions through `applyAction`, so the sim stays pure and replays stay replays. The one
+Phase D item allowed to land early if Phase C tuning wants it.
+
+### M15+ — Contextual hints · mouse support *(as demanded)*
+First-time log hints (UI-side `seenHints`, data table of lines); mouse only if
+playtest feedback asks for it.
+
 ---
 
 ## Schedule reality

@@ -1,11 +1,11 @@
 # UX Design — Post-Alpha Backlog
 
-**Status: backlog, not alpha scope.** These are UX layers for after the alpha playtest
-build ships (`alpha-roadmap.md` M12). Recorded now so they're decisions-in-waiting, not
-scope creep. Two items are flagged as pull-forward candidates because they cheaply
-serve the alpha itself.
+**Status: scheduled as Phase D (M13+) in `alpha-roadmap.md`** — the polish pass after
+the alpha playtest build ships. Recorded here so these are decisions-in-waiting, not
+scope creep. The dev panel is the one item allowed to land early if Phase C tuning
+wants it.
 
-## 1. Controls menu ⭐ *pull-forward candidate*
+## 1. Controls menu
 
 An overlay (`?` or `F1`) listing every binding, readable mid-run, closed by any key.
 Nearly free: the keyboard map already exists in `input/keyboard.ts`; render it as a DOM
@@ -14,16 +14,23 @@ currently learn controls from the README, which they will not read. A controls o
 is the single cheapest fix to the worst first-five-minutes problem an alpha playtest
 can have.
 
-## 2. Debug / admin panel ⭐ *pull-forward candidate (dev-only)*
+## 2. Debug / admin panel (dev-only)
 
-An overlay gated behind `?dev=1`: spawn enemy/item by id, grant cash/XP/plates, jump
-to floor, reveal map, god mode, re-seed. Implementation stays inside the architecture:
-debug commands are *actions* through `applyAction` (a `{type: "debug", ...}` family) —
-the sim stays pure and a replay containing debug actions still replays. **Why it may
-deserve to land during Phase C rather than after:** tuning floors 5–8 without "jump to
-floor 7 with a T3 loadout" means replaying 20 minutes per iteration. This is a tool
-that pays for itself in the first tuning session. Player-facing never; dev-facing
-early.
+An overlay gated by **`import.meta.env.DEV`** — a build-time constant, so it exists
+only under `npm run dev` and is dead-code-eliminated from every build output: Pages
+and the zip never contain the panel at all (strictly better than hostname sniffing,
+which ships the code everywhere and would show the panel to anyone serving a build on
+their own localhost). Features: spawn enemy/item by id, grant cash/XP/plates, jump to
+floor, reveal map, god mode, re-seed. Implementation stays inside the architecture:
+debug commands are *actions* through `applyAction` (a `{type: "debug", ...}` family)
+handled unconditionally by the sim — the sim never checks environment (invariant 1
+adjacent: it stays environment-agnostic), only the dev-only panel ever dispatches
+them, and a replay containing debug actions still replays. Accepted tradeoff: the
+panel can never be opened on the deployed site, even by us; if a real need appears, a
+URL-param fallback is a one-line change later. **Why it may deserve to land during
+Phase C rather than M14:** tuning floors 5–8 without "jump to floor 7 with a T3
+loadout" means replaying 20 minutes per iteration. Player-facing never; dev-facing
+early if needed.
 
 ## 3. Start screen / landing page
 
