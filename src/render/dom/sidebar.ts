@@ -59,6 +59,24 @@ export function buildSidebar(root: HTMLElement): void {
   `;
 }
 
+/**
+ * AP as pips, and bonus AP as its own `+◆` run rather than more of the same.
+ *
+ * Going over maxAp is legal and deliberate — Hazard Pay adds 1 on a quiet turn,
+ * a stim adds 3 — so the empty count `maxAp - ap` goes NEGATIVE, and the naive
+ * `"◇".repeat(...)` threw a RangeError mid-render. That aborted the frame after
+ * the HP bar and before everything else, freezing the log, the turn counter and
+ * the weapon slots while the sim kept advancing underneath. Splitting the run
+ * makes the overflow visible instead of impossible.
+ */
+export function apPips(ap: number, maxAp: number): string {
+  const spent = Math.max(0, Math.min(ap, maxAp));
+  const base = "◆".repeat(spent) + "◇".repeat(maxAp - spent);
+  const bonus = Math.max(0, ap - maxAp);
+  // Numeric input only, so there is nothing here to escape.
+  return bonus > 0 ? `${base}<span class="ap-bonus">+${"◆".repeat(bonus)}</span>` : base;
+}
+
 export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState): void {
   const q = <T extends HTMLElement>(sel: string): T => {
     const el = root.querySelector<T>(sel);
@@ -89,7 +107,7 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
   // Vitals
   q<HTMLDivElement>(".hp-fill").style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
   q(".hp-num").textContent = `${Math.max(0, player.hp)}/${player.maxHp}`;
-  q(".ap-pips").textContent = "◆".repeat(Math.max(0, player.ap)) + "◇".repeat(player.maxAp - Math.max(0, player.ap));
+  q(".ap-pips").innerHTML = apPips(player.ap, player.maxAp);
   q(".floor-cell").textContent = `F${state.floor}/${LAST_FLOOR}`;
 
   // Ammo — always on screen; it is the food clock (§9.2)

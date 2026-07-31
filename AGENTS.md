@@ -36,7 +36,8 @@ src/
 │                        # perks, carriers, shop, costs
 ├── render/              # atlas.ts (programmatic sprites), tiles.ts (canvas viewport), dom/ (sidebar, screens)
 └── input/keyboard.ts    # key → Action mapping; never touches state
-test/sim/                # vitest, node env, sim-only; helpers.ts builds hand-crafted states
+test/sim/                # vitest, node env; helpers.ts builds hand-crafted states
+test/render/             # pure presentation helpers only — never the DOM
 ```
 
 ## How the game advances
@@ -82,7 +83,7 @@ Enemy behaviors are `while (enemy.ap > 0)` loops where every iteration either sp
 
 ## Testing conventions
 
-- **Vitest, node environment, sim-only.** The renderer and input are thin by design and untested. `npm run test`, `npm run typecheck` — both must be green before any commit.
+- **Vitest, node environment.** `npm run test`, `npm run typecheck` — both must be green before any commit. The renderer and input are thin by design, but thin is not "cannot be wrong": both have now shipped a bug the sim tests structurally could not see (unbound keys, an AP pip row that threw). Presentation logic that is *pure* — a key to an action, numbers to a string — gets extracted and covered in `test/render/` or `test/sim/input.test.ts`. Anything that touches the DOM stays untested.
 - `test/sim/helpers.ts` builds hand-crafted states (`makeState`, `makeEnemy`, `openMap`, `setWall`) — use these for combat/AI tests instead of `newGame`, so geometry is explicit.
 - **The golden test** (`golden.test.ts`) is the replay canary: fixed seed + scripted actions → snapshot. It only changes when sim behavior changes. Regenerate it **deliberately, in its own reviewed commit** (`rm test/sim/__snapshots__/golden.test.ts.snap && npm test`), never reflexively because it went red.
 - **Headless bot playtests** are this repo's superpower and have caught real bugs (asymmetric LOS, enemies not waking when shot). Technique: write a temporary `test/sim/_playtest.test.ts` that drives `applyAction` with a simple bot (A* to goal, fight what's visible), run it across several seeds, print the outcome, **delete the file before committing**. Do this after any milestone that changes the run loop. Sweep-style property tests (e.g. flood-fill reachability of stairs/items/enemies over hundreds of seeds) follow the same temp-file pattern.
