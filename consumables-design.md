@@ -168,13 +168,22 @@ VSS build wants company.
 
 ## 6. Carrying and UI
 
-- **Hotbar: 4 slots**, keys 4–7 (1–3 are weapons). One item *type* per slot, stacking:
-  snacks/bandages to 5, med shots/grenades to 3, medkit/claymore to 1. Caps are data
-  (`data/items.ts`); the sidebar's planned consumable row renders count badges.
+- **Hotbar: 6 slots**, keys 4–9 (1–3 are weapons — the keyboard settles the count). One
+  item *type* per slot, stacking: snacks/bandages to 5, med shots/grenades to 3,
+  medkit/claymore to 1. Caps are data (`data/items.ts`); the sidebar's planned
+  consumable row renders count badges. Six slots against a ~10-type catalog still forces
+  loadout choices; it just kills "can't take the medkit, carrying snacks."
 - Using is an action through `applyAction` (`{type: "useItem", slot}` or throw); invalid
   use (empty slot, full HP snack) costs 0 AP per the typo rule.
 - Pickup with G like weapons; a full hotbar prompts a swap-drop, same as slots. Items on
   the ground are `GroundItem` entries — the type union grows `kind: "consumable"`.
+- **Dropping is a first-class action**: `{type: "drop", slot}`, 1 AP (0 AP if the slot
+  is empty, per the typo rule). Input is a small mode: `X`, then the slot key (1–3
+  weapons, 4–9 items). Swap-drop covers upgrades-in-place; explicit drop covers
+  deliberate slot management (ditching the Tec-9 before a loot room).
+- **One item per tile stays the law.** Drops and swap-drops scatter to the nearest free
+  tile (`freeTileNear` — and merging the duplicated BFS helpers pays known debt #1 while
+  we're in there). No piles, no pile UI, no pickup menus — ever.
 - Drop sources: humans drop bandages occasionally (they have first-aid training), loot
   rooms carry the rare tier, merchants stock per the progression doc, vending tiles sell
   snacks (unlimited stock) and plates, and furniture caches (desks, drawers) hold snacks
