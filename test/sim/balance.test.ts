@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   WEAPONS,
+  ammoPremium,
   dmgPerAp,
   dmgPerApVs,
+  roundsPerAp,
   sustainedApPerShot,
   weaponDef,
   type WeaponDef,
@@ -13,6 +15,11 @@ import {
  * compared only within a tier, and the currency is expected damage per AP at
  * the band the gun was designed to fight in. Any buff that breaks a window
  * fails here before it ships.
+ *
+ * The window is SLOPED, not flat (§10): a gun's target is its tier baseline
+ * scaled by an ammo premium, because AP renews every turn and ammo does not.
+ * Damage-per-AP parity between a revolver and an Uzi looked fair and meant the
+ * Uzi was never worth firing.
  *
  * Two sanctioned exemptions, both design decisions rather than fudge:
  *   - Pistols sit off the tier curve entirely. They cap at T2 and stay
@@ -48,29 +55,45 @@ function curveGuns(tier: number): WeaponDef[] {
   return tierGuns(tier).filter((w) => w.cls !== "pistol");
 }
 
-function tierMean(tier: number): number {
-  const guns = curveGuns(tier);
-  return guns.reduce((sum, w) => sum + atIntended(w), 0) / guns.length;
+/**
+ * The tier's damage-per-AP for a gun with no compensating trait: single-shot
+ * (no ammo premium), not a shotgun (no heat allowance), and no pierce (which
+ * is itself paid for with nominal damage). Those are the guns that define the
+ * line everything else is scaled from.
+ */
+function tierBaseline(tier: number): number {
+  const anchors = curveGuns(tier).filter(
+    (w) => roundsPerAp(w) === 1 && w.cls !== "shotgun" && !w.armorPierce,
+  );
+  const pool = anchors.length > 0 ? anchors : curveGuns(tier);
+  return pool.reduce((sum, w) => sum + atIntended(w), 0) / pool.length;
+}
+
+/** Where this gun should sit: baseline, scaled for ammo burn and shotgun heat. */
+function targetFor(gun: WeaponDef): number {
+  const heat = gun.cls === "shotgun" ? 1 + SHOTGUN_HEAT_CAP * 0.6 : 1;
+  return tierBaseline(gun.tier!) * (1 + ammoPremium(gun)) * heat;
 }
 
 describe("tier windows", () => {
   for (const tier of TIERS) {
-    it(`every T${tier} weapon sits inside the tier's damage-per-AP window`, () => {
-      const mean = tierMean(tier);
+    it(`every T${tier} weapon sits inside its ammo-adjusted window`, () => {
       for (const gun of curveGuns(tier)) {
         const value = atIntended(gun);
-        const cap = gun.cls === "shotgun" ? SHOTGUN_HEAT_CAP : WINDOW;
-        const label = `${gun.name} is ${value.toFixed(2)} vs T${tier} mean ${mean.toFixed(2)}`;
-        expect(value, label).toBeGreaterThanOrEqual(mean * (1 - WINDOW));
-        expect(value, label).toBeLessThanOrEqual(mean * (1 + cap));
+        const target = targetFor(gun);
+        const label =
+          `${gun.name} (R=${roundsPerAp(gun)}, premium ${(ammoPremium(gun) * 100).toFixed(0)}%) ` +
+          `is ${value.toFixed(2)} vs target ${target.toFixed(2)}`;
+        expect(value, label).toBeGreaterThanOrEqual(target * (1 - WINDOW));
+        expect(value, label).toBeLessThanOrEqual(target * (1 + WINDOW));
       }
     });
   }
 
   it("each tier is a generational step over the one below", () => {
-    expect(tierMean(1)).toBeGreaterThan(atIntended(weaponDef("glock")) * 1.25);
+    expect(tierBaseline(1)).toBeGreaterThan(atIntended(weaponDef("glock")) * 1.25);
     for (const tier of [2, 3, 4] as const) {
-      const step = tierMean(tier) / tierMean(tier - 1);
+      const step = tierBaseline(tier) / tierBaseline(tier - 1);
       const label = `T${tier} is only ${((step - 1) * 100).toFixed(0)}% over T${tier - 1}`;
       expect(step, label).toBeGreaterThan(1.25);
     }
@@ -131,9 +154,26 @@ describe("range-band cliffs (patterns, not numbers — §2 pillar 2)", () => {
     expect(dmgPerAp(WEAPONS.uzi, 5)).toBeLessThanOrEqual(atIntended(WEAPONS.uzi) * 0.5);
   });
 
-  it("Uzi pays for revolver-parity dmg/AP with 4x the ammo burn", () => {
-    const uziPerRound = dmgPerAp(WEAPONS.uzi, 2.5) / (WEAPONS.uzi.pellets ?? 1);
-    expect(uziPerRound).toBeLessThan(dmgPerAp(WEAPONS.revolver, 3) / 3);
+  it("the Uzi buys tempo with ammo — better per AP, far worse per round", () => {
+    // The trade the sloped window exists to express. Damage-per-AP parity made
+    // this gun strictly worse and nobody fired it.
+    const uziPerAp = dmgPerAp(WEAPONS.uzi, 2.5);
+    const revolverPerAp = dmgPerAp(WEAPONS.revolver, 3);
+    expect(uziPerAp).toBeGreaterThan(revolverPerAp * 1.25);
+
+    const uziPerRound = uziPerAp / (WEAPONS.uzi.pellets ?? 1);
+    expect(uziPerRound).toBeLessThan(revolverPerAp * 0.5);
+  });
+
+  it("a magazine is counted in trigger pulls, not rounds", () => {
+    const pulls = (w: WeaponDef) => Math.floor(w.magSize / (w.pellets ?? 1));
+    // An SMG getting fewer pulls than a revolver was the insult no percentage
+    // repairs; every spray weapon now gets at least as many.
+    for (const gun of PLAYER_GUNS.filter((w) => (w.pellets ?? 1) > 1)) {
+      expect(pulls(gun), `${gun.name} gets ${pulls(gun)} pulls`).toBeGreaterThanOrEqual(
+        pulls(WEAPONS.revolver),
+      );
+    }
   });
 });
 
@@ -180,11 +220,18 @@ describe("the armored column (§8 — the second axis)", () => {
   });
 
   it("nothing but heavy single hits does honest work on a Dozer", () => {
-    // The design promise: only heavy calibers, the AWP, EMPs and blades. Any
-    // spray weapon retaining real damage here would break that fight.
-    for (const gun of PLAYER_GUNS.filter((w) => (w.pellets ?? 1) >= 3)) {
-      expect(retention(gun, DOZER), `${gun.name} still hoses a Dozer`).toBeLessThan(0.2);
+    // The design promise: only heavy calibers, the AWP, EMPs and blades. The
+    // P90 is the deliberate exception — "the only hose that still cuts" is its
+    // entire identity and what pierce 2 is paying for — so the claim is about
+    // UNPIERCED sprays.
+    const sprays = PLAYER_GUNS.filter((w) => (w.pellets ?? 1) >= 3 && !w.armorPierce);
+    for (const gun of sprays) {
+      expect(retention(gun, DOZER), `${gun.name} still hoses a Dozer`).toBeLessThan(0.25);
     }
+    // Even the exception is far worse at it than the gun built for the job.
+    expect(dmgPerApVs(WEAPONS.p90, intendedMidpoint(WEAPONS.p90), DOZER)).toBeLessThan(
+      dmgPerApVs(WEAPONS.awp, intendedMidpoint(WEAPONS.awp), DOZER),
+    );
     expect(retention(WEAPONS.awp, DOZER)).toBeGreaterThan(0.7);
   });
 });

@@ -111,14 +111,17 @@ export const WEAPONS = {
     name: "Micro Uzi",
     apFire: 1,
     apReload: 1,
-    damage: 2,
-    baseAccuracy: 0.5,
+        // +36% ammo premium (R=4): four rounds a pull has to buy something.
+    damage: 3,
+    baseAccuracy: 0.47,
     bands: [
       { maxDist: 1, accMult: 0.9, dmgMult: 1.0 },
       { maxDist: 3, accMult: 0.85, dmgMult: 1.0 },
       { maxDist: 6, accMult: 0.4, dmgMult: 1.0 },
     ],
-    magSize: 20,
+        // Six pulls, matching the revolver's six shots. An SMG getting fewer
+    // trigger pulls than a revolver was the insult no percentage repairs.
+    magSize: 24,
     caliber: "pistol",
     pellets: 4,
     intendedBand: 1,
@@ -149,7 +152,8 @@ export const WEAPONS = {
     name: "Mosin-Nagant",
     apFire: 1,
     apReload: 2,
-    damage: 8,
+        // -12% bolt penalty (R=0.5): the ammo discount is no longer free.
+    damage: 7,
     baseAccuracy: 0.9,
     bands: [
       // Hates adjacency; sings at range — the kiting gun.
@@ -212,7 +216,8 @@ export const WEAPONS = {
     name: "M249",
     apFire: 1,
     apReload: 3,
-    damage: 2,
+        // +40% ammo premium (R=5, capped).
+    damage: 3,
     baseAccuracy: 0.68,
     bands: [
       { maxDist: 1, accMult: 0.8, dmgMult: 1.0 },
@@ -235,7 +240,8 @@ export const WEAPONS = {
     apFire: 1,
     apReload: 1,
     damage: 3,
-    baseAccuracy: 0.6,
+        // +12% ammo premium (R=2), then capped by the pistol contract.
+    baseAccuracy: 0.68,
     bands: [
       { maxDist: 1, accMult: 0.9, dmgMult: 1.0 },
       { maxDist: 3, accMult: 0.85, dmgMult: 1.0 },
@@ -320,7 +326,8 @@ export const WEAPONS = {
     apFire: 1,
     apReload: 1,
     damage: 2,
-    baseAccuracy: 0.68,
+        // +24% ammo premium (R=3), capped below the same-tier rifles.
+    baseAccuracy: 0.82,
     bands: [
       { maxDist: 1, accMult: 0.95, dmgMult: 1.0 },
       { maxDist: 3, accMult: 0.85, dmgMult: 1.0 },
@@ -340,8 +347,9 @@ export const WEAPONS = {
     name: "MP5",
     apFire: 1,
     apReload: 1,
-    damage: 2,
-    baseAccuracy: 0.85,
+    damage: 3,
+        // +24% ammo premium (R=3): bigger pellets, slightly looser.
+    baseAccuracy: 0.7,
     bands: [
       { maxDist: 1, accMult: 0.95, dmgMult: 1.0 },
       { maxDist: 4, accMult: 0.9, dmgMult: 1.0 },
@@ -360,8 +368,9 @@ export const WEAPONS = {
     name: "UMP-45",
     apFire: 1,
     apReload: 1,
-    damage: 4,
-    baseAccuracy: 0.85,
+        // +12% ammo premium (R=2).
+    damage: 5,
+    baseAccuracy: 0.82,
     bands: [
       { maxDist: 1, accMult: 0.95, dmgMult: 1.0 },
       { maxDist: 4, accMult: 0.9, dmgMult: 1.0 },
@@ -381,7 +390,8 @@ export const WEAPONS = {
     name: "P90",
     apFire: 1,
     apReload: 1,
-    damage: 2,
+        // +40% ammo premium (R=5, capped).
+    damage: 3,
     baseAccuracy: 0.88,
     bands: [
       { maxDist: 1, accMult: 0.95, dmgMult: 1.0 },
@@ -443,7 +453,7 @@ export const WEAPONS = {
     name: "AA-12",
     apFire: 1,
     apReload: 2,
-    damage: 6,
+    damage: 7,
     baseAccuracy: 0.8,
     bands: [
       { maxDist: 1, accMult: 1.0, dmgMult: 1.0 },
@@ -483,8 +493,9 @@ export const WEAPONS = {
     name: "M4",
     apFire: 1,
     apReload: 1,
-    damage: 3,
-    baseAccuracy: 0.78,
+        // +24% ammo premium (R=3). The mid-game bully now bills for it.
+    damage: 4,
+    baseAccuracy: 0.76,
     bands: [
       { maxDist: 1, accMult: 0.9, dmgMult: 1.0 },
       { maxDist: 5, accMult: 0.9, dmgMult: 1.0 },
@@ -524,7 +535,7 @@ export const WEAPONS = {
     apFire: 1,
     apReload: 1,
     damage: 5,
-    baseAccuracy: 0.9,
+    baseAccuracy: 1.0,
     bands: [
       { maxDist: 1, accMult: 0.85, dmgMult: 1.0 },
       { maxDist: 6, accMult: 0.95, dmgMult: 1.0 },
@@ -608,7 +619,8 @@ export const WEAPONS = {
     name: "Remington 700",
     apFire: 1,
     apReload: 2,
-    damage: 11,
+        // -12% bolt penalty (R=0.5).
+    damage: 9,
     baseAccuracy: 0.92,
     bands: [
       { maxDist: 2, accMult: 0.5, dmgMult: 1.0 },
@@ -648,7 +660,8 @@ export const WEAPONS = {
     name: "AWP",
     apFire: 1,
     apReload: 2,
-    damage: 18,
+        // -12% bolt penalty (R=0.5). Still the biggest single round in the game.
+    damage: 16,
     baseAccuracy: 0.95,
     bands: [
       { maxDist: 3, accMult: 0.45, dmgMult: 1.0 },
@@ -668,8 +681,9 @@ export const WEAPONS = {
     name: "XM250",
     apFire: 1,
     apReload: 3,
-    damage: 3,
-    baseAccuracy: 0.62,
+        // +40% ammo premium (R=5, capped).
+    damage: 4,
+    baseAccuracy: 0.66,
     bands: [
       { maxDist: 1, accMult: 0.8, dmgMult: 1.0 },
       { maxDist: 5, accMult: 0.9, dmgMult: 1.0 },
@@ -938,4 +952,25 @@ export function dmgPerApVs(def: WeaponDef, dist: number, armor: number): number 
  */
 export function sustainedApPerShot(def: WeaponDef): number {
   return def.apFire + (def.boltAction ? AP_COSTS.cycle : 0);
+}
+
+/**
+ * Rounds spent per AP spent — the ammo-intensity of a gun, and the second
+ * currency the balance model originally ignored. 1 for a single-shot, 4 for the
+ * Uzi, 5 for a belt-fed, and 0.5 for a bolt gun that spends AP to save ammo.
+ */
+export function roundsPerAp(def: WeaponDef): number {
+  return (def.pellets ?? 1) / sustainedApPerShot(def);
+}
+
+/**
+ * The damage-per-AP premium a gun earns for burning ammo faster (or the penalty
+ * it pays for burning it slower). See arsenal-design.md §10: AP renews every
+ * turn and ammo does not, so parity in damage-per-AP made every spray weapon a
+ * losing trade.
+ */
+export function ammoPremium(def: WeaponDef): number {
+  const r = roundsPerAp(def);
+  if (r < 1) return -0.12; // bolt guns
+  return Math.min(0.4, 0.12 * (r - 1)); // capped: a 5x burner is not owed 5x
 }

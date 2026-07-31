@@ -475,3 +475,83 @@ The roster above needs four more assertions:
   playtests.
 - Heavy-channel drop rates feed six guns — the stingiest economy in the game. First
   full-tower bot runs should log heavy starvation specifically.
+
+---
+
+## 10. Amendment: ammo is the second currency (balance pass)
+
+**Found in play.** The Micro Uzi was never worth firing. It matched the
+revolver's damage per AP exactly, as designed — and cost four times the ammo to
+do it, while getting *fewer* trigger pulls per magazine (5 against 6). Its only
+advantage in the whole stat line was a 1-AP reload. A player who noticed simply
+used the revolver forever, which is the correct read.
+
+### The mistake in the model
+
+§1 says damage-per-AP is "the only balance currency". That is wrong, and the
+data says so: the same 24 starting pistol rounds yield **81 damage** through a
+revolver and **20** through an Uzi.
+
+The game runs on two resources that behave oppositely. **AP renews every turn;
+ammo does not.** Trading a non-renewable resource for a renewable one at parity
+is always a losing trade, so every spray weapon in the roster was underwater —
+and armor, being flat reduction *per pellet*, punished them a second time.
+Sprays lost on two axes and gained on none but burst variance.
+
+### The rule
+
+Let **R = rounds spent per AP spent** (`pellets ÷ apPerShot`). It is the
+ammo-intensity of a gun, and it already exists implicitly in the data: 1 for
+every single-shot, 4 for the Uzi, 5 for the belt-feds, and **0.5 for bolt
+guns**, which spend AP to save ammo.
+
+A gun's damage-per-AP target is its tier baseline scaled by an ammo premium:
+
+```
+premium(R) = R < 1 ? -0.12 : min(0.40, 0.12 * (R - 1))
+```
+
+| R | guns | premium |
+| --- | --- | --- |
+| 0.5 | Mosin, Rem 700, AWP | **−12%** |
+| 1 | every single-shot | baseline |
+| 2 | Tec-9, UMP-45, AN-94, AA-12 | +12% |
+| 3 | MP5, M4, Beretta 93R | +24% |
+| 4 | Micro Uzi | +36% |
+| 5 | M249, P90, XM250 | +40% (capped) |
+
+The flat ±20% tier window becomes a **sloped** one: each gun is still checked to
+±20%, but around its own ammo-adjusted target rather than a single tier mean.
+Shotguns keep their separate +15% heat allowance on top.
+
+**Why the ceiling.** At +100% the Uzi reliably one-pulls a 6 HP rent-a-cop,
+which breaks the §8 guardrail downward and makes the revolver pointless in any
+fight where ammo exists — §10's burst-dominance risk arriving on schedule. At
++36% it kills that cop in one or two pulls against the revolver's two: a real
+tempo edge, worth paying ammo for, without collapsing the fight.
+
+**Why the floor.** Below roughly +25% the four-times cost still is not worth
+paying, and the change would have moved a number without changing a decision.
+
+**Why the cap at 5.** A five-times burner does not get five times the
+compensation. The belt-feds already carry fifty-round magazines and the braced
+bonus; they stay deliberately a little underwater and pay for it with sustained
+fire. These three (M249, P90, XM250) are the dominance watch items.
+
+**The bolt penalty is −12%, not −6%.** Deferring the cycle already buys tempo,
+and the sniper line was collecting an ammo discount worth twice what it paid
+for. Snipers keep their one-shot-delete identity through raw per-round damage —
+the AWP still hits for more in a single round than anything else in the game.
+
+### What the premium does not fix
+
+Two things the arithmetic cannot reach:
+
+- **Magazines should be counted in pulls, not rounds.** An SMG getting fewer
+  trigger pulls than a revolver is an insult no percentage repairs.
+- **Sprays still have no job a single-shot cannot do.** They become "the
+  expensive fast option" rather than a different pattern. Adjacent-tile
+  spillover — deferred in §3 for want of tile targeting, which the grenade
+  cursor now provides — is what would make them the crowd answer: bad on one
+  target, excellent on three. That remains the change most worth making, and it
+  would let the premium sit at the conservative end of this band.

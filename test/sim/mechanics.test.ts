@@ -80,7 +80,7 @@ describe("bolt action", () => {
     expect(sustainedApPerShot(WEAPONS.mosin)).toBe(2);
     expect(sustainedApPerShot(WEAPONS.glock)).toBe(1);
     // Splitting 2 AP into fire+cycle must not double the Mosin's dmg/AP.
-    expect(dmgPerAp(WEAPONS.mosin, 5)).toBeCloseTo((8 * 0.9 * 1.0) / 2, 5);
+    expect(dmgPerAp(WEAPONS.mosin, 5)).toBeCloseTo((WEAPONS.mosin.damage * 0.9 * 1.0) / 2, 5);
   });
 
   it("swapping preserves the open bolt in the slot", () => {

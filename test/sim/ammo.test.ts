@@ -65,10 +65,12 @@ describe("pellets (Micro Uzi)", () => {
     expect(state.log.at(-1)).toMatch(/\/3 hit/);
   });
 
-  it("dmgPerAp accounts for pellets", () => {
-    // Uzi at band 2 (dist 3): 4 pellets * 2 dmg * 0.5 * 0.85 = 3.4
-    expect(dmgPerAp(WEAPONS.uzi, 3)).toBeCloseTo(3.4);
-    // Revolver at band 2: 5 * 0.8 * 0.85 = 3.4 — parity, but 4x the ammo burn
+  it("dmgPerAp accounts for pellets, and prices the ammo they burn", () => {
+    // Uzi at band 2 (dist 3): 4 pellets * 3 dmg * 0.47 * 0.85 = 4.79.
+    // Damage sets the pellet weight; accuracy trims to the +36% ammo premium.
+    expect(dmgPerAp(WEAPONS.uzi, 3)).toBeCloseTo(4.79, 2);
+    // Revolver at band 2: 5 * 0.8 * 0.85 = 3.4. NOT parity any more: the Uzi
+    // spends four rounds a pull, and ammo does not renew the way AP does.
     expect(dmgPerAp(WEAPONS.revolver, 3)).toBeCloseTo(3.4);
   });
 });

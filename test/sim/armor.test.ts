@@ -13,26 +13,35 @@ function alwaysHits() {
 
 describe("armor as flat per-pellet DR", () => {
   it("taxes each pellet separately — the spray weapon folds, the revolver does not", () => {
-    // Uzi: 4 pellets x 2 damage. Against armor 2 every pellet is fully absorbed.
-    const target = makeEnemy({ x: 3, y: 2, hp: 40, armor: 2 });
+    // Uzi: 4 pellets x 3 damage. Against armor 3 every pellet is fully absorbed.
+    const target = makeEnemy({ x: 3, y: 2, hp: 40, armor: 3 });
     const state = makeState({ player: { weaponId: "uzi", ammoInMag: 20 }, enemies: [target] });
     fireWeapon(state, alwaysHits(), state.player, target);
     expect(target.hp).toBe(40);
     expect(state.log.at(-1)).toContain("clatter off");
 
-    // Revolver: one 5-damage round, same armor, still lands 3.
-    const target2 = makeEnemy({ x: 3, y: 2, hp: 40, armor: 2 });
+    // Revolver: one 5-damage round, same armor, still lands 2.
+    const target2 = makeEnemy({ x: 3, y: 2, hp: 40, armor: 3 });
     const state2 = makeState({ player: { weaponId: "revolver", ammoInMag: 6 }, enemies: [target2] });
     fireWeapon(state2, alwaysHits(), state2.player, target2);
-    expect(target2.hp).toBe(37);
+    expect(target2.hp).toBe(38);
+  });
+
+  it("still costs a spray far more of itself than a single heavy round", () => {
+    // The claim in expectation rather than on a rigged always-hit roll: the
+    // ammo premium raised the Uzi's per-pellet damage, so the gap narrowed —
+    // but plate must still hurt the spray roughly twice as much.
+    const uziKept = dmgPerApVs(WEAPONS.uzi, 3, 2) / dmgPerAp(WEAPONS.uzi, 3);
+    const revolverKept = dmgPerApVs(WEAPONS.revolver, 3, 2) / dmgPerAp(WEAPONS.revolver, 3);
+    expect(uziKept).toBeLessThan(revolverKept * 0.75);
   });
 
   it("partially absorbs rather than zeroing when the pellet outweighs the plate", () => {
     const target = makeEnemy({ x: 3, y: 2, hp: 40, armor: 1 });
     const state = makeState({ player: { weaponId: "uzi", ammoInMag: 20 }, enemies: [target] });
     fireWeapon(state, alwaysHits(), state.player, target);
-    // 4 pellets, each 2 - 1 = 1.
-    expect(target.hp).toBe(36);
+    // 4 pellets, each 3 - 1 = 2.
+    expect(target.hp).toBe(32);
   });
 
   it("armorPierce is subtracted from armor before the reduction, never below zero", () => {
