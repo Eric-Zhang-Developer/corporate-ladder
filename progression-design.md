@@ -144,11 +144,11 @@ does not interact with shields. Both are open design space if plates need textur
   for a normal-violence run, one ahead for completionists, one behind for stair-sprinters.
   Provisional: promotion N costs `12 + 8·(N−1)` XP (a curve to tune from bot-run logs,
   nothing sacred).
-- ⚠ **Farming watch item:** cameras spawn cops indefinitely. The existing guards (4-cop
-  cap; enemies have infinite ammo and you don't, so the exchange rate is awful) should
-  make farming a trap rather than a strategy — but the first full-tower bot playtest
-  should try camera-farming deliberately. If it profits, the fix is diminishing XP per
-  spawned cop, not touching the alarm design.
+- **Farming, resolved at the source:** cameras spawn at most **2 waves**, then go dark
+  (inactive glyph, no further alarms — the response team bills hourly and the budget is
+  exhausted). Finite waves kill XP farming and loot farming with one counter field,
+  where loot-gating alone would have left XP farming alive. The 4-cop live cap stays as
+  the burst limiter within those waves.
 
 ### Promotion grant
 
@@ -255,5 +255,5 @@ cases) are exactly the parts this design skips.
 - 1-of-2 vs 1-of-3 perk offers; rarity weights on the pool.
 - Does shooting a vending machine stay in (fun crime) or invite degenerate
   loot-everything play?
-- Camera-farm XP profitability (bot test on the first full-tower build).
+- Camera wave count (2 vs 3) — tune once the alarm rework lands.
 - Whether plate-quality-as-loot (mixed plate types) ever earns its state complexity.
