@@ -30,16 +30,19 @@ function damagePerHit(def: EnemyDef): number {
 }
 
 /**
- * The anchor governs enemies whose threat IS their damage. Three roles are
+ * The anchor governs enemies whose threat IS their damage. Four roles are
  * exempt by design, not by convenience: chaff stays soft on every floor so the
  * pistol contract holds; the taser's threat is a stolen turn attached to
- * deliberately trivial damage; and a detonator spends its life on one hit.
+ * deliberately trivial damage; a detonator spends its life on one hit; and a
+ * telegraphed shooter trades a whole turn of warning for a hit that lands like
+ * a truck, which is the trade that makes lanes frightening.
  */
 function anchorApplies(def: EnemyDef): boolean {
   if (def.boss) return false;
   if (def.xp <= 3) return false;
   if (def.apDrainOnHit) return false;
   if (def.behavior === "detonate") return false;
+  if (def.behavior === "overwatch") return false;
   return damagePerHit(def) > 0;
 }
 
@@ -261,5 +264,101 @@ describe("suppressed fire", () => {
     };
     expect(run(1)).toBe(false); // died quietly
     expect(run(80)).toBe(true); // survived and shouted
+  });
+});
+
+describe("the CEO", () => {
+  function duel(playerOverrides: Record<string, unknown> = {}) {
+    const ceo = makeEnemy({
+      defId: "ceo",
+      x: 8,
+      y: 4,
+      hp: 35,
+      maxHp: 35,
+      ap: 3,
+      maxAp: 3,
+      weaponId: "fixer_pistol",
+    });
+    const state = makeState({
+      map: openMap(20, 12),
+      enemies: [ceo],
+      player: { x: 3, y: 4, hp: 40, maxHp: 40, weaponId: "revolver", ammoInMag: 6, ...playerOverrides },
+    });
+    return { state, ceo };
+  }
+
+  it("takes full damage from everything — armor 0 is the statement", () => {
+    expect(enemyDef("ceo").armor).toBeUndefined();
+  });
+
+  it("slots a plate mid-fight, which the player then has to strip again", () => {
+    const { state, ceo } = duel();
+    for (let i = 0; i < 4 && (ceo.spares ?? 3) === (enemyDef("ceo").plates ?? 3); i++) {
+      applyAction(state, { type: "wait" });
+    }
+    expect(state.log.join(" ")).toContain("slots a fresh plate");
+    expect(ceo.shield).toBeGreaterThan(0);
+    expect(ceo.spares).toBeLessThan(enemyDef("ceo").plates!);
+  });
+
+  it("jabs a stim once when he drops below half, and pays for it after", () => {
+    const { state, ceo } = duel();
+    ceo.hp = Math.floor(ceo.maxHp / 2) - 1;
+    applyAction(state, { type: "wait" });
+    expect(ceo.stimUsed).toBe(true);
+    expect(state.log.join(" ")).toContain("jabs something");
+
+    const before = state.log.length;
+    ceo.hp = 1;
+    applyAction(state, { type: "wait" });
+    expect(state.log.slice(before).join(" ")).not.toContain("jabs something"); // once only
+  });
+
+  it("closes on an empty magazine — he has read your file", () => {
+    const dry = duel({ ammoInMag: 0 });
+    const loaded = duel({ ammoInMag: 6 });
+    const startDist = 5;
+    for (let i = 0; i < 3; i++) {
+      applyAction(dry.state, { type: "wait" });
+      applyAction(loaded.state, { type: "wait" });
+    }
+    const dryDist = Math.hypot(dry.ceo.x - dry.state.player.x, dry.ceo.y - dry.state.player.y);
+    expect(dryDist).toBeLessThan(startDist);
+  });
+
+  it("is the last floor's boss and worth more than any miniboss", () => {
+    const floor8 = FLOORS.find((f) => f.depth === 8)!;
+    expect(floor8.boss).toBe("ceo");
+    expect(enemyDef("ceo").xp).toBeGreaterThan(enemyDef("dozer").xp);
+  });
+});
+
+describe("the Dozer's immunities", () => {
+  it("ignores flashbangs for free (it is a machine) and eats the first EMP", () => {
+    const dozer = makeEnemy({ defId: "dozer", x: 3, y: 2, hp: 40, weaponId: "minigun", ap: 2 });
+    const hotbar = new Array(6).fill(null);
+    hotbar[0] = { itemId: "flashbang", count: 1 };
+    hotbar[1] = { itemId: "emp", count: 2 };
+    const state = makeState({ map: openMap(16, 10), enemies: [dozer], hotbar });
+
+    applyAction(state, { type: "throwItem", slot: 0, x: 3, y: 2 });
+    // No special-casing needed: flashbangs are organics-only and it is a
+    // machine, so sealed sensors fall out of the targeting rule for free.
+    expect(dozer.pendingApDrain).toBeUndefined();
+
+    applyAction(state, { type: "throwItem", slot: 1, x: 3, y: 2 });
+    expect(dozer.pendingApDrain).toBe(dozer.maxAp); // one panic button works
+    expect(dozer.empUsed).toBe(true);
+  });
+
+  it("adapts to the second EMP — one panic button per customer", () => {
+    const dozer = makeEnemy({ defId: "dozer", x: 3, y: 2, hp: 40, weaponId: "minigun", ap: 2 });
+    dozer.empUsed = true;
+    const hotbar = new Array(6).fill(null);
+    hotbar[0] = { itemId: "emp", count: 1 };
+    const state = makeState({ map: openMap(16, 10), enemies: [dozer], hotbar });
+    applyAction(state, { type: "throwItem", slot: 0, x: 3, y: 2 });
+    expect(state.log.join(" ")).toContain("has adapted");
+    expect(dozer.hp).toBeLessThan(40); // still takes the damage
   });
 });

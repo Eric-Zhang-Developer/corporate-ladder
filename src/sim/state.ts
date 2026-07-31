@@ -54,6 +54,11 @@ export interface Entity {
   alarmWaves?: number;
   /** Overwatch / spin-up telegraph: turns until the thing goes off. */
   chargeTimer?: number;
+  /** Duelist only: plates left to slot, and whether the stim has been used. */
+  spares?: number;
+  stimUsed?: boolean;
+  /** Dozer: the EMP works once. One panic button per customer. */
+  empUsed?: boolean;
   /**
    * Stealth units before the reveal. Neither rendered nor targetable — the
    * absence on screen is the design.

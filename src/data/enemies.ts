@@ -5,6 +5,7 @@ import type { Caliber } from "./weapons";
  * new entry here plus, at most, one behavior function in sim/ai.ts.
  */
 export type BehaviorId =
+  | "duelist"
   | "pursueAndShoot"
   | "meleeRush"
   | "cameraAlarm"
@@ -76,6 +77,10 @@ export interface EnemyDef {
   chargeTurns?: number;
   /** 0..1 chance of a wasted, random step — breaks kiting arithmetic. */
   erratic?: number;
+  /** Adapts after the first EMP: one panic button per customer. */
+  empOnce?: boolean;
+  /** Duelist: plates it will slot mid-fight, mirroring the player's own kit. */
+  plates?: number;
   /** Log line on spotting the player. */
   spotLine?: string;
   /** Death-screen prefix, e.g. "Bitten to death by". */
@@ -478,6 +483,141 @@ export const ENEMIES = {
       { chance: 1, itemId: "medkit" },
       { chance: 1, itemId: "emp" },
     ],
+  },
+  // ---- T4: the professionals ----
+  exo: {
+    id: "exo",
+    name: "Exo Trooper",
+    glyph: "E",
+    color: "#ddaa44",
+    hp: 20,
+    armor: 2,
+    ap: 3,
+    xp: 14,
+    weaponId: "xm7_exo",
+    sightRange: 9,
+    preferredRange: 5,
+    behavior: "pursueAndShoot",
+    // 3 AP on a RANGED enemy is the real escalation: he shoots twice and still
+    // repositions. Procurement's answer to you.
+    spotLine: `The Exo Trooper speaks on comms, calmly. "I have him."`,
+    killVerb: "Put down by",
+    drops: [
+      { chance: 1, ammo: { caliber: "heavy", min: 8, max: 14 } },
+      { chance: 1, cash: { min: 20, max: 32 } },
+    ],
+  },
+  fixer: {
+    id: "fixer",
+    name: "Fixer",
+    glyph: "F",
+    color: "#cc5577",
+    hp: 12,
+    ap: 3,
+    xp: 13,
+    weaponId: "fixer_pistol",
+    sightRange: 10,
+    preferredRange: 6,
+    behavior: "pursueAndShoot",
+    // Glass cannon who never stands still, with a suppressor: on floor 7 you
+    // can start losing HP before you know the fight began.
+    spotLine: "You do not hear the Fixer. You hear the round.",
+    killVerb: "Retired by",
+    drops: [
+      { chance: 1, ammo: { caliber: "pistol", min: 10, max: 16 } },
+      { chance: 1, cash: { min: 25, max: 40 } },
+      { chance: 0.5, itemId: "medshot" },
+    ],
+  },
+  marksman: {
+    id: "marksman",
+    name: "M82 Marksman",
+    glyph: "X",
+    color: "#ff7766",
+    hp: 14,
+    ap: 2,
+    xp: 13,
+    weaponId: "m82",
+    sightRange: 12,
+    chargeTurns: 1,
+    behavior: "overwatch",
+    // He does not pursue. The threat is the LANE: open corridors on the top
+    // floors become terrain, and the map starts reading like a route puzzle.
+    spotLine: "A scope glints down the corridor.",
+    killVerb: "Erased by",
+    drops: [
+      { chance: 1, ammo: { caliber: "heavy", min: 6, max: 10 } },
+      { chance: 1, cash: { min: 20, max: 30 } },
+    ],
+  },
+  detail: {
+    id: "detail",
+    name: "Protection Detail",
+    glyph: "D",
+    color: "#eeeeee",
+    hp: 18,
+    ap: 2,
+    xp: 13,
+    weaponId: "spas_detail",
+    sightRange: 8,
+    preferredRange: 2,
+    behavior: "pursueAndShoot",
+    // The shotgun guard, seven floors later. The last regular enemy should
+    // test everything and teach nothing. Suits, not plates — the
+    // vulnerability is the statement.
+    spotLine: `"Sir, I'm going to have to stop you here."`,
+    killVerb: "Escorted out by",
+    drops: [
+      { chance: 1, ammo: { caliber: "shell", min: 6, max: 12 } },
+      { chance: 1, cash: { min: 30, max: 45 } },
+    ],
+  },
+  dozer: {
+    id: "dozer",
+    name: "Dozer",
+    glyph: "Z",
+    color: "#ff5533",
+    hp: 40,
+    armor: 4,
+    ap: 2,
+    xp: 30,
+    boss: true,
+    machine: true,
+    weaponId: "minigun",
+    sightRange: 9,
+    chargeTurns: 1,
+    // Flashbangs already do nothing to it — it is a machine, and they are
+    // organics-only. What it needs is the EMP rule: the panic button works
+    // once, then it adapts. A miniboss you can stun-lock is not a miniboss.
+    empOnce: true,
+    behavior: "spinup",
+    spotLine: "A rising whine. The barrels start to turn.",
+    killVerb: "Shredded by",
+    drops: [
+      { chance: 1, itemId: "medkit" },
+      { chance: 1, itemId: "emp" },
+    ],
+  },
+  ceo: {
+    id: "ceo",
+    name: "The CEO",
+    glyph: "@",
+    color: "#ffdd44",
+    hp: 35,
+    ap: 3,
+    xp: 60,
+    boss: true,
+    weaponId: "fixer_pistol",
+    sightRange: 10,
+    preferredRange: 4,
+    plates: 3,
+    behavior: "duelist",
+    // Armor 0. After seven floors of subtraction he takes every number at face
+    // value and is still the hardest fight in the building, because he is the
+    // only enemy who plays the player's own game.
+    spotLine: `"Sit down. Let's discuss your performance."`,
+    killVerb: "Dismissed by",
+    drops: [{ chance: 1, cash: { min: 100, max: 100 } }],
   },
 } satisfies Record<string, EnemyDef>;
 

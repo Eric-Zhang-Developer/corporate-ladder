@@ -58,6 +58,15 @@ export function detonate(
     if (distance(entity, centre) > blast.radius) continue;
     if (!affected(state, entity, blast)) continue;
 
+    const def = entity.id === state.player.id ? null : enemyDef(entity.defId);
+    if (blast.stun && def?.empOnce) {
+      if (entity.empUsed) {
+        pushLog(state, `The ${entity.name} has adapted. The pulse washes over it.`);
+        if (blast.damage) dealDamage(state, rng, attacker, entity, blast.damage, killVerb);
+        continue;
+      }
+      entity.empUsed = true; // one panic button per customer
+    }
     if (blast.stun) {
       // Full drain: their next turn does not happen. Capped at one turn, always
       // — an AoE stun that lasts two is the strongest verb in the game.

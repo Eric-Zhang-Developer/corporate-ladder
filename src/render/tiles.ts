@@ -1,3 +1,4 @@
+import { lineTiles } from "../sim/los";
 import { idx, type GameState, type GroundItem } from "../sim/state";
 import { TILE, type Atlas } from "./atlas";
 
@@ -79,6 +80,17 @@ export function renderViewport(
   blit("player", state.player.x, state.player.y);
 
   // FOV shroud: explored-but-unseen dims, unseen stays black.
+  // A charging overwatch shooter shows the tiles he covers. The player must be
+  // able to see the line they are about to die in, not infer it.
+  for (const e of state.enemies) {
+    if (e.chargeTimer === undefined || e.hidden) continue;
+    if (!state.visible[idx(state.map, e.x, e.y)]) continue;
+    ctx.fillStyle = "rgba(255, 70, 70, 0.22)";
+    for (const tile of lineTiles(e.x, e.y, state.player.x, state.player.y)) {
+      ctx.fillRect(tile.x * TILE, tile.y * TILE, TILE, TILE);
+    }
+  }
+
   // Throw preview, drawn under the shroud pass so unseen tiles stay unseen.
   const aim = ui.throwAim;
   if (aim) {

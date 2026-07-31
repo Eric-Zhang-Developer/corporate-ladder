@@ -4,7 +4,7 @@ Guidance for AI agents (and humans) working in this codebase. Read this before w
 
 ## What this is
 
-An 8-floor, ~30-minute, grid-based, turn-based roguelike with permadeath: TypeScript + Vite + rot.js, canvas renderer, no game framework. Currently at **Stage 2 (vertical slice)**: floors 1–2, five player weapons, six enemy types, the ammo economy, tile renderer + sidebar. Stages are defined in §7 of the handoff; each ends with a kill-question that must be answered before advancing.
+An 8-floor, ~30-minute, grid-based, turn-based roguelike with permadeath: TypeScript + Vite + rot.js, canvas renderer, no game framework. Currently at **alpha**: all 8 floors, 30 player weapons across 4 tiers, ~21 enemies, four minibosses and the CEO, plus armor, plates, consumables, grenades, promotions and the economy. What is left is the balance pass and the playtest build (`docs/alpha-roadmap.md` M12) and the Phase D UX polish.
 
 ## The four invariants (never break these)
 
@@ -29,9 +29,11 @@ src/
 │   ├── combat.ts        # fireWeapon/meleeAttack/dealDamage/kill + drops — one path for both sides
 │   ├── floor.ts         # newGame, buildFloor(seed, floor), applyFloor — floor generation
 │   ├── mapgen.ts        # rot.js Digger wrapper
+│   ├── aoe.ts           # blast radius — grenades AND the drone's detonation
 │   ├── fov.ts / los.ts  # render FOV (shadowcasting) vs shooting LOS (Bresenham) — deliberately separate
 │   └── rng.ts           # SimRNG wrapper; state snapshots into GameState.rngState
-├── data/                # content tables: weapons.ts, enemies.ts, floors.ts, costs.ts
+├── data/                # content tables: weapons, enemies, floors, items,
+│                        # perks, carriers, shop, costs
 ├── render/              # atlas.ts (programmatic sprites), tiles.ts (canvas viewport), dom/ (sidebar, screens)
 └── input/keyboard.ts    # key → Action mapping; never touches state
 test/sim/                # vitest, node env, sim-only; helpers.ts builds hand-crafted states
@@ -44,7 +46,13 @@ Everything goes through `applyAction(state, action)` in `sim/step.ts`:
 1. Rebuild the sim RNG from `state.rngState`.
 2. Handle the player action. **Invalid inputs cost 0 AP** and push a log message — never charge for a typo.
 3. If player AP ≤ 0 (or they waited): run every enemy's full turn (`runEnemyTurns`), increment turn, refill AP (applying `pendingApDrain`, then clearing it).
-4. Recompute FOV, snapshot `rng.getState()` back into `state.rngState`.
+4. Check for a promotion — **between** turns, never mid-action.
+5. Recompute FOV, snapshot `rng.getState()` back into `state.rngState`.
+
+Three phases pause the loop and accept only their own action: `promoting`
+(`choosePerk`), `shopping` (`buy` / `leaveShop`), and the terminal `dead`/`won`.
+Ascending stops at the stairwell landing; the next floor is not generated until
+the player leaves the shop.
 
 The turn loop is hand-rolled — **do not introduce `ROT.Scheduler`/`Engine`**. The AP-budget model (player spends 3 AP across multiple input events, then enemies each spend their budget) doesn't fit its one-act-per-activation design, and its async lock would drag control flow into the sim.
 
@@ -54,7 +62,11 @@ Enemy behaviors are `while (enemy.ap > 0)` loops where every iteration either sp
 
 **Add a weapon:** entry in `data/weapons.ts`. The shape *is* the balance spreadsheet: `apFire`, `apReload`, `damage` (per pellet), `baseAccuracy`, `bands` (ordered `{maxDist, accMult, dmgMult}` — past the last band is out of range), `magSize`, `caliber`, optional `pellets` (volley guns), `intendedBand` (index — the balance test uses it). Run `test/sim/balance.test.ts`: dmg/AP at the intended band must sit within ±20% of the tier mean, and the gun must fall off a cliff outside its band. Guns are *patterns, not numbers* (§2): differentiate by band shape and AP cost, not raw DPS.
 
-**Add an enemy:** entry in `data/enemies.ts` (hp, ap, optional weaponId, sightRange, behavior key, melee fields, `spotLine`, `killVerb`, `drops`). If no existing behavior fits, add ONE function to the `BEHAVIORS` registry in `sim/ai.ts`. Add it to floor spawn weights in `data/floors.ts` — melee behaviors must stay 28–45% of total weight per floor (data-asserted in `floor.test.ts`; pillar 3: melee pressure is the anti-camping mechanism). Give it a sprite line in `render/atlas.ts` (auto-generated from the def's glyph/color already).
+**Add an enemy:** entry in `data/enemies.ts` (hp, ap, `xp`, optional weaponId, sightRange, behavior key, melee fields, `spotLine`, `killVerb`, `drops`). **The behavior registry is full at 8 keys** and `bestiary.test.ts` fails at 9 — a ninth means content demanded systems code, so consolidate or replace one on merit. Add it to floor spawn weights in `data/floors.ts` — melee behaviors (`meleeRush`, `detonate`, `stealthApproach`) must stay 28–45% of total weight per floor (pillar 3: melee pressure is the anti-camping mechanism, and it does **not** lapse on the top floors). Per-hit damage must sit within ±40% of its tier anchor (3 / 4.5 / 6.5 / 8.5); chaff, effect-enemies, detonators and telegraphed shooters are exempt by name in the test. Machines carry `machine: true` and must never drop cash.
+
+**Add a consumable:** entry in `data/items.ts`. An effect is **one plain-data field checked at one site** — the closed list of effect kinds in `items.test.ts` fails on a new one, deliberately, so that adding a mechanic is a decision rather than a drift toward a status-effect framework.
+
+**Add a perk:** entry in `data/perks.ts` plus one conditional at one existing site. Two hard rules, both linted: no multipliers (dmg/AP-at-band is the balance currency and a stacking percentage debases every tier window), and never max AP.
 
 **Add a floor:** entry in `data/floors.ts`; bump `LAST_FLOOR`. Floor content derives from `hash(seed, floor)` — it must never depend on sim history, so a shared seed reproduces the whole tower.
 
@@ -64,7 +76,8 @@ Enemy behaviors are `while (enemy.ap > 0)` loops where every iteration either sp
 
 - Fights resolve in 3–6 turns; the player dies in 3–5 unanswered hits; most enemies die in 1–3 hits.
 - When something feels weak, **make both sides more lethal, not tankier**.
-- Ammo is the soft clock: player reserves are per-caliber; enemies have infinite reserves (their mag cycles create the punish windows — that's the point, don't "fix" it).
+- Ammo is the soft clock: player reserves are per-caliber across four channels (pistol/shell/rifle/heavy); enemies have infinite reserves (their mag cycles create the punish windows — that's the point, don't "fix" it).
+- **Armor is the second axis.** Flat DR per *pellet*, applied inside `fireWeapon`'s loop — never in `dealDamage`, which would tax a four-pellet volley once instead of four times and delete the whole mechanic. Blades bypass armor; melee also bypasses the player's plates. That symmetry is load-bearing: it keeps a fully-plated player afraid of exactly the enemies designed to punish camping. If plates feel too safe, cut plate values, never the bypass.
 - Burst/volley weapons are the historical dominance risk (§10). The Uzi's guards: per-pellet accuracy collapse past its band, dmg/AP parity with the revolver, 4 rounds per pull. If it dominates anyway, cut per-pellet damage and raise pellet count — keep the spray *feel*, don't nerf accuracy.
 
 ## Testing conventions
@@ -95,7 +108,8 @@ Enemy behaviors are `while (enemy.ap > 0)` loops where every iteration either sp
 
 ## Known debts (fix opportunistically, don't build on them)
 
-1. Duplicated BFS helpers: `freeTilesNear` (`ai.ts`) / `freeTileNear` (`floor.ts`) — merge when next touched.
-2. `Entity` carries player-only and enemy-only optional fields; a third role-specific cluster is the signal to split the type.
-3. No CI — tests are local-only.
-4. Log lines are injected via `innerHTML` unescaped in `main.ts` (internal strings only today; escape if log text ever includes external input).
+1. ~~Duplicated BFS helpers~~ — merged into `freeTilesNear` in `state.ts`; `spawnItemNear` is the one place items reach the ground.
+2. ~~Log lines injected unescaped~~ — escaped in `main.ts`.
+3. CI runs typecheck + build + tests on push and PR, and deploys to Pages from `main`.
+4. **`Entity` now genuinely needs splitting.** It carries player-only fields (`slots`, `activeSlot`), enemy-only ones (`alarmTimer`, `alarmWaves`, `chargeTimer`, `hidden`), and duel-only ones (`spares`, `stimUsed`, `empUsed`). The debt note used to say "a third role-specific cluster is the signal" — that threshold has passed. Split before adding a fourth.
+5. The balance pass has not run. A deliberately unskilled bot averages ~3 of 8 floors, and the tower has never been won by anything that plays fairly. Numbers flagged in commits for that pass: the gunshot `NOISE_RADIUS`, the T2 difficulty step (most deaths cluster on floor 3), and promotion pacing.

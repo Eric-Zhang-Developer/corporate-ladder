@@ -42,6 +42,7 @@ const BEHAVIORS: Record<BehaviorId, Behavior> = {
   stealthApproach,
   overwatch,
   spinup,
+  duelist,
 };
 
 /**
@@ -200,6 +201,67 @@ function cameraAlarm(state: GameState, _rng: SimRNG, enemy: Entity): void {
   }
   if (tiles.length > 0) {
     pushLog(state, `Elevator chime. A response team fans out from the entrance.`);
+  }
+}
+
+/**
+ * The CEO, and only the CEO. After seven floors of enemies-as-patterns, the
+ * last fight is an OPPONENT: he spends 3 AP the way a player spends them,
+ * slots plates while you watch, jabs a stim when he is hurt, and advances on
+ * an empty magazine because he has read your file.
+ *
+ * No new systems — his whole kit is the player's own systems list pointed
+ * backwards, which is the entire design of the fight.
+ */
+function duelist(state: GameState, rng: SimRNG, enemy: Entity): void {
+  const def = enemyDef(enemy.defId);
+  if (!checkSpotted(state, enemy, def)) return;
+  if (!enemy.weaponId) return;
+  const weapon = weaponDef(enemy.weaponId);
+  if (enemy.spares === undefined) enemy.spares = def.plates ?? 0;
+
+  // The crescendo, and the mercy: survive the stim turn and the next is yours.
+  if (!enemy.stimUsed && enemy.hp <= enemy.maxHp / 2) {
+    enemy.stimUsed = true;
+    enemy.ap += 2;
+    enemy.pendingApDrain = Math.max(enemy.pendingApDrain ?? 0, 1);
+    pushLog(state, `The ${enemy.name} jabs something into his thigh and straightens up.`);
+  }
+
+  while (enemy.ap > 0 && state.phase === "playing") {
+    const dist = distance(enemy, state.player);
+    const los = hasLos(state.map, enemy.x, enemy.y, state.player.x, state.player.y);
+
+    // Plates, slotted mid-fight for 1 AP — the player's signature mechanic
+    // seen from the wrong side.
+    if ((enemy.shield ?? 0) <= 0 && enemy.spares > 0) {
+      enemy.spares -= 1;
+      enemy.shield = 5;
+      enemy.ap -= 1;
+      pushLog(state, `The ${enemy.name} slots a fresh plate without looking away.`);
+      continue;
+    }
+    if (enemy.ammoInMag <= 0) {
+      if (enemy.ap < weapon.apReload) break;
+      enemy.ap -= weapon.apReload;
+      enemy.ammoInMag = weapon.magSize;
+      pushLog(state, `The ${enemy.name} reloads, unhurried.`);
+      continue;
+    }
+    // He reads your magazine. An empty gun is an invitation to walk in, which
+    // is every punish window you have farmed for eight floors, farmed back.
+    const playerDry = state.player.ammoInMag <= 0;
+    if (playerDry && dist > 1.5) {
+      if (!stepToward(state, enemy)) break;
+      enemy.ap -= 1;
+      continue;
+    }
+    if (los && dist <= maxRange(weapon) && enemy.ap >= weapon.apFire) {
+      fireWeapon(state, rng, enemy, state.player);
+      continue;
+    }
+    if (!stepToward(state, enemy)) break;
+    enemy.ap -= 1;
   }
 }
 

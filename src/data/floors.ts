@@ -131,10 +131,42 @@ export const FLOORS: FloorDef[] = [
     vendingMachines: 1,
     boss: "warden",
   },
+  {
+    depth: 7,
+    name: "CONTRACTS",
+    groups: { min: 6, max: 8 },
+    // The professionals. Open corridors stop being safe.
+    weights: { exo: 22, fixer: 12, marksman: 10, detail: 10, gunner: 8, stealth: 16, fpv: 12, k9: 10 },
+    lootWeapons: ["an94", "xm7", "sr25", "awp", "p90", "aa12", "xm250", "fal"],
+    lootAmmo: { min: 18, max: 30 },
+    scatterPiles: 4,
+    scatterAmount: { min: 10, max: 18 },
+    platePiles: 3,
+    consumablePiles: 4,
+    consumablePool: ["medkit", "stim", "emp", "flashbang", "frag"],
+    vendingMachines: 2,
+    boss: "dozer",
+  },
+  {
+    depth: 8,
+    name: "EXECUTIVE",
+    groups: { min: 4, max: 6 },
+    // The approach gauntlet: fewer bodies, all of them serious.
+    weights: { detail: 26, exo: 18, fixer: 12, marksman: 10, stealth: 18, fpv: 16 },
+    lootWeapons: ["an94", "xm7", "sr25", "awp", "aa12", "xm250"],
+    lootAmmo: { min: 20, max: 32 },
+    scatterPiles: 4,
+    scatterAmount: { min: 10, max: 20 },
+    platePiles: 4,
+    consumablePiles: 4,
+    consumablePool: ["medkit", "stim", "emp", "flashbang"],
+    vendingMachines: 1,
+    boss: "ceo",
+  },
 ];
 
-/** The tower grows one pair at a time; alpha ends at 8. */
-export const LAST_FLOOR = 6;
+/** The top of the tower. The severance package is on the desk. */
+export const LAST_FLOOR = 8;
 
 export function floorDef(depth: number): FloorDef {
   const def = FLOORS.find((f) => f.depth === depth);

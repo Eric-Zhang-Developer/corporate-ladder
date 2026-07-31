@@ -57,8 +57,8 @@ export function updateScreens(overlay: HTMLElement, state: GameState): void {
   overlay.hidden = false;
   overlay.innerHTML = `
     <div class="end-box ${won ? "won" : "dead"}">
-      <h1>${won ? "EXIT INTERVIEW PASSED" : "TERMINATED"}</h1>
-      <p>${won ? `Cleared the slice — Seed ${state.seed} — Turn ${state.turn}` : escapeHtml(state.killedBy ?? "You die.")}</p>
+      <h1>${won ? "SEVERANCE COLLECTED" : "TERMINATED"}</h1>
+      <p>${won ? `Eight floors — Level ${state.level} — Seed ${state.seed} — Turn ${state.turn}` : escapeHtml(state.killedBy ?? "You die.")}</p>
       <p class="hint">[Enter] new run &nbsp;&nbsp; [S] same seed</p>
     </div>
   `;

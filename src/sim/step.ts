@@ -407,7 +407,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       }
       if (state.floor >= LAST_FLOOR) {
         state.phase = "won";
-        pushLog(state, "You reach the roof access. To be continued.");
+        pushLog(state, "The severance package is on the desk. You take what you are owed.");
         return;
       }
       // The stairwell landing: a safe breather with a merchant on it. The
