@@ -12,4 +12,5 @@ export type Action =
   | { type: "drop"; kind: "weapon" | "item"; slot: number }
   /** Take the stairs up (must be standing on them). */
   | { type: "ascend" }
+  | { type: "choosePerk"; perkId: string }
   | { type: "wait" };

@@ -1,19 +1,27 @@
 import { carrierCapacity, carrierDef, SPARE_PLATE_CAP } from "../data/carriers";
 import { AP_COSTS } from "../data/costs";
 import { itemDef, type ItemDef } from "../data/items";
+import {
+  HP_PER_PROMOTION,
+  PERK_IDS,
+  PERK_OFFER_SIZE,
+  perkDef,
+  xpForLevel,
+} from "../data/perks";
 import { maxRange, weaponDef } from "../data/weapons";
 import type { Action } from "./actions";
 import { runEnemyTurns } from "./ai";
 import { detonate } from "./aoe";
 import { apToFire, fireWeapon, meleeAttack } from "./combat";
-import { applyFloor, LAST_FLOOR } from "./floor";
+import { applyFloor, hashSeed, LAST_FLOOR } from "./floor";
 import { recomputeFov } from "./fov";
 import { hasLos } from "./los";
-import { simRngFromState, type SimRNG } from "./rng";
+import { createSimRng, simRngFromState, type SimRNG } from "./rng";
 import {
   distance,
   entityAt,
   freeTilesNear,
+  hasPerk,
   idx,
   isFloor,
   pushLog,
@@ -23,12 +31,21 @@ import {
   type WeaponSlot,
 } from "./state";
 
+/** Keeps the perk draw off the map and floor-content streams. */
+const PERK_OFFER_SALT = 7;
+
 /**
  * The whole game advances through this single entry point. A player turn is
  * a budget of AP spent across several actions; when it runs out (or the
  * player waits), every enemy takes its full turn, then AP refills.
  */
 export function applyAction(state: GameState, action: Action): GameState {
+  // A promotion pauses the game between turns: the only legal move is picking
+  // a certification, and the choice is a sim action so replays stay exact.
+  if (state.phase === "promoting") {
+    if (action.type === "choosePerk") resolvePromotion(state, action.perkId);
+    return state;
+  }
   if (state.phase !== "playing") return state;
   const rng = simRngFromState(state.rngState);
 
@@ -39,11 +56,73 @@ export function applyAction(state: GameState, action: Action): GameState {
     state.turn += 1;
     refillAp(state.player);
     for (const e of state.enemies) refillAp(e);
+    delete state.platedThisTurn;
+    grantHazardPay(state);
   }
+
+  // Checked after the enemy phase so the review lands between turns rather
+  // than interrupting a half-spent one.
+  if (state.phase === "playing") checkPromotion(state);
 
   recomputeFov(state);
   state.rngState = rng.getState();
   return state;
+}
+
+/**
+ * Hazard Pay: the one AP perk, and it is deliberately confined to turns that
+ * begin with nothing in sight. It speeds up walking, never fighting — which is
+ * what keeps it clear of the no-AP-progression rule.
+ */
+function grantHazardPay(state: GameState): void {
+  if (!hasPerk(state, "hazard_pay")) return;
+  const anyVisible = state.enemies.some((e) => state.visible[idx(state.map, e.x, e.y)]);
+  if (!anyVisible) state.player.ap += perkDef("hazard_pay").value ?? 1;
+}
+
+function checkPromotion(state: GameState): void {
+  if (state.xp < xpForLevel(state.level + 1)) return;
+  state.level += 1;
+  state.player.maxHp += HP_PER_PROMOTION;
+  // A full heal per promotion is the genre's pressure-release valve, and it is
+  // why consumable healing only has to cover within-floor attrition.
+  state.player.hp = state.player.maxHp;
+  state.phase = "promoting";
+  state.perkOffer = rollPerkOffer(state);
+  pushLog(state, `PERFORMANCE REVIEW — promoted to level ${state.level}.`);
+}
+
+/**
+ * Offers derive from hash(seed, level), never from sim history, so a shared
+ * seed shows the same two certifications at the same promotion.
+ */
+function rollPerkOffer(state: GameState): string[] {
+  const pool = PERK_IDS.filter((id) => !state.perks.includes(id));
+  if (pool.length <= PERK_OFFER_SIZE) return [...pool];
+    // Salted so the perk stream never collides with map or spawn rolls.
+  const rng = createSimRng(hashSeed(state.seed, state.level, PERK_OFFER_SALT));
+  const offer: string[] = [];
+  const remaining = [...pool];
+  while (offer.length < PERK_OFFER_SIZE && remaining.length > 0) {
+    offer.push(remaining.splice(Math.floor(rng.next() * remaining.length), 1)[0]!);
+  }
+  return offer;
+}
+
+function resolvePromotion(state: GameState, perkId: string): void {
+  if (!state.perkOffer?.includes(perkId)) return; // not on the menu
+  state.perks.push(perkId);
+  delete state.perkOffer;
+  state.phase = "playing";
+  const def = perkDef(perkId);
+  if (perkId === "wellness") {
+    state.player.maxHp += def.value ?? 0;
+    state.player.hp += def.value ?? 0;
+  }
+  if (perkId === "field_awareness") recomputeFov(state);
+  pushLog(state, `Certification acquired: ${def.name}.`);
+  // A second threshold can be crossed by one big kill; review again at once.
+  checkPromotion(state);
 }
 
 function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void {
@@ -123,7 +202,10 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         pushLog(state, `No ${weapon.caliber} rounds left.`);
         return;
       }
-      if (player.ap < weapon.apReload) {
+      const reloadCost = hasPerk(state, "time_management")
+        ? Math.max(1, weapon.apReload - (perkDef("time_management").value ?? 1))
+        : weapon.apReload;
+      if (player.ap < reloadCost) {
         pushLog(state, "Not enough AP to reload.");
         return;
       }
@@ -132,7 +214,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       const wasted = weapon.reloadDiscards ? player.ammoInMag : 0;
       const room = weapon.magSize - (weapon.reloadDiscards ? 0 : player.ammoInMag);
       const take = Math.min(room, reserve);
-      player.ap -= weapon.apReload;
+      player.ap -= reloadCost;
       player.ammoInMag = weapon.reloadDiscards ? take : player.ammoInMag + take;
       state.ammo[weapon.caliber] -= take;
       delete player.chambered; // a fresh magazine closes the bolt
@@ -196,7 +278,9 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         return;
       }
       if (item.kind === "plate") {
-        if (state.spareplates >= SPARE_PLATE_CAP) {
+        const cap =
+          SPARE_PLATE_CAP + (hasPerk(state, "deep_pockets") ? (perkDef("deep_pockets").value ?? 0) : 0);
+        if (state.spareplates >= cap) {
           pushLog(state, "You cannot carry another plate.");
           return;
         }
@@ -296,11 +380,14 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         pushLog(state, "No spare plates.");
         return;
       }
-      if (player.ap < AP_COSTS.plate) {
+      const freePlate = hasPerk(state, "osha") && !state.platedThisTurn;
+      const plateCost = freePlate ? 0 : AP_COSTS.plate;
+      if (player.ap < plateCost) {
         pushLog(state, "Not enough AP to plate up.");
         return;
       }
-      player.ap -= AP_COSTS.plate;
+      player.ap -= plateCost;
+      state.platedThisTurn = true;
       state.spareplates -= 1;
       player.shield = Math.min(capacity, (player.shield ?? 0) + carrierDef(state.carrierId).plateValue);
       pushLog(state, `You slot a plate. (${player.shield}/${capacity})`);

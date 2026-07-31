@@ -82,7 +82,7 @@ export interface ItemStack {
   count: number;
 }
 
-export type GamePhase = "playing" | "dead" | "won";
+export type GamePhase = "playing" | "promoting" | "dead" | "won";
 
 export interface GameState {
   seed: number;
@@ -114,6 +114,16 @@ export interface GameState {
   spareplates: number;
   /** Six typed stacks on keys 4-9. There is no bag; this is the inventory. */
   hotbar: (ItemStack | null)[];
+  xp: number;
+  level: number;
+  /** Chosen certification ids, in the order they were taken. */
+  perks: string[];
+  /** The two on offer while phase is "promoting". */
+  perkOffer?: string[];
+  /** Golden Parachute is once per run; this is that "once". */
+  parachuteUsed?: boolean;
+  /** OSHA Compliance: cleared each turn so only the first plate is free. */
+  platedThisTurn?: boolean;
   /** Monotonic id source for spawned entities and items. */
   nextId: number;
   log: string[];
@@ -191,6 +201,11 @@ export function freeTilesNear(
     }
   }
   return found;
+}
+
+/** Perk lookup. Cheap enough to call at a touchpoint; perks is a short list. */
+export function hasPerk(state: GameState, id: string): boolean {
+  return state.perks.includes(id);
 }
 
 export function pushLog(state: GameState, message: string): void {

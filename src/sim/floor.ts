@@ -7,7 +7,6 @@ import { recomputeFov } from "./fov";
 import { createSimRng, type SimRNG } from "./rng";
 import {
   freeTilesNear,
-  isFloor,
   pushLog,
   spawnEnemy,
   PLAYER_MAX_AP,
@@ -24,7 +23,7 @@ export { LAST_FLOOR };
  * Floor content depends only on (seed, floor) — never on sim history —
  * so a shared seed reproduces the entire tower.
  */
-function hashSeed(seed: number, floor: number, salt = 0): number {
+export function hashSeed(seed: number, floor: number, salt = 0): number {
   let h = (seed >>> 0) ^ Math.imul(floor + 1, 0x9e3779b9) ^ Math.imul(salt + 1, 0x85ebca6b);
   h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
   h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
@@ -229,6 +228,9 @@ export function newGame(seed: number): GameState {
     carrierId: null,
     spareplates: 0,
     hotbar: new Array(HOTBAR_SLOTS).fill(null),
+    xp: 0,
+    level: 1,
+    perks: [],
     nextId: 1,
     log: ["Find whoever signs the checks."],
   };

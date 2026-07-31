@@ -191,9 +191,14 @@ export function runBot(seed: number, options: BotOptions = {}): BotResult {
   // no way forward and the test should fail loudly rather than spin.
   let idle = 0;
 
-  while (state.phase === "playing" && actions < maxActions) {
+  while ((state.phase === "playing" || state.phase === "promoting") && actions < maxActions) {
     const before = { turn: state.turn, x: state.player.x, y: state.player.y };
-    const action = decide(state, memory);
+    // Promotions pause the game until a certification is chosen. The bot always
+    // takes the first offer — it is exercising the flow, not optimising a build.
+    const action: Action =
+      state.phase === "promoting"
+        ? { type: "choosePerk", perkId: state.perkOffer?.[0] ?? "" }
+        : decide(state, memory);
     const floorBefore = state.floor;
     state = applyAction(state, action);
     if (state.floor !== floorBefore) memory.goal = null; // new floor, new map
@@ -203,7 +208,10 @@ export function runBot(seed: number, options: BotOptions = {}): BotResult {
 
     deepestFloor = Math.max(deepestFloor, state.floor);
     const moved =
-      state.turn !== before.turn || state.player.x !== before.x || state.player.y !== before.y;
+      state.turn !== before.turn ||
+      state.player.x !== before.x ||
+      state.player.y !== before.y ||
+      action.type === "choosePerk";
     idle = moved ? 0 : idle + 1;
     if (idle > 25) break;
   }

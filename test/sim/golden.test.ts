@@ -32,6 +32,12 @@ function summarize(state: GameState) {
       ammoInMag: state.player.ammoInMag,
     },
     ammo: state.ammo,
+    xp: state.xp,
+    level: state.level,
+    perks: state.perks,
+    carrierId: state.carrierId,
+    spareplates: state.spareplates,
+    hotbar: state.hotbar,
     itemCount: state.items.length,
     enemies: state.enemies.map((e) => ({
       defId: e.defId,
@@ -72,9 +78,12 @@ describe("golden run", () => {
   it("a scripted combat run reproduces the same fight", () => {
     // A fixed action budget rather than a full run: it keeps the snapshot
     // mid-fight, where enemies are alive and the log still shows the shots.
-    const run = runBot(88412, { maxActions: 90, check: false });
+    const run = runBot(7, { maxActions: 150, check: false });
     expect(run.state.turn).toBeGreaterThan(10);
     expect(run.state.log.join(" ")).toMatch(/hit|spray|miss|collapses/);
+    // The budget is chosen to run past the first promotion, so the snapshot
+    // covers levelling, perk choice and the item economy rather than only guns.
+    expect(run.state.level).toBeGreaterThan(1);
     expect(summarize(run.state)).toMatchSnapshot();
   });
 });

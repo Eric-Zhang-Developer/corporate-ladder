@@ -46,6 +46,8 @@ export interface EnemyDef {
   attacksPerTurn?: number;
   /** Taser rule (§4.1): victim loses this much AP at its next refill. */
   apDrainOnHit?: number;
+  /** Flat XP for the kill. Chaff 2-3, standard 5-7, elite 10-14, boss 25+. */
+  xp: number;
   behavior: BehaviorId;
   /** Log line on spotting the player. */
   spotLine?: string;
@@ -65,6 +67,7 @@ export const ENEMIES = {
     weaponId: "glock_cop",
     sightRange: 8,
     preferredRange: 4,
+    xp: 5,
     behavior: "pursueAndShoot",
     spotLine: `The Rent-a-Cop shouts, "Hey! You can't be up here!"`,
     killVerb: "Shot to death by",
@@ -83,6 +86,7 @@ export const ENEMIES = {
     sightRange: 9,
     meleeDamage: 3,
     attacksPerTurn: 1,
+    xp: 5,
     behavior: "meleeRush",
     spotLine: "The Guard Dog snarls.",
     killVerb: "Bitten to death by",
@@ -98,6 +102,7 @@ export const ENEMIES = {
     meleeDamage: 1,
     attacksPerTurn: 1,
     apDrainOnHit: 2,
+    xp: 6,
     behavior: "meleeRush",
     spotLine: `The Taser Guard yells, "Compliance is mandatory!"`,
     killVerb: "Tased into retirement by",
@@ -113,6 +118,7 @@ export const ENEMIES = {
     weaponId: "serbu_guard",
     sightRange: 8,
     preferredRange: 2,
+    xp: 7,
     behavior: "pursueAndShoot",
     spotLine: `The Shotgun Guard racks a shell. "Wrong floor, buddy."`,
     killVerb: "Turned into a memo by",
@@ -130,6 +136,7 @@ export const ENEMIES = {
     ap: 0,
     machine: true,
     sightRange: 8,
+    xp: 3,
     behavior: "cameraAlarm",
     killVerb: "Watched to death by",
   },
@@ -143,6 +150,7 @@ export const ENEMIES = {
     sightRange: 6,
     meleeDamage: 4,
     attacksPerTurn: 1,
+    xp: 12,
     behavior: "meleeRush",
     spotLine: "The Janitor sighs and hefts his wrench. Thirty years of this.",
     killVerb: "Mopped up by",

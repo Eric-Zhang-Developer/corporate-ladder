@@ -114,6 +114,16 @@ function cycleTarget(): void {
 render();
 
 window.addEventListener("keydown", (e) => {
+  if (state.phase === "promoting") {
+    const pick = Number(e.key) - 1;
+    const perkId = state.perkOffer?.[pick];
+    if (perkId) {
+      e.preventDefault();
+      state = applyAction(state, { type: "choosePerk", perkId });
+      render();
+    }
+    return;
+  }
   if (state.phase !== "playing") {
     if (e.key === "Enter") {
       seed = randomSeed();

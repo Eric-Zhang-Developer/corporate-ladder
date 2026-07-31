@@ -1,8 +1,9 @@
 import { enemyDef } from "../data/enemies";
+import { perkDef } from "../data/perks";
 import { bandFor, weaponDef, type WeaponDef } from "../data/weapons";
 import { AP_COSTS, KNIFE } from "../data/costs";
 import type { SimRNG } from "./rng";
-import { distance, pushLog, type Entity, type GameState } from "./state";
+import { distance, hasPerk, pushLog, type Entity, type GameState } from "./state";
 
 /**
  * What pulling the trigger costs right now, including working a bolt that was
@@ -24,6 +25,8 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
   const weapon = weaponDef(attacker.weaponId);
   const pellets = Math.min(weapon.pellets ?? 1, attacker.ammoInMag);
   const isPlayer = attacker.id === state.player.id;
+  // Captured before the shot, because firing is what alerts them.
+  const ambush = isPlayer && !defender.alerted && hasPerk(state, "severance");
 
   if (weapon.boltAction) {
     if (attacker.chambered === false) {
@@ -51,16 +54,30 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
   const armor = Math.max(0, (defender.armor ?? 0) - (weapon.armorPierce ?? 0));
   // Braced: set your feet and the belt-fed stops spraying the ceiling. The
   // cheap version of a bipod — no new action, just "did you move this turn".
-  const braced = weapon.bracedBonus && !attacker.movedThisTurn ? weapon.bracedBonus : 0;
+  // Ergonomic Workspace extends bracing to every gun, not just the belt-feds.
+  const bracedBonus =
+    weapon.bracedBonus ?? (isPlayer && hasPerk(state, "ergonomic") ? (perkDef("ergonomic").value ?? 0) : 0);
+  const braced = bracedBonus && !attacker.movedThisTurn ? bracedBonus : 0;
   const accuracy = Math.min(1, weapon.baseAccuracy * band.accMult + braced);
+  const machine = isPlayer && enemyIsMachine(state, defender);
+  const bonusPerPellet =
+    (ambush ? (perkDef("severance").value ?? 0) : 0) +
+    (machine && hasPerk(state, "it_cert") ? (perkDef("it_cert").value ?? 0) : 0);
+
   let hits = 0;
+  let misses = 0;
   let totalDmg = 0;
+  const land = () => {
+    hits += 1;
+    // Perk bonuses land after armor, so a flat +2 is not silently eaten by DR.
+    totalDmg += Math.max(0, Math.round(weapon.damage * band.dmgMult) - armor) + bonusPerPellet;
+  };
   for (let i = 0; i < pellets; i++) {
-    if (rng.next() < accuracy) {
-      hits += 1;
-      totalDmg += Math.max(0, Math.round(weapon.damage * band.dmgMult) - armor);
-    }
+    if (rng.next() < accuracy) land();
+    else misses += 1;
   }
+  // Follow-Up Meeting: one missed pellet per volley gets a second chance.
+  if (misses > 0 && isPlayer && hasPerk(state, "follow_up") && rng.next() < accuracy) land();
 
   if (hits > 0 && totalDmg === 0) {
     // Rounds landed and did nothing. Say so plainly — this is how the player
@@ -107,7 +124,11 @@ export function meleeAttack(state: GameState, rng: SimRNG, attacker: Entity, def
   // A bayonet replaces the knife while its rifle is in hand — which is what
   // makes the SKS the T1 rifle that does not panic when the dog closes.
   const blade = isPlayer && attacker.weaponId ? weaponDef(attacker.weaponId).bayonet : undefined;
-  const dmg = isPlayer ? (blade ?? KNIFE.damage) : (def?.meleeDamage ?? 1);
+  const bonus = isPlayer
+    ? (hasPerk(state, "letter_opener") ? (perkDef("letter_opener").value ?? 0) : 0) +
+      (enemyIsMachine(state, defender) && hasPerk(state, "it_cert") ? (perkDef("it_cert").value ?? 0) : 0)
+    : 0;
+  const dmg = (isPlayer ? (blade ?? KNIFE.damage) : (def?.meleeDamage ?? 1)) + bonus;
 
   pushLog(
     state,
@@ -165,6 +186,12 @@ export function dealDamage(
   }
   if (remaining <= 0) return;
   defender.hp -= remaining;
+  if (defender.hp <= 0 && defender.id === state.player.id && hasPerk(state, "golden_parachute") && !state.parachuteUsed) {
+    state.parachuteUsed = true;
+    defender.hp = 1;
+    pushLog(state, "Your golden parachute opens. You are still standing, barely.");
+    return;
+  }
   if (defender.hp <= 0) kill(state, rng, attacker, defender, killVerb);
 }
 
@@ -178,6 +205,8 @@ function kill(state: GameState, rng: SimRNG, attacker: Entity, defender: Entity,
 
   state.enemies = state.enemies.filter((e) => e.id !== defender.id);
   pushLog(state, `The ${defender.name} collapses.`);
+  // XP for every kill including quiet ones, so a stealth build never starves.
+  state.xp += enemyDef(defender.defId).xp;
   rollDrops(state, rng, defender);
 }
 
@@ -187,7 +216,8 @@ function rollDrops(state: GameState, rng: SimRNG, corpse: Entity): void {
     if (rng.next() >= drop.chance) continue;
     if (drop.ammo) {
       const { caliber, min, max } = drop.ammo;
-      const amount = min + Math.floor(rng.next() * (max - min + 1));
+      const rolled = min + Math.floor(rng.next() * (max - min + 1));
+      const amount = hasPerk(state, "asset_recovery") ? Math.ceil(rolled * 1.5) : rolled;
       state.items.push({ id: state.nextId++, x: corpse.x, y: corpse.y, kind: "ammo", caliber, amount });
     }
     if (drop.itemId) {
@@ -211,6 +241,11 @@ function rollDrops(state: GameState, rng: SimRNG, corpse: Entity): void {
       });
     }
   }
+}
+
+function enemyIsMachine(state: GameState, entity: Entity): boolean {
+  if (entity.id === state.player.id) return false;
+  return enemyDef(entity.defId).machine === true;
 }
 
 function killVerbFor(attacker: Entity): string {

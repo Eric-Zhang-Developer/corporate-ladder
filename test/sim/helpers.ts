@@ -57,6 +57,9 @@ export function makeState(
     carrierId?: string | null;
     spareplates?: number;
     hotbar?: GameState["hotbar"];
+    xp?: number;
+    level?: number;
+    perks?: string[];
   } = {},
 ): GameState {
   const map = opts.map ?? openMap();
@@ -99,6 +102,9 @@ export function makeState(
     carrierId: opts.carrierId ?? null,
     spareplates: opts.spareplates ?? 0,
     hotbar: opts.hotbar ?? new Array(HOTBAR_SLOTS).fill(null),
+    xp: opts.xp ?? 0,
+    level: opts.level ?? 1,
+    perks: opts.perks ?? [],
     nextId: 1000,
     log: [],
   };
