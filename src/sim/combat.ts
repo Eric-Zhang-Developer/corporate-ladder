@@ -28,17 +28,30 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
     return;
   }
 
+  // Armor is flat reduction on EACH pellet, not on the volley's total. That
+  // asymmetry is the whole point: four small pellets pay the tax four times
+  // and fold against plate, while one heavy round punches through.
+  const armor = Math.max(0, (defender.armor ?? 0) - (weapon.armorPierce ?? 0));
   const accuracy = weapon.baseAccuracy * band.accMult;
   let hits = 0;
   let totalDmg = 0;
   for (let i = 0; i < pellets; i++) {
     if (rng.next() < accuracy) {
       hits += 1;
-      totalDmg += Math.round(weapon.damage * band.dmgMult);
+      totalDmg += Math.max(0, Math.round(weapon.damage * band.dmgMult) - armor);
     }
   }
 
-  if (pellets > 1) {
+  if (hits > 0 && totalDmg === 0) {
+    // Rounds landed and did nothing. Say so plainly — this is how the player
+    // learns armor exists and that they brought the wrong gun.
+    pushLog(
+      state,
+      isPlayer
+        ? `Your rounds clatter off the ${defender.name}'s armor.`
+        : `The ${attacker.name}'s rounds glance off your plating.`,
+    );
+  } else if (pellets > 1) {
     pushLog(
       state,
       isPlayer

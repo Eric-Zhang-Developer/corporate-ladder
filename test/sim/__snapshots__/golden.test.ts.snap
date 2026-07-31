@@ -1,11 +1,130 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`golden run > a scripted combat run reproduces the same fight 1`] = `
+{
+  "ammo": {
+    "heavy": 0,
+    "pistol": 48,
+    "rifle": 0,
+    "shell": 12,
+  },
+  "enemies": [
+    {
+      "alerted": false,
+      "defId": "dog",
+      "hp": 4,
+      "x": 45,
+      "y": 3,
+    },
+    {
+      "alerted": false,
+      "defId": "rentacop",
+      "hp": 6,
+      "x": 42,
+      "y": 14,
+    },
+    {
+      "alerted": false,
+      "defId": "dog",
+      "hp": 4,
+      "x": 43,
+      "y": 14,
+    },
+    {
+      "alerted": false,
+      "defId": "shotgun",
+      "hp": 7,
+      "x": 19,
+      "y": 22,
+    },
+    {
+      "alerted": false,
+      "defId": "camera",
+      "hp": 1,
+      "x": 41,
+      "y": 20,
+    },
+    {
+      "alerted": false,
+      "defId": "rentacop",
+      "hp": 6,
+      "x": 42,
+      "y": 20,
+    },
+    {
+      "alerted": false,
+      "defId": "camera",
+      "hp": 1,
+      "x": 16,
+      "y": 6,
+    },
+    {
+      "alerted": false,
+      "defId": "rentacop",
+      "hp": 6,
+      "x": 17,
+      "y": 6,
+    },
+  ],
+  "floor": 2,
+  "itemCount": 4,
+  "log": [
+    "The Taser Guard yells, "Compliance is mandatory!"",
+    "You hit the Taser Guard for 3.",
+    "You miss the Taser Guard.",
+    "You hit the Taser Guard for 3.",
+    "The Taser Guard collapses.",
+    "You hit the Rent-a-Cop for 3.",
+    "You miss the Rent-a-Cop.",
+    "You miss the Rent-a-Cop.",
+    "You miss the Rent-a-Cop.",
+    "You reload. (17 pistol left)",
+    "You hit the Rent-a-Cop for 3.",
+    "The Rent-a-Cop collapses.",
+    "You pocket 8 pistol rounds.",
+    "The Rent-a-Cop shouts, "Hey! You can't be up here!"",
+    "You hit the Rent-a-Cop for 3.",
+    "You miss the Rent-a-Cop.",
+    "You miss the Rent-a-Cop.",
+    "You pocket 7 shell rounds.",
+    "You hit the Rent-a-Cop for 3.",
+    "The Rent-a-Cop collapses.",
+    "You pocket 16 pistol rounds.",
+    "You stow the Revolver (slot 2).",
+    "You hit the Rent-a-Cop for 3.",
+    "You hit the Rent-a-Cop for 3.",
+    "The Rent-a-Cop collapses.",
+    "You reload. (34 pistol left)",
+    "You pocket 6 pistol rounds.",
+    "You pocket 8 pistol rounds.",
+    "You pocket 5 shell rounds.",
+    "OFFICES — floor 2 of the tower.",
+  ],
+  "phase": "playing",
+  "player": {
+    "ammoInMag": 7,
+    "ap": 2,
+    "hp": 10,
+    "x": 32,
+    "y": 12,
+  },
+  "rngState": [
+    0.7169497206341475,
+    0.8157408952247351,
+    0.8993968600407243,
+    738618,
+  ],
+  "turn": 30,
+}
+`;
+
 exports[`golden run > seed 1 with a scripted turn sequence reproduces the same state 1`] = `
 {
   "ammo": {
-    "large": 0,
-    "medium": 0,
-    "small": 24,
+    "heavy": 0,
+    "pistol": 24,
+    "rifle": 0,
+    "shell": 0,
   },
   "enemies": [
     {

@@ -7,33 +7,33 @@ describe("reload from reserve", () => {
   it("moves rounds reserve -> mag and allows partial reloads", () => {
     const state = makeState({
       player: { ammoInMag: 2 },
-      ammo: { small: 3, medium: 0, large: 0 },
+      ammo: { pistol: 3, shell: 0, rifle: 0, heavy: 0 },
     });
     applyAction(state, { type: "reload" });
     expect(state.player.ammoInMag).toBe(5); // 2 + all 3 reserve, short of mag 7
-    expect(state.ammo.small).toBe(0);
+    expect(state.ammo.pistol).toBe(0);
     expect(state.player.ap).toBe(2);
   });
 
   it("caps at mag size and leaves the rest in reserve", () => {
     const state = makeState({
       player: { ammoInMag: 0 },
-      ammo: { small: 24, medium: 0, large: 0 },
+      ammo: { pistol: 24, shell: 0, rifle: 0, heavy: 0 },
     });
     applyAction(state, { type: "reload" });
     expect(state.player.ammoInMag).toBe(WEAPONS.glock.magSize);
-    expect(state.ammo.small).toBe(24 - WEAPONS.glock.magSize);
+    expect(state.ammo.pistol).toBe(24 - WEAPONS.glock.magSize);
   });
 
   it("is denied free with an empty reserve", () => {
     const state = makeState({
       player: { ammoInMag: 1 },
-      ammo: { small: 0, medium: 0, large: 0 },
+      ammo: { pistol: 0, shell: 0, rifle: 0, heavy: 0 },
     });
     applyAction(state, { type: "reload" });
     expect(state.player.ap).toBe(3);
     expect(state.player.ammoInMag).toBe(1);
-    expect(state.log.at(-1)).toContain("No small rounds");
+    expect(state.log.at(-1)).toContain("No pistol rounds");
   });
 });
 
@@ -108,10 +108,10 @@ describe("weapon slots", () => {
 describe("pickup", () => {
   it("ammo goes to the reserve", () => {
     const state = makeState({
-      items: [{ id: 1, x: 2, y: 2, kind: "ammo", caliber: "medium", amount: 5 }],
+      items: [{ id: 1, x: 2, y: 2, kind: "ammo", caliber: "shell", amount: 5 }],
     });
     applyAction(state, { type: "pickup" });
-    expect(state.ammo.medium).toBe(5);
+    expect(state.ammo.shell).toBe(5);
     expect(state.items).toHaveLength(0);
     expect(state.player.ap).toBe(2);
   });
@@ -155,6 +155,6 @@ describe("pickup", () => {
     expect(state.enemies).toHaveLength(0);
     const drop = state.items.find((i) => i.kind === "ammo");
     expect(drop).toBeDefined();
-    expect(drop).toMatchObject({ x: 3, y: 2, caliber: "small" });
+    expect(drop).toMatchObject({ x: 3, y: 2, caliber: "pistol" });
   });
 });

@@ -52,4 +52,4 @@ export function floorDef(depth: number): FloorDef {
   return def;
 }
 
-export const CALIBERS: Caliber[] = ["small", "medium", "large"];
+export const CALIBERS: Caliber[] = ["pistol", "shell", "rifle", "heavy"];

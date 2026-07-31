@@ -91,7 +91,7 @@ export function makeState(
     player,
     enemies: opts.enemies ?? [],
     items: opts.items ?? [],
-    ammo: opts.ammo ?? { small: 24, medium: 0, large: 0 },
+    ammo: opts.ammo ?? { pistol: 24, shell: 0, rifle: 0, heavy: 0 },
     nextId: 1000,
     log: [],
   };

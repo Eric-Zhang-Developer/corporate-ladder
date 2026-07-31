@@ -29,6 +29,8 @@ export interface Entity {
   ammoInMag: number;
   /** Enemies idle until they spot the player; always true for the player. */
   alerted: boolean;
+  /** Flat DR subtracted from EVERY pellet. Blades ignore it. */
+  armor?: number;
   /** Taser rule (§4.1): AP lost at the next refill, then cleared. */
   pendingApDrain?: number;
   /** Camera only: turns until the response team arrives. */
@@ -119,7 +121,7 @@ export function pushLog(state: GameState, message: string): void {
 export function spawnEnemy(id: number, defId: string, x: number, y: number): Entity {
   const def = enemyDef(defId);
   const weapon = def.weaponId ? weaponDef(def.weaponId) : null;
-  return {
+  const entity: Entity = {
     id,
     defId,
     name: def.name,
@@ -135,5 +137,10 @@ export function spawnEnemy(id: number, defId: string, x: number, y: number): Ent
     ammoInMag: weapon?.magSize ?? 0,
     alerted: false,
   };
+  // Copied onto the entity rather than read from the def at damage time so a
+  // future cracked-armor mechanic has somewhere to write. Omitted when zero —
+  // invariant 2 forbids undefined-valued keys.
+  if (def.armor) entity.armor = def.armor;
+  return entity;
 }
 

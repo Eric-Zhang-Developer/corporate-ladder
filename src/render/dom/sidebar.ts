@@ -1,6 +1,6 @@
 import { dmgPerAp, weaponDef } from "../../data/weapons";
 import { KNIFE } from "../../data/costs";
-import { LAST_FLOOR } from "../../data/floors";
+import { CALIBERS, LAST_FLOOR } from "../../data/floors";
 import { distance, idx, type GameState } from "../../sim/state";
 import type { UIState } from "../tiles";
 
@@ -16,9 +16,10 @@ export function buildSidebar(root: HTMLElement): void {
       <div class="ap-row"><span class="label">AP</span><span class="ap-pips"></span><span class="floor-cell"></span></div>
     </section>
     <section class="ammo">
-      <div class="ammo-cell"><span class="cal">SMALL</span><span class="amt" data-cal="small"></span></div>
-      <div class="ammo-cell"><span class="cal">MEDIUM</span><span class="amt" data-cal="medium"></span></div>
-      <div class="ammo-cell"><span class="cal">LARGE</span><span class="amt" data-cal="large"></span></div>
+      ${CALIBERS.map(
+        (cal) =>
+          `<div class="ammo-cell"><span class="cal">${cal.toUpperCase()}</span><span class="amt" data-cal="${cal}"></span></div>`,
+      ).join("")}
     </section>
     <section class="minimap-wrap">
       <canvas class="minimap" width="144" height="90"></canvas>
@@ -66,7 +67,7 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
   q(".floor-cell").textContent = `F${state.floor}/${LAST_FLOOR}`;
 
   // Ammo — always on screen; it is the food clock (§9.2)
-  for (const cal of ["small", "medium", "large"] as const) {
+  for (const cal of CALIBERS) {
     q(`.amt[data-cal="${cal}"]`).textContent = String(state.ammo[cal]);
   }
 

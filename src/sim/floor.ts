@@ -184,7 +184,7 @@ export function newGame(seed: number): GameState {
     player,
     enemies: [],
     items: [],
-    ammo: { small: 24, medium: 0, large: 0 },
+    ammo: { pistol: 24, shell: 0, rifle: 0, heavy: 0 },
     nextId: 1,
     log: ["Find whoever signs the checks."],
   };

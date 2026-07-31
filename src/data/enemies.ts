@@ -26,6 +26,18 @@ export interface EnemyDef {
   sightRange: number;
   /** Ranged only: advances until this close before it starts shooting. */
   preferredRange?: number;
+  /**
+   * Flat damage reduction applied to EVERY pellet of every shot. Blades
+   * (knife, bayonet) ignore it entirely — gaps in the plate — which is what
+   * turns an armored enemy into something you would rather charge than spray.
+   */
+  armor?: number;
+  /**
+   * Machines: EMP hurts them, flashbangs do not, they drop no cash, and they
+   * never flinch or flee. Also the tone valve — machines are polite while
+   * they kill you.
+   */
+  machine?: boolean;
   /** Melee only: damage per hit. */
   meleeDamage?: number;
   /** Melee hits per turn regardless of AP left (default 1). */
@@ -54,7 +66,7 @@ export const ENEMIES = {
     behavior: "pursueAndShoot",
     spotLine: `The Rent-a-Cop shouts, "Hey! You can't be up here!"`,
     killVerb: "Shot to death by",
-    drops: [{ chance: 1, ammo: { caliber: "small", min: 4, max: 8 } }],
+    drops: [{ chance: 1, ammo: { caliber: "pistol", min: 4, max: 8 } }],
   },
   dog: {
     id: "dog",
@@ -84,7 +96,7 @@ export const ENEMIES = {
     behavior: "meleeRush",
     spotLine: `The Taser Guard yells, "Compliance is mandatory!"`,
     killVerb: "Tased into retirement by",
-    drops: [{ chance: 1, ammo: { caliber: "small", min: 2, max: 4 } }],
+    drops: [{ chance: 1, ammo: { caliber: "pistol", min: 2, max: 4 } }],
   },
   shotgun: {
     id: "shotgun",
@@ -100,7 +112,7 @@ export const ENEMIES = {
     spotLine: `The Shotgun Guard racks a shell. "Wrong floor, buddy."`,
     killVerb: "Turned into a memo by",
     drops: [
-      { chance: 1, ammo: { caliber: "medium", min: 3, max: 5 } },
+      { chance: 1, ammo: { caliber: "shell", min: 3, max: 5 } },
       { chance: 0.3, weaponId: "serbu" },
     ],
   },
@@ -111,6 +123,7 @@ export const ENEMIES = {
     color: "#ff5555",
     hp: 1,
     ap: 0,
+    machine: true,
     sightRange: 8,
     behavior: "cameraAlarm",
     killVerb: "Watched to death by",
