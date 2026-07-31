@@ -1,8 +1,17 @@
 import { enemyDef } from "../data/enemies";
-import { bandFor, weaponDef } from "../data/weapons";
-import { KNIFE } from "../data/costs";
+import { bandFor, weaponDef, type WeaponDef } from "../data/weapons";
+import { AP_COSTS, KNIFE } from "../data/costs";
 import type { SimRNG } from "./rng";
 import { distance, pushLog, type Entity, type GameState } from "./state";
+
+/**
+ * What pulling the trigger costs right now, including working a bolt that was
+ * left open. Callers guard on this; fireWeapon spends it.
+ */
+export function apToFire(attacker: Entity, weapon: WeaponDef): number {
+  const boltOpen = weapon.boltAction === true && attacker.chambered === false;
+  return weapon.apFire + (boltOpen ? AP_COSTS.cycle : 0);
+}
 
 /**
  * One firing path for everyone — the player and every enemy resolve shots
@@ -14,13 +23,21 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
   if (!attacker.weaponId) return;
   const weapon = weaponDef(attacker.weaponId);
   const pellets = Math.min(weapon.pellets ?? 1, attacker.ammoInMag);
+  const isPlayer = attacker.id === state.player.id;
+
+  if (weapon.boltAction) {
+    if (attacker.chambered === false) {
+      attacker.ap -= AP_COSTS.cycle;
+      pushLog(state, isPlayer ? "You work the bolt." : `The ${attacker.name} works the bolt.`);
+    }
+    attacker.chambered = false;
+  }
   attacker.ap -= weapon.apFire;
   attacker.ammoInMag -= pellets;
   // Gunfire is loud: being shot at wakes the target regardless of outcome.
   // (Stage 3's suppressor attachment is the counterplay to this rule.)
   defender.alerted = true;
 
-  const isPlayer = attacker.id === state.player.id;
   const dist = distance(attacker, defender);
   const band = bandFor(weapon, dist);
   if (!band) {
@@ -32,7 +49,10 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
   // asymmetry is the whole point: four small pellets pay the tax four times
   // and fold against plate, while one heavy round punches through.
   const armor = Math.max(0, (defender.armor ?? 0) - (weapon.armorPierce ?? 0));
-  const accuracy = weapon.baseAccuracy * band.accMult;
+  // Braced: set your feet and the belt-fed stops spraying the ceiling. The
+  // cheap version of a bipod — no new action, just "did you move this turn".
+  const braced = weapon.bracedBonus && !attacker.movedThisTurn ? weapon.bracedBonus : 0;
+  const accuracy = Math.min(1, weapon.baseAccuracy * band.accMult + braced);
   let hits = 0;
   let totalDmg = 0;
   for (let i = 0; i < pellets; i++) {
@@ -84,12 +104,17 @@ export function meleeAttack(state: GameState, rng: SimRNG, attacker: Entity, def
   defender.alerted = true;
   const isPlayer = attacker.id === state.player.id;
   const def = isPlayer ? null : enemyDef(attacker.defId);
-  const dmg = isPlayer ? KNIFE.damage : (def?.meleeDamage ?? 1);
+  // A bayonet replaces the knife while its rifle is in hand — which is what
+  // makes the SKS the T1 rifle that does not panic when the dog closes.
+  const blade = isPlayer && attacker.weaponId ? weaponDef(attacker.weaponId).bayonet : undefined;
+  const dmg = isPlayer ? (blade ?? KNIFE.damage) : (def?.meleeDamage ?? 1);
 
   pushLog(
     state,
     isPlayer
-      ? `You knife the ${defender.name} for ${dmg}.`
+      ? blade
+        ? `You bayonet the ${defender.name} for ${dmg}.`
+        : `You knife the ${defender.name} for ${dmg}.`
       : `The ${attacker.name} strikes you for ${dmg}.`,
   );
 

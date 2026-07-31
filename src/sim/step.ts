@@ -2,12 +2,21 @@ import { AP_COSTS } from "../data/costs";
 import { maxRange, weaponDef } from "../data/weapons";
 import type { Action } from "./actions";
 import { runEnemyTurns } from "./ai";
-import { fireWeapon, meleeAttack } from "./combat";
+import { apToFire, fireWeapon, meleeAttack } from "./combat";
 import { applyFloor, LAST_FLOOR } from "./floor";
 import { recomputeFov } from "./fov";
 import { hasLos } from "./los";
 import { simRngFromState, type SimRNG } from "./rng";
-import { distance, entityAt, idx, isFloor, pushLog, type Entity, type GameState } from "./state";
+import {
+  distance,
+  entityAt,
+  idx,
+  isFloor,
+  pushLog,
+  type Entity,
+  type GameState,
+  type WeaponSlot,
+} from "./state";
 
 /**
  * The whole game advances through this single entry point. A player turn is
@@ -53,6 +62,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       player.x = nx;
       player.y = ny;
       player.ap -= AP_COSTS.move;
+      player.movedThisTurn = true; // forfeits the braced bonus until next refill
       return;
     }
     case "fire": {
@@ -65,7 +75,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         pushLog(state, "Click. (R to reload)");
         return;
       }
-      if (player.ap < weapon.apFire) {
+      if (player.ap < apToFire(player, weapon)) {
         pushLog(state, "Not enough AP to fire.");
         return;
       }
@@ -87,6 +97,18 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         return;
       }
       const weapon = weaponDef(player.weaponId);
+      // R means "make the gun ready". On a bolt gun with the bolt left open,
+      // that is the cycle — not a reload — so the deferred cycle has a key.
+      if (weapon.boltAction && player.chambered === false) {
+        if (player.ap < AP_COSTS.cycle) {
+          pushLog(state, "Not enough AP to work the bolt.");
+          return;
+        }
+        player.ap -= AP_COSTS.cycle;
+        delete player.chambered;
+        pushLog(state, "You work the bolt.");
+        return;
+      }
       if (player.ammoInMag >= weapon.magSize) {
         pushLog(state, "Magazine already full.");
         return;
@@ -100,11 +122,21 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         pushLog(state, "Not enough AP to reload.");
         return;
       }
-      const take = Math.min(weapon.magSize - player.ammoInMag, reserve);
+      // En-bloc clips go in whole and come out whole: whatever was left in the
+      // magazine is thrown away with the clip. Shoot it dry or pay for it.
+      const wasted = weapon.reloadDiscards ? player.ammoInMag : 0;
+      const room = weapon.magSize - (weapon.reloadDiscards ? 0 : player.ammoInMag);
+      const take = Math.min(room, reserve);
       player.ap -= weapon.apReload;
-      player.ammoInMag += take;
+      player.ammoInMag = weapon.reloadDiscards ? take : player.ammoInMag + take;
       state.ammo[weapon.caliber] -= take;
-      pushLog(state, `You reload. (${state.ammo[weapon.caliber]} ${weapon.caliber} left)`);
+      delete player.chambered; // a fresh magazine closes the bolt
+      pushLog(
+        state,
+        wasted > 0
+          ? `You reload — ${wasted} rounds wasted. (${state.ammo[weapon.caliber]} ${weapon.caliber} left)`
+          : `You reload. (${state.ammo[weapon.caliber]} ${weapon.caliber} left)`,
+      );
       return;
     }
     case "swap": {
@@ -124,11 +156,18 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         pushLog(state, "Not enough AP to swap.");
         return;
       }
-      slots[active] = player.weaponId
-        ? { weaponId: player.weaponId, ammoInMag: player.ammoInMag }
-        : null;
+      // Stowing a rifle does not close its bolt, so the flag rides in the slot.
+      if (player.weaponId) {
+        const stowed: WeaponSlot = { weaponId: player.weaponId, ammoInMag: player.ammoInMag };
+        if (player.chambered === false) stowed.chambered = false;
+        slots[active] = stowed;
+      } else {
+        slots[active] = null;
+      }
       player.weaponId = target.weaponId;
       player.ammoInMag = target.ammoInMag;
+      if (target.chambered === false) player.chambered = false;
+      else delete player.chambered;
       player.activeSlot = action.slot;
       player.ap -= AP_COSTS.swap;
       pushLog(state, `You draw the ${weaponDef(target.weaponId).name}.`);
@@ -215,7 +254,13 @@ function pickTarget(state: GameState, targetId?: number): Entity | null {
   return candidates.reduce((a, b) => (distance(player, a) <= distance(player, b) ? a : b));
 }
 
-function refillAp(entity: { ap: number; maxAp: number; pendingApDrain?: number }): void {
+function refillAp(entity: {
+  ap: number;
+  maxAp: number;
+  pendingApDrain?: number;
+  movedThisTurn?: boolean;
+}): void {
   entity.ap = Math.max(0, entity.maxAp - (entity.pendingApDrain ?? 0));
   delete entity.pendingApDrain;
+  delete entity.movedThisTurn;
 }

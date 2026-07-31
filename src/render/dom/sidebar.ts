@@ -30,6 +30,7 @@ export function buildSidebar(root: HTMLElement): void {
         <div class="card-name"></div>
         <div class="card-mag"></div>
         <div class="card-dpa"></div>
+        <div class="card-state"></div>
       </div>
       <div class="card knife-card">
         <div class="card-name">Knife</div>
@@ -89,6 +90,20 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
       .sort((a, b) => distance(player, a) - distance(player, b))[0];
   q(".gun-card .card-dpa").textContent =
     gun && target ? `${dmgPerAp(gun, distance(player, target)).toFixed(2)} dmg/AP @ target` : "— dmg/AP";
+
+  // Weapon states the player cannot otherwise see: an open bolt costs an extra
+  // AP on the next shot, and braced is live only until they move.
+  const flags: string[] = [];
+  if (gun?.boltAction) flags.push(player.chambered === false ? "CYCLE" : "READY");
+  if (gun?.bracedBonus && !player.movedThisTurn) flags.push("BRACED");
+  if (gun?.reloadDiscards && player.ammoInMag > 0) flags.push(`CLIP ${player.ammoInMag}`);
+  const stateEl = q<HTMLDivElement>(".gun-card .card-state");
+  stateEl.textContent = flags.join(" · ");
+  stateEl.classList.toggle("warn", flags.includes("CYCLE"));
+
+  // Melee card: a bayonet replaces the knife while its rifle is in hand
+  q(".knife-card .card-name").textContent = gun?.bayonet ? "Bayonet" : "Knife";
+  q(".knife-card .card-dpa").textContent = `${(gun?.bayonet ?? KNIFE.damage).toFixed(1)} dmg/AP`;
 
   // Weapon slots
   for (let i = 0; i < 3; i++) {

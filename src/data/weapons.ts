@@ -3,6 +3,7 @@
  * band is the only balance currency (§2, §8) — the shape here is the
  * balance spreadsheet in code.
  */
+import { AP_COSTS } from "./costs";
 
 /**
  * Four ammo channels, not three. Each is an economy valve rather than realism:
@@ -45,6 +46,18 @@ export interface WeaponDef {
    * Rare and T3+ — it is what lets a small gun stay relevant against plate.
    */
   armorPierce?: number;
+  /**
+   * Fire empties the chamber; the next shot needs a cycle first. Entity
+   * .chambered === false means the bolt is open (absent means ready, so no
+   * spawn or pickup site has to know about this).
+   */
+  boltAction?: boolean;
+  /** While this gun is held, bump-melee does this instead of KNIFE.damage. */
+  bayonet?: number;
+  /** En-bloc clips: reloading throws away whatever was left in the magazine. */
+  reloadDiscards?: boolean;
+  /** Accuracy bonus when the shooter spent no AP moving this turn (LMGs). */
+  bracedBonus?: number;
   /** Loot tier; absent on enemy-only variants, which are tuned separately. */
   tier?: 0 | 1 | 2 | 3 | 4;
   cls?: WeaponClass;
@@ -129,7 +142,7 @@ export const WEAPONS = {
   mosin: {
     id: "mosin",
     name: "Mosin-Nagant",
-    apFire: 2,
+    apFire: 1,
     apReload: 2,
     damage: 8,
     baseAccuracy: 0.9,
@@ -140,9 +153,76 @@ export const WEAPONS = {
     ],
     magSize: 5,
     caliber: "heavy",
+    // 1 AP to fire, 1 to cycle: the same 2 AP per shot it always cost, except
+    // the cycle can now be deferred to buy a repositioning turn.
+    boltAction: true,
     intendedBand: 1,
     tier: 1,
     cls: "sniper",
+  },
+  sks: {
+    id: "sks",
+    name: "SKS",
+    apFire: 1,
+    apReload: 2,
+    damage: 6,
+    baseAccuracy: 0.65,
+    bands: [
+      { maxDist: 1, accMult: 0.8, dmgMult: 1.0 },
+      { maxDist: 5, accMult: 0.9, dmgMult: 1.0 },
+      { maxDist: 7, accMult: 0.5, dmgMult: 1.0 },
+    ],
+    magSize: 10,
+    caliber: "rifle",
+    // The folding bayonet is the whole identity: every other rifle panics when
+    // the dog closes, this one shrugs and stabs.
+    bayonet: 4,
+    intendedBand: 1,
+    tier: 1,
+    cls: "dmr",
+  },
+  garand: {
+    id: "garand",
+    name: "M1 Garand",
+    apFire: 1,
+    apReload: 1,
+    damage: 6,
+    baseAccuracy: 0.85,
+    bands: [
+      { maxDist: 2, accMult: 0.7, dmgMult: 1.0 },
+      { maxDist: 7, accMult: 0.95, dmgMult: 1.0 },
+      { maxDist: 9, accMult: 0.7, dmgMult: 1.0 },
+    ],
+    magSize: 8,
+    caliber: "heavy",
+    // En-bloc: the clip goes in whole and comes out whole. Topping up throws
+    // away what is left, in the scarcest channel in the game.
+    reloadDiscards: true,
+    intendedBand: 1,
+    tier: 2,
+    cls: "dmr",
+  },
+  m249: {
+    id: "m249",
+    name: "M249",
+    apFire: 1,
+    apReload: 3,
+    damage: 2,
+    baseAccuracy: 0.68,
+    bands: [
+      { maxDist: 1, accMult: 0.8, dmgMult: 1.0 },
+      { maxDist: 5, accMult: 0.9, dmgMult: 1.0 },
+      { maxDist: 8, accMult: 0.5, dmgMult: 1.0 },
+    ],
+    magSize: 50,
+    caliber: "rifle",
+    pellets: 5,
+    // Set your feet and hold the doorway; the 3-AP reload is a full helpless
+    // turn, which is the enemy punish-window mechanic pointed at the player.
+    bracedBonus: 0.15,
+    intendedBand: 1,
+    tier: 3,
+    cls: "lmg",
   },
   // Enemy-tuned variants — separate entries so enemy lethality tunes
   // independently of the player's guns.
@@ -212,5 +292,14 @@ export function dmgPerApVs(def: WeaponDef, dist: number, armor: number): number 
   const pellets = def.pellets ?? 1;
   const effective = Math.max(0, armor - (def.armorPierce ?? 0));
   const perPellet = Math.max(0, def.damage * band.dmgMult - effective);
-  return (pellets * perPellet * def.baseAccuracy * band.accMult) / def.apFire;
+  return (pellets * perPellet * def.baseAccuracy * band.accMult) / sustainedApPerShot(def);
+}
+
+/**
+ * A bolt gun's true cost per shot includes working the bolt. Amortizing here
+ * keeps the balance currency honest: deferring the cycle buys tempo, paid for
+ * with an open bolt at the start of the next fight — never with free damage.
+ */
+export function sustainedApPerShot(def: WeaponDef): number {
+  return def.apFire + (def.boltAction ? AP_COSTS.cycle : 0);
 }

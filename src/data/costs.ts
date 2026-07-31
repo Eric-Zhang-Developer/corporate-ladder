@@ -3,6 +3,12 @@ export const AP_COSTS = {
   melee: 1,
   swap: 1,
   pickup: 1,
+  /**
+   * Working a bolt. Amortized this costs a bolt gun the same 2 AP per shot it
+   * always paid — the point is that the cycle can be *deferred*: shoot, move
+   * twice, and start the next fight with the bolt open and regretting it.
+   */
+  cycle: 1,
 } as const;
 
 /**

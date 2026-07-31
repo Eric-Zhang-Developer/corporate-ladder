@@ -31,6 +31,14 @@ export interface Entity {
   alerted: boolean;
   /** Flat DR subtracted from EVERY pellet. Blades ignore it. */
   armor?: number;
+  /**
+   * Bolt guns only, and only ever set to false: absent means the chamber is
+   * loaded. Storing the exceptional state means no spawn, pickup, or test
+   * fixture has to know bolts exist.
+   */
+  chambered?: boolean;
+  /** Set by moving, cleared at refill — the braced-fire gate for LMGs. */
+  movedThisTurn?: boolean;
   /** Taser rule (§4.1): AP lost at the next refill, then cleared. */
   pendingApDrain?: number;
   /** Camera only: turns until the response team arrives. */
@@ -48,6 +56,8 @@ export interface Entity {
 export interface WeaponSlot {
   weaponId: string;
   ammoInMag: number;
+  /** Preserved across swaps: stowing a bolt gun does not close its bolt. */
+  chambered?: boolean;
 }
 
 export type GroundItem = { id: number; x: number; y: number } & (
