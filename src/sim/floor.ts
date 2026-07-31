@@ -84,6 +84,23 @@ export function buildFloor(
     }
   }
 
+  // The pair's miniboss, placed deliberately and never in the entrance room.
+  if (def.boss && spawnRooms.length > 0) {
+    const bossDef = enemyDef(def.boss);
+    const room = spawnRooms[spawnRooms.length - 1]!;
+    const spot = freeTileNear(gen.map, occupied, room.x, room.y);
+    if (spot) {
+      occupied.add(`${spot[0]},${spot[1]}`);
+      enemies.push(spawnEnemy(nextId++, def.boss, spot[0], spot[1]));
+      for (const escortId of bossDef.escorts ?? []) {
+        const escortSpot = freeTileNear(gen.map, occupied, room.x, room.y);
+        if (!escortSpot) continue;
+        occupied.add(`${escortSpot[0]},${escortSpot[1]}`);
+        enemies.push(spawnEnemy(nextId++, escortId, escortSpot[0], escortSpot[1]));
+      }
+    }
+  }
+
   // Loot room: the unused (or last) spawn room gets a weapon + its ammo.
   const lootRoom = spawnRooms[groupCount % spawnRooms.length] ?? spawnRooms[spawnRooms.length - 1];
   if (lootRoom) {

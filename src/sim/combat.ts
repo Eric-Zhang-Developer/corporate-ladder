@@ -3,7 +3,7 @@ import { perkDef } from "../data/perks";
 import { bandFor, weaponDef, type WeaponDef } from "../data/weapons";
 import { AP_COSTS, KNIFE } from "../data/costs";
 import type { SimRNG } from "./rng";
-import { distance, hasPerk, pushLog, type Entity, type GameState } from "./state";
+import { distance, hasPerk, pushLog, spawnItemNear, type Entity, type GameState } from "./state";
 
 /**
  * What pulling the trigger costs right now, including working a bolt that was
@@ -218,7 +218,7 @@ function rollDrops(state: GameState, rng: SimRNG, corpse: Entity): void {
       const { caliber, min, max } = drop.ammo;
       const rolled = min + Math.floor(rng.next() * (max - min + 1));
       const amount = hasPerk(state, "asset_recovery") ? Math.ceil(rolled * 1.5) : rolled;
-      state.items.push({ id: state.nextId++, x: corpse.x, y: corpse.y, kind: "ammo", caliber, amount });
+      spawnItemNear(state, { kind: "ammo", caliber, amount }, corpse.x, corpse.y);
     }
     if (drop.cash) {
       const { min, max } = drop.cash;
@@ -227,24 +227,16 @@ function rollDrops(state: GameState, rng: SimRNG, corpse: Entity): void {
       pushLog(state, `You pocket ${amount} credits.`);
     }
     if (drop.itemId) {
-      state.items.push({
-        id: state.nextId++,
-        x: corpse.x,
-        y: corpse.y,
-        kind: "consumable",
-        itemId: drop.itemId,
-      });
+      spawnItemNear(state, { kind: "consumable", itemId: drop.itemId }, corpse.x, corpse.y);
     }
     if (drop.weaponId) {
       const weapon = weaponDef(drop.weaponId);
-      state.items.push({
-        id: state.nextId++,
-        x: corpse.x,
-        y: corpse.y,
-        kind: "weapon",
-        weaponId: drop.weaponId,
-        ammoInMag: weapon.magSize,
-      });
+      spawnItemNear(
+        state,
+        { kind: "weapon", weaponId: drop.weaponId, ammoInMag: weapon.magSize },
+        corpse.x,
+        corpse.y,
+      );
     }
   }
 }

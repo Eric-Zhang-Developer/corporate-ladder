@@ -56,6 +56,8 @@ describe("buildFloor", () => {
   });
 });
 
+const MELEE_BEHAVIORS = new Set(["meleeRush", "detonate"]);
+
 describe("floor data (§2 pillar 3)", () => {
   it("keeps melee spawn weight between 28% and 45% on every floor", () => {
     for (const floor of FLOORS) {
@@ -64,7 +66,9 @@ describe("floor data (§2 pillar 3)", () => {
       for (const [id, w] of Object.entries(floor.weights)) {
         total += w;
         const def = enemyDef(id);
-        if (def.behavior === "meleeRush") melee += w;
+        // Anything that has to reach you is melee pressure, not just meleeRush:
+        // the FPV drone closes and trades itself, which is the same job.
+        if (MELEE_BEHAVIORS.has(def.behavior)) melee += w;
       }
       const fraction = melee / total;
       expect(fraction).toBeGreaterThanOrEqual(0.28);

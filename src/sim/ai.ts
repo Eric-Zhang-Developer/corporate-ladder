@@ -1,6 +1,7 @@
 import { Path } from "rot-js";
 import { enemyDef, type BehaviorId, type EnemyDef } from "../data/enemies";
 import { maxRange, weaponDef } from "../data/weapons";
+import { detonate as detonateBlast } from "./aoe";
 import { fireWeapon, meleeAttack } from "./combat";
 import { hasLos } from "./los";
 import type { SimRNG } from "./rng";
@@ -19,6 +20,8 @@ import {
 export const CAMERA_SPAWN_CAP = 4;
 const CAMERA_TEAM_SIZE = 2;
 const CAMERA_COUNTDOWN = 2;
+/** Waves a camera will call before its budget runs out. */
+export const CAMERA_WAVE_CAP = 2;
 
 export function runEnemyTurns(state: GameState, rng: SimRNG): void {
   for (const enemy of [...state.enemies]) {
@@ -35,6 +38,7 @@ const BEHAVIORS: Record<BehaviorId, Behavior> = {
   pursueAndShoot,
   meleeRush,
   cameraAlarm,
+  detonate,
 };
 
 /**
@@ -136,6 +140,10 @@ function meleeRush(state: GameState, rng: SimRNG, enemy: Entity): void {
  */
 function cameraAlarm(state: GameState, _rng: SimRNG, enemy: Entity): void {
   const def = enemyDef(enemy.defId);
+  // Out of waves: inert. It keeps its glyph so the player can see it is spent.
+  if (enemy.alarmWaves !== undefined && enemy.alarmWaves >= (def.alarmWaves ?? CAMERA_WAVE_CAP)) {
+    return;
+  }
   const player = state.player;
 
   if (enemy.alarmTimer === undefined) {
@@ -153,6 +161,14 @@ function cameraAlarm(state: GameState, _rng: SimRNG, enemy: Entity): void {
   if (enemy.alarmTimer > 0) return;
 
   delete enemy.alarmTimer; // re-arms on next LOS
+  // Finite response budget. Two waves and the camera goes dark, which kills
+  // XP-farming and loot-farming at the source rather than gating the rewards.
+  const cap = def.alarmWaves ?? CAMERA_WAVE_CAP;
+  enemy.alarmWaves = (enemy.alarmWaves ?? 0) + 1;
+  if (enemy.alarmWaves > cap) {
+    pushLog(state, `The ${enemy.name} goes dark. Response budget exhausted.`);
+    return;
+  }
   const alive = state.enemies.filter((e) => e.spawnedBy === "camera").length;
   const toSpawn = Math.min(CAMERA_TEAM_SIZE, CAMERA_SPAWN_CAP - alive);
   if (toSpawn <= 0) return;
@@ -175,6 +191,37 @@ function cameraAlarm(state: GameState, _rng: SimRNG, enemy: Entity): void {
   }
   if (tiles.length > 0) {
     pushLog(state, `Elevator chime. A response team fans out from the entrance.`);
+  }
+}
+
+/**
+ * Kamikaze drones. Closes fast and trades itself for a blast — the answer to a
+ * player who has learned to fight from a fortified doorway, because it does not
+ * care about doorways. Reuses the grenade blast helper from the other side.
+ */
+function detonate(state: GameState, rng: SimRNG, enemy: Entity): void {
+  const def = enemyDef(enemy.defId);
+  if (!checkSpotted(state, enemy, def)) return;
+
+  while (enemy.ap > 0 && state.phase === "playing") {
+    if (distance(enemy, state.player) <= 1) {
+      pushLog(state, `The ${enemy.name} dives at you.`);
+      // Remove it first: the blast must not damage the thing detonating it,
+      // and its own death is the cost, not a kill the player is credited for.
+      state.enemies = state.enemies.filter((e) => e.id !== enemy.id);
+      detonateBlast(
+        state,
+        rng,
+        enemy.x,
+        enemy.y,
+        { radius: 1, damage: def.detonateDamage ?? 6 },
+        enemy,
+        def.killVerb ?? "Blown apart by",
+      );
+      return;
+    }
+    if (!stepToward(state, enemy)) break;
+    enemy.ap -= 1;
   }
 }
 

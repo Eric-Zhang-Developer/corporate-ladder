@@ -4,7 +4,7 @@ import type { Caliber } from "./weapons";
  * Enemies are data entries (handoff §6 rule 2): adding one later must be a
  * new entry here plus, at most, one behavior function in sim/ai.ts.
  */
-export type BehaviorId = "pursueAndShoot" | "meleeRush" | "cameraAlarm";
+export type BehaviorId = "pursueAndShoot" | "meleeRush" | "cameraAlarm" | "detonate";
 
 export interface EnemyDrop {
   /** 0..1 — rolled independently per entry. */
@@ -51,6 +51,18 @@ export interface EnemyDef {
   /** Flat XP for the kill. Chaff 2-3, standard 5-7, elite 10-14, boss 25+. */
   xp: number;
   behavior: BehaviorId;
+  /** Detonators: damage dealt to everything adjacent when it goes off. */
+  detonateDamage?: number;
+  /**
+   * Alarm callers: how many response waves before going dark. Finite by
+   * design — the response team bills hourly, and infinite waves would make
+   * camera-farming a strategy instead of a trap.
+   */
+  alarmWaves?: number;
+  /** Escorts spawned alongside a boss. */
+  escorts?: string[];
+  /** One per floor pair, placed deliberately rather than rolled. */
+  boss?: boolean;
   /** Log line on spotting the player. */
   spotLine?: string;
   /** Death-screen prefix, e.g. "Bitten to death by". */
@@ -152,19 +164,178 @@ export const ENEMIES = {
     name: "Janitor",
     glyph: "j",
     color: "#88bb88",
-    hp: 14,
+    hp: 26,
     ap: 2,
-    sightRange: 6,
-    meleeDamage: 4,
+    sightRange: 7,
+    meleeDamage: 6,
     attacksPerTurn: 1,
-    xp: 12,
+    xp: 25,
+    boss: true,
     behavior: "meleeRush",
-    spotLine: "The Janitor sighs and hefts his wrench. Thirty years of this.",
+    // The joke boss, and the joke IS the fight: slow, unarmored, immune to
+    // nothing, and simply does not stop. A wall of seniority.
+    spotLine: "The Janitor puts down the mop and picks up the wrench. Thirty years of this.",
     killVerb: "Mopped up by",
     // Thirty years on the job and OSHA-certified for every one of them.
     drops: [
       { chance: 1, itemId: "medkit" },
       { chance: 1, cash: { min: 20, max: 35 } },
+    ],
+  },
+  // ---- T1: the lobby economy ----
+  roomba: {
+    id: "roomba",
+    name: "Custodial Unit",
+    glyph: "o",
+    color: "#88aa99",
+    hp: 2,
+    ap: 2,
+    xp: 2,
+    machine: true,
+    sightRange: 6,
+    meleeDamage: 1,
+    attacksPerTurn: 1,
+    behavior: "meleeRush",
+    // The tutorial robot: teaches every machine rule at one damage a bite.
+    spotLine: `The Custodial Unit chirps. "Cleaning in progress."`,
+    killVerb: "Buffed to death by",
+  },
+  baton: {
+    id: "baton",
+    name: "Baton Guard",
+    glyph: "b",
+    color: "#99aacc",
+    hp: 5,
+    ap: 3,
+    xp: 5,
+    sightRange: 8,
+    meleeDamage: 3,
+    attacksPerTurn: 1,
+    behavior: "meleeRush",
+    // The plain melee statistic, so the taser reads as the *scary* one.
+    spotLine: "The Baton Guard sighs and unclips his baton.",
+    killVerb: "Beaten down by",
+    drops: [{ chance: 1, cash: { min: 4, max: 9 } }],
+  },
+  // ---- T2: duty gear and the first machines with teeth ----
+  contractor: {
+    id: "contractor",
+    name: "Security Contractor",
+    glyph: "C",
+    color: "#7788dd",
+    hp: 10,
+    ap: 2,
+    xp: 8,
+    weaponId: "mp5_sec",
+    sightRange: 8,
+    preferredRange: 4,
+    behavior: "pursueAndShoot",
+    // A 30-round magazine: the punish windows the player learned to farm get
+    // scarcer exactly when the player got comfortable.
+    spotLine: `The Security Contractor keys his radio. "Got eyes on."`,
+    killVerb: "Shot to death by",
+    drops: [
+      { chance: 1, ammo: { caliber: "pistol", min: 6, max: 12 } },
+      { chance: 0.25, itemId: "bandage" },
+      { chance: 1, cash: { min: 8, max: 14 } },
+    ],
+  },
+  riot: {
+    id: "riot",
+    name: "Riot Guard",
+    glyph: "R",
+    color: "#ccbb66",
+    hp: 12,
+    armor: 2,
+    ap: 2,
+    xp: 10,
+    sightRange: 7,
+    meleeDamage: 5,
+    attacksPerTurn: 1,
+    behavior: "meleeRush",
+    // The armor system's teaching moment: the Uzi does nothing, the knife does
+    // everything. Deliberately over the hits-to-kill guardrail with the wrong
+    // tool — he is the exception that teaches the rule.
+    spotLine: "The Riot Guard raises his shield and advances.",
+    killVerb: "Shield-bashed by",
+    drops: [{ chance: 1, cash: { min: 10, max: 18 } }],
+  },
+  k9: {
+    id: "k9",
+    name: "K9 Unit",
+    glyph: "k",
+    color: "#aa8866",
+    hp: 9,
+    armor: 1,
+    ap: 3,
+    xp: 9,
+    machine: true,
+    sightRange: 9,
+    meleeDamage: 5,
+    attacksPerTurn: 1,
+    behavior: "meleeRush",
+    // The guard dog's product-line successor. Armor 1 quietly taxes every
+    // pellet, so the player who answered "dog" with "spray" learns to read the
+    // machine tag as "check your caliber".
+    spotLine: "The K9 Unit plays a recorded bark. Somehow that is worse.",
+    killVerb: "Torn apart by",
+  },
+  fpv: {
+    id: "fpv",
+    name: "FPV Drone",
+    glyph: "v",
+    color: "#dd6644",
+    hp: 1,
+    ap: 4,
+    xp: 3,
+    machine: true,
+    sightRange: 10,
+    detonateDamage: 8,
+    behavior: "detonate",
+    // The counter to fighting from a fortified doorway is a thing that does
+    // not care about doorways. It cannot be ignored and dies to anything.
+    spotLine: "A motor whine rises somewhere above you.",
+    killVerb: "Blown apart by",
+  },
+  supervisor: {
+    id: "supervisor",
+    name: "Supervisor",
+    glyph: "S",
+    color: "#dd99dd",
+    hp: 8,
+    ap: 2,
+    xp: 8,
+    sightRange: 9,
+    alarmWaves: 1,
+    behavior: "cameraAlarm",
+    // A human camera with a lanyard: his threat is procedure, not damage.
+    // Kill him first or fight the room and the cavalry.
+    spotLine: `The Supervisor reaches for his radio. "Logging a workplace incident."`,
+    killVerb: "Reported to death by",
+    drops: [{ chance: 1, cash: { min: 15, max: 25 } }],
+  },
+  handler: {
+    id: "handler",
+    name: "K9 Handler",
+    glyph: "H",
+    color: "#ffaa55",
+    hp: 18,
+    ap: 2,
+    xp: 25,
+    boss: true,
+    weaponId: "tec9_thug",
+    sightRange: 9,
+    preferredRange: 4,
+    behavior: "pursueAndShoot",
+    // Ordinary man, extraordinary context: he arrives with two K9 units and
+    // stands behind them, so reaching him means eating the charge.
+    escorts: ["k9", "k9"],
+    spotLine: "The K9 Handler whistles. Two speakers answer.",
+    killVerb: "Put down by",
+    drops: [
+      { chance: 1, cash: { min: 30, max: 50 } },
+      { chance: 1, itemId: "medshot" },
+      { chance: 1, ammo: { caliber: "pistol", min: 10, max: 18 } },
     ],
   },
 } satisfies Record<string, EnemyDef>;

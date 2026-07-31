@@ -1,6 +1,7 @@
 import { dmgPerAp, weaponDef } from "../../data/weapons";
 import { KNIFE } from "../../data/costs";
 import { carrierCapacity, carrierDef } from "../../data/carriers";
+import { enemyDef } from "../../data/enemies";
 import { CALIBERS, LAST_FLOOR } from "../../data/floors";
 import { HOTBAR_SLOTS, itemDef } from "../../data/items";
 import { distance, idx, type GameState } from "../../sim/state";
@@ -24,6 +25,7 @@ export function buildSidebar(root: HTMLElement): void {
           `<div class="ammo-cell"><span class="cal">${cal.toUpperCase()}</span><span class="amt" data-cal="${cal}"></span></div>`,
       ).join("")}
     </section>
+    <section class="target-card"><div class="tgt-none">no target</div></section>
     <section class="minimap-wrap">
       <canvas class="minimap" width="144" height="90"></canvas>
       <div class="minimap-placeholder">UNEXPLORED</div>
@@ -127,6 +129,22 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
   // Melee card: a bayonet replaces the knife while its rifle is in hand
   q(".knife-card .card-name").textContent = gun?.bayonet ? "Bayonet" : "Knife";
   q(".knife-card .card-dpa").textContent = `${(gun?.bayonet ?? KNIFE.damage).toFixed(1)} dmg/AP`;
+
+  // Target card: the readability half of the armor system. A player must be
+  // able to see that the riot guard has plate and the K9 is a machine BEFORE
+  // wasting a magazine learning it.
+  const card = q<HTMLDivElement>(".target-card");
+  if (target) {
+    const def = enemyDef(target.defId);
+    const pips = target.armor ? `<span class="tgt-armor">${"\u25c6".repeat(target.armor)}</span>` : "";
+    const tag = def.machine ? `<span class="tgt-machine">MACHINE</span>` : "";
+    card.innerHTML =
+      `<div class="tgt-row"><span class="tgt-name">${target.name}</span>${tag}</div>` +
+      `<div class="tgt-row"><span class="tgt-hp">${target.hp}/${target.maxHp} HP</span>${pips}` +
+      `<span class="tgt-dist">${distance(player, target).toFixed(1)} tiles</span></div>`;
+  } else {
+    card.innerHTML = `<div class="tgt-none">no target</div>`;
+  }
 
   // Weapon slots
   for (let i = 0; i < 3; i++) {

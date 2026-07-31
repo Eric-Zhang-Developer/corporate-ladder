@@ -50,6 +50,8 @@ export interface Entity {
   pendingApDrain?: number;
   /** Camera only: turns until the response team arrives. */
   alarmTimer?: number;
+  /** Alarm callers: waves already sent. Past the cap they go dark. */
+  alarmWaves?: number;
   /** Set on response-team cops so the alive-cap can count them. */
   spawnedBy?: string;
   /**
@@ -213,6 +215,28 @@ export function freeTilesNear(
 /** Perk lookup. Cheap enough to call at a touchpoint; perks is a short list. */
 export function hasPerk(state: GameState, id: string): boolean {
   return state.perks.includes(id);
+}
+
+/**
+ * Places an item at (x,y) or the nearest free tile. One item per tile is law:
+ * piles would mean pickup menus, and stacking loot under a vending machine
+ * makes the tile's other contents unreachable.
+ */
+export function spawnItemNear(
+  state: GameState,
+  payload: GroundItemPayload,
+  x: number,
+  y: number,
+): void {
+  const spot = freeTilesNear(
+    state.map,
+    x,
+    y,
+    1,
+    (fx, fy) => !state.items.some((i) => i.x === fx && i.y === fy),
+  )[0];
+  if (!spot) return; // nowhere to put it down
+  state.items.push({ ...payload, id: state.nextId++, x: spot.x, y: spot.y });
 }
 
 export function pushLog(state: GameState, message: string): void {

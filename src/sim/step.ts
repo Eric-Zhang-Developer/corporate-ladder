@@ -28,11 +28,11 @@ import { createSimRng, simRngFromState, type SimRNG } from "./rng";
 import {
   distance,
   entityAt,
-  freeTilesNear,
   hasPerk,
   idx,
   isFloor,
   pushLog,
+  spawnItemNear,
   type Entity,
   type GameState,
   type GroundItemPayload,
@@ -284,7 +284,11 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       return;
     }
     case "pickup": {
-      const item = state.items.find((i) => i.x === player.x && i.y === player.y);
+      // A vending machine shares its tile with whatever the fight left behind.
+      // Real loot wins: a machine you can use any time must never mask a
+      // magazine you cannot.
+      const here = state.items.filter((i) => i.x === player.x && i.y === player.y);
+      const item = here.find((i) => i.kind !== "vending") ?? here[0];
       if (!item) {
         pushLog(state, "Nothing here to pick up.");
         return;
@@ -671,15 +675,7 @@ function hotbarSlotFor(state: GameState, itemId: string): number {
  * outward to the nearest free one.
  */
 function scatterItem(state: GameState, item: GroundItemPayload): void {
-  const spot = freeTilesNear(
-    state.map,
-    state.player.x,
-    state.player.y,
-    1,
-    (x, y) => !state.items.some((i) => i.x === x && i.y === y),
-  )[0];
-  if (!spot) return; // nowhere to put it; the item is simply gone
-  state.items.push({ ...item, id: state.nextId++, x: spot.x, y: spot.y });
+  spawnItemNear(state, item, state.player.x, state.player.y);
 }
 
 /**
