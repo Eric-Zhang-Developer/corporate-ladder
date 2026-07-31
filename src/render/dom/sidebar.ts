@@ -2,6 +2,7 @@ import { dmgPerAp, weaponDef } from "../../data/weapons";
 import { KNIFE } from "../../data/costs";
 import { carrierCapacity, carrierDef } from "../../data/carriers";
 import { CALIBERS, LAST_FLOOR } from "../../data/floors";
+import { HOTBAR_SLOTS, itemDef } from "../../data/items";
 import { distance, idx, type GameState } from "../../sim/state";
 import type { UIState } from "../tiles";
 
@@ -46,10 +47,11 @@ export function buildSidebar(root: HTMLElement): void {
       <div class="slot" data-slot="2"><span class="key">3</span><span class="slot-name"></span><span class="slot-mag"></span></div>
     </section>
     <section class="consumables">
-      <div class="consumable-empty">—</div>
-      <div class="consumable-empty">—</div>
-      <div class="consumable-empty">—</div>
-      <div class="consumable-empty">—</div>
+      ${Array.from(
+        { length: HOTBAR_SLOTS },
+        (_, i) =>
+          `<div class="hotbar-cell" data-hot="${i}"><span class="key">${i + 4}</span><span class="hot-name">—</span><span class="hot-count"></span></div>`,
+      ).join("")}
     </section>
     <footer class="run-meta"><span class="seed"></span><span class="turn"></span></footer>
   `;
@@ -135,6 +137,15 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
     cell.classList.toggle("active", isActive);
     cell.querySelector(".slot-name")!.textContent = shown ? weaponDef(shown.weaponId).name : "empty";
     cell.querySelector(".slot-mag")!.textContent = shown ? `${shown.ammoInMag}/${weaponDef(shown.weaponId).magSize}` : "";
+  }
+
+  // Hotbar: one item type per slot with a stack badge (§9.6)
+  for (let i = 0; i < HOTBAR_SLOTS; i++) {
+    const cell = q<HTMLDivElement>(`.hotbar-cell[data-hot="${i}"]`);
+    const stack = state.hotbar[i] ?? null;
+    cell.classList.toggle("filled", stack !== null);
+    cell.querySelector(".hot-name")!.textContent = stack ? itemDef(stack.itemId).name : "—";
+    cell.querySelector(".hot-count")!.textContent = stack && stack.count > 1 ? `x${stack.count}` : "";
   }
 
   // Seed / turn — the seeded-runs rule made public (§9.7)

@@ -31,6 +31,9 @@ let seed = seedFromUrl() ?? randomSeed();
 writeSeedToUrl(seed);
 let state = newGame(seed);
 const ui: UIState = { targetId: null };
+// Two-key input modes live here, never in the sim.
+let dropMode = false;
+let hint = "";
 
 function render(): void {
   if (viewport.width !== state.map.width * TILE || viewport.height !== state.map.height * TILE) {
@@ -47,9 +50,18 @@ function render(): void {
   updateScreens(overlay, state);
   header.innerHTML = `<b>${floorDef(state.floor).name}</b>: ${state.floor}/${LAST_FLOOR}`;
   const recent = state.log.slice(-3);
-  logPanel.innerHTML = recent
-    .map((line, i) => `<div class="${i === recent.length - 1 ? "new" : "old"}">${line}</div>`)
-    .join("");
+  // Escaped, not interpolated raw: log text is internal today, but it is about
+  // to carry a lot more content and this is the statement that would leak.
+  logPanel.innerHTML =
+    recent
+      .map((line, i) => `<div class="${i === recent.length - 1 ? "new" : "old"}">${escapeHtml(line)}</div>`)
+      .join("") + (hint ? `<div class="hint">${escapeHtml(hint)}</div>` : "");
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (c) =>
+    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === '"' ? "&quot;" : "&#39;",
+  );
 }
 
 function cycleTarget(): void {
@@ -88,6 +100,37 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "Tab") {
     e.preventDefault();
     cycleTarget();
+    render();
+    return;
+  }
+
+  // Drop is a two-key mode (X, then a slot) rather than its own key per slot:
+  // an infrequent verb should not spend nine bindings. Mode state is UI-side —
+  // the sim only ever sees the finished action.
+  if (dropMode) {
+    e.preventDefault();
+    dropMode = false;
+    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    const slot = "123456789".indexOf(key);
+    if (slot === -1) {
+      hint = "";
+      render();
+      return;
+    }
+    state = applyAction(
+      state,
+      slot < 3
+        ? { type: "drop", kind: "weapon", slot }
+        : { type: "drop", kind: "item", slot: slot - 3 },
+    );
+    hint = "";
+    render();
+    return;
+  }
+  if (e.key.toLowerCase() === "x") {
+    e.preventDefault();
+    dropMode = true;
+    hint = "DROP — press 1-3 for a weapon, 4-9 for an item, anything else to cancel.";
     render();
     return;
   }

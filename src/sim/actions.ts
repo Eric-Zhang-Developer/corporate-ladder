@@ -6,6 +6,9 @@ export type Action =
   | { type: "swap"; slot: 0 | 1 | 2 }
   | { type: "pickup" }
   | { type: "plate" }
+  | { type: "useItem"; slot: number }
+  /** Deliberate slot management; swap-drop already covers upgrades in place. */
+  | { type: "drop"; kind: "weapon" | "item"; slot: number }
   /** Take the stairs up (must be standing on them). */
   | { type: "ascend" }
   | { type: "wait" };

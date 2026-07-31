@@ -190,6 +190,15 @@ function rollDrops(state: GameState, rng: SimRNG, corpse: Entity): void {
       const amount = min + Math.floor(rng.next() * (max - min + 1));
       state.items.push({ id: state.nextId++, x: corpse.x, y: corpse.y, kind: "ammo", caliber, amount });
     }
+    if (drop.itemId) {
+      state.items.push({
+        id: state.nextId++,
+        x: corpse.x,
+        y: corpse.y,
+        kind: "consumable",
+        itemId: drop.itemId,
+      });
+    }
     if (drop.weaponId) {
       const weapon = weaponDef(drop.weaponId);
       state.items.push({

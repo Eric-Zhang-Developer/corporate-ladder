@@ -1,5 +1,14 @@
-import { idx, type GameState } from "../sim/state";
+import { idx, type GameState, type GroundItem } from "../sim/state";
 import { TILE, type Atlas } from "./atlas";
+
+/** Ground items are drawn by kind. */
+const ITEM_TILE: Record<GroundItem["kind"], string> = {
+  weapon: "item_weapon",
+  ammo: "item_ammo",
+  plate: "item_plate",
+  carrier: "item_carrier",
+  consumable: "item_consumable",
+};
 
 /** Render-side state the sim never sees (Tab targeting, etc.). */
 export interface UIState {
@@ -39,7 +48,7 @@ export function renderViewport(
 
   for (const item of state.items) {
     if (!state.visible[idx(map, item.x, item.y)]) continue;
-    blit(item.kind === "weapon" ? "item_weapon" : "item_ammo", item.x, item.y);
+    blit(ITEM_TILE[item.kind], item.x, item.y);
   }
 
   for (const e of state.enemies) {

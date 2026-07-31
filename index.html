@@ -26,6 +26,7 @@
       #log { border: 1px solid var(--line); background: var(--panel); padding: 6px 8px;
         font-size: 12px; line-height: 1.5; height: 4.5em; overflow: hidden; }
       #log .old { color: var(--muted); }
+      #log .hint { color: var(--accent); }
       #sidebar { border: 1px solid var(--line); background: var(--panel); padding: 10px;
         display: flex; flex-direction: column; gap: 10px; font-size: 13px; overflow-y: auto; }
       #sidebar section { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
@@ -47,6 +48,12 @@
       .card-name { font-weight: bold; }
       .card-mag { color: var(--muted); font-size: 12px; }
       .card-dpa { color: var(--accent); font-size: 11px; margin-top: 3px; }
+      .consumables { display: grid; gap: 3px; grid-template-columns: repeat(3, 1fr); }
+      .hotbar-cell { align-items: baseline; background: #16161c; border: 1px solid var(--line); display: flex; font-size: 10px; gap: 3px; padding: 3px 4px; }
+      .hotbar-cell .key { color: var(--muted); }
+      .hotbar-cell .hot-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .hotbar-cell.filled { border-color: #4a6a4a; }
+      .hotbar-cell .hot-count { color: var(--accent); }
       .shield-row { align-items: center; display: flex; gap: 6px; margin-bottom: 3px; }
       .shield-bar { display: flex; flex: 1; gap: 2px; height: 7px; }
       .plate-cell { background: #16161c; border: 1px solid var(--line); flex: 1; overflow: hidden; }

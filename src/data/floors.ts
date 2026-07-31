@@ -22,6 +22,9 @@ export interface FloorDef {
   platePiles?: number;
   /** Carrier upgrade available on this floor, if any. */
   carrier?: string;
+  /** Loose consumables, drawn uniformly from this pool. */
+  consumablePiles?: number;
+  consumablePool?: string[];
 }
 
 export const FLOORS: FloorDef[] = [
@@ -35,6 +38,8 @@ export const FLOORS: FloorDef[] = [
     scatterPiles: 2,
     scatterAmount: { min: 4, max: 8 },
     platePiles: 1,
+    consumablePiles: 2,
+    consumablePool: ["bandage", "snack", "medshot"],
   },
   {
     depth: 2,
@@ -47,6 +52,8 @@ export const FLOORS: FloorDef[] = [
     scatterAmount: { min: 4, max: 8 },
     platePiles: 2,
     carrier: "carrier_ii",
+    consumablePiles: 3,
+    consumablePool: ["bandage", "snack", "medshot", "stim", "schematics"],
   },
 ];
 

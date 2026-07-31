@@ -15,6 +15,8 @@ export const AP_COSTS = {
    * borrowed from a shooter.
    */
   plate: 1,
+  /** Fumbling something out of a pocket and onto the floor still takes time. */
+  drop: 1,
 } as const;
 
 /**

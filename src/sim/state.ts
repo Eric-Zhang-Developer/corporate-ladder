@@ -66,12 +66,21 @@ export interface WeaponSlot {
   chambered?: boolean;
 }
 
-export type GroundItem = { id: number; x: number; y: number } & (
+/** What a ground item *is*, without where it lies. */
+export type GroundItemPayload =
   | { kind: "weapon"; weaponId: string; ammoInMag: number }
   | { kind: "ammo"; caliber: Caliber; amount: number }
   | { kind: "plate" }
   | { kind: "carrier"; carrierId: string }
-);
+  | { kind: "consumable"; itemId: string };
+
+export type GroundItem = { id: number; x: number; y: number } & GroundItemPayload;
+
+/** One item type per hotbar slot, stacked to the type's cap. */
+export interface ItemStack {
+  itemId: string;
+  count: number;
+}
 
 export type GamePhase = "playing" | "dead" | "won";
 
@@ -103,6 +112,8 @@ export interface GameState {
    */
   carrierId: string | null;
   spareplates: number;
+  /** Six typed stacks on keys 4-9. There is no bag; this is the inventory. */
+  hotbar: (ItemStack | null)[];
   /** Monotonic id source for spawned entities and items. */
   nextId: number;
   log: string[];
@@ -133,6 +144,53 @@ export function distance(a: { x: number; y: number }, b: { x: number; y: number 
 export function entityAt(state: GameState, x: number, y: number): Entity | null {
   if (state.player.x === x && state.player.y === y) return state.player;
   return state.enemies.find((e) => e.x === x && e.y === y) ?? null;
+}
+
+/**
+ * Breadth-first search outward for open floor tiles. One helper for the three
+ * callers that each grew their own: floor generation placing loot, the camera
+ * shipping a response team, and dropped items scattering rather than stacking.
+ *
+ * `isFree` decides what "open" means per caller (unoccupied by entities, not
+ * already claimed by another item, ...). `includeOrigin` exists because
+ * spawning a response team on top of the camera's own tile is not the same
+ * question as dropping a magazine at your feet.
+ */
+export function freeTilesNear(
+  map: GameMap,
+  ox: number,
+  oy: number,
+  count: number,
+  isFree: (x: number, y: number) => boolean,
+  includeOrigin = true,
+): { x: number; y: number }[] {
+  const found: { x: number; y: number }[] = [];
+  const seen = new Set<string>([`${ox},${oy}`]);
+  const queue: [number, number][] = [[ox, oy]];
+  if (includeOrigin && isFloor(map, ox, oy) && isFree(ox, oy)) found.push({ x: ox, y: oy });
+
+  while (queue.length > 0 && found.length < count) {
+    const [x, y] = queue.shift()!;
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const key = `${nx},${ny}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!isFloor(map, nx, ny)) continue;
+      queue.push([nx, ny]);
+      if (isFree(nx, ny)) {
+        found.push({ x: nx, y: ny });
+        if (found.length >= count) break;
+      }
+    }
+  }
+  return found;
 }
 
 export function pushLog(state: GameState, message: string): void {

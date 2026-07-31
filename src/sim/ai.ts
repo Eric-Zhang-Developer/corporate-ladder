@@ -7,6 +7,7 @@ import type { SimRNG } from "./rng";
 import {
   distance,
   entityAt,
+  freeTilesNear,
   isFloor,
   pushLog,
   spawnEnemy,
@@ -156,8 +157,17 @@ function cameraAlarm(state: GameState, _rng: SimRNG, enemy: Entity): void {
   const toSpawn = Math.min(CAMERA_TEAM_SIZE, CAMERA_SPAWN_CAP - alive);
   if (toSpawn <= 0) return;
 
-  const tiles = freeTilesNear(state, state.entrance.x, state.entrance.y, toSpawn);
-  for (const [x, y] of tiles) {
+  // includeOrigin false: the response team fans out AROUND the entrance, which
+  // is where the player is standing when they arrive.
+  const tiles = freeTilesNear(
+    state.map,
+    state.entrance.x,
+    state.entrance.y,
+    toSpawn,
+    (x, y) => !entityAt(state, x, y),
+    false,
+  );
+  for (const { x, y } of tiles) {
     const cop = spawnEnemy(state.nextId++, "rentacop", x, y);
     cop.alerted = true;
     cop.spawnedBy = "camera";
@@ -166,31 +176,6 @@ function cameraAlarm(state: GameState, _rng: SimRNG, enemy: Entity): void {
   if (tiles.length > 0) {
     pushLog(state, `Elevator chime. A response team fans out from the entrance.`);
   }
-}
-
-/** BFS outward for the nearest n free floor tiles. */
-function freeTilesNear(state: GameState, x: number, y: number, n: number): Array<[number, number]> {
-  const found: Array<[number, number]> = [];
-  const seen = new Set<string>([`${x},${y}`]);
-  const queue: Array<[number, number]> = [[x, y]];
-  while (queue.length > 0 && found.length < n) {
-    const [cx, cy] = queue.shift()!;
-    for (const [dx, dy] of [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    ] as const) {
-      const nx = cx + dx;
-      const ny = cy + dy;
-      const key = `${nx},${ny}`;
-      if (seen.has(key) || !isFloor(state.map, nx, ny)) continue;
-      seen.add(key);
-      queue.push([nx, ny]);
-      if (!entityAt(state, nx, ny) && found.length < n) found.push([nx, ny]);
-    }
-  }
-  return found;
 }
 
 /** One A* step toward the player; never steps onto an occupied tile. */

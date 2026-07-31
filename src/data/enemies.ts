@@ -10,6 +10,8 @@ export interface EnemyDrop {
   /** 0..1 — rolled independently per entry. */
   chance: number;
   weaponId?: string;
+  /** A consumable from data/items.ts. */
+  itemId?: string;
   ammo?: { caliber: Caliber; min: number; max: number };
 }
 
@@ -66,7 +68,10 @@ export const ENEMIES = {
     behavior: "pursueAndShoot",
     spotLine: `The Rent-a-Cop shouts, "Hey! You can't be up here!"`,
     killVerb: "Shot to death by",
-    drops: [{ chance: 1, ammo: { caliber: "pistol", min: 4, max: 8 } }],
+    drops: [
+      { chance: 1, ammo: { caliber: "pistol", min: 4, max: 8 } },
+      { chance: 0.25, itemId: "bandage" },
+    ],
   },
   dog: {
     id: "dog",
@@ -113,7 +118,7 @@ export const ENEMIES = {
     killVerb: "Turned into a memo by",
     drops: [
       { chance: 1, ammo: { caliber: "shell", min: 3, max: 5 } },
-      { chance: 0.3, weaponId: "serbu" },
+      { chance: 0.25, itemId: "bandage" },
     ],
   },
   camera: {
@@ -141,6 +146,8 @@ export const ENEMIES = {
     behavior: "meleeRush",
     spotLine: "The Janitor sighs and hefts his wrench. Thirty years of this.",
     killVerb: "Mopped up by",
+    // Thirty years on the job and OSHA-certified for every one of them.
+    drops: [{ chance: 1, itemId: "medkit" }],
   },
 } satisfies Record<string, EnemyDef>;
 

@@ -1,10 +1,12 @@
 import { enemyDef } from "../data/enemies";
 import { CALIBERS, floorDef, LAST_FLOOR } from "../data/floors";
+import { HOTBAR_SLOTS } from "../data/items";
 import { WEAPONS, weaponDef, type Caliber } from "../data/weapons";
 import { generateMap } from "./mapgen";
 import { recomputeFov } from "./fov";
 import { createSimRng, type SimRNG } from "./rng";
 import {
+  freeTilesNear,
   isFloor,
   pushLog,
   spawnEnemy,
@@ -145,7 +147,28 @@ export function buildFloor(
     }
   }
 
+  const pool = def.consumablePool ?? [];
+  for (let i = 0; i < (def.consumablePiles ?? 0) && pool.length > 0 && spawnRooms.length > 0; i++) {
+    const room = spawnRooms[randInt(rng, 0, spawnRooms.length - 1)]!;
+    const itemId = pool[Math.floor(rng.next() * pool.length)]!;
+    const spot = freeTileNear(gen.map, occupied, room.x, room.y);
+    if (!spot) continue;
+    occupied.add(`${spot[0]},${spot[1]}`);
+    items.push({ id: nextId++, x: spot[0], y: spot[1], kind: "consumable", itemId });
+  }
+
   return { map: gen.map, entrance, stairs, enemies, items, nextId };
+}
+
+/** First open tile at or near (x,y) that no one has claimed yet. */
+function freeTileNear(
+  map: GameMap,
+  occupied: Set<string>,
+  x: number,
+  y: number,
+): [number, number] | null {
+  const spot = freeTilesNear(map, x, y, 1, (fx, fy) => !occupied.has(`${fx},${fy}`))[0];
+  return spot ? [spot.x, spot.y] : null;
 }
 
 /** Rebuild state for a floor, preserving the player, reserves, and log. */
@@ -205,6 +228,7 @@ export function newGame(seed: number): GameState {
     ammo: { pistol: 24, shell: 0, rifle: 0, heavy: 0 },
     carrierId: null,
     spareplates: 0,
+    hotbar: new Array(HOTBAR_SLOTS).fill(null),
     nextId: 1,
     log: ["Find whoever signs the checks."],
   };
@@ -243,31 +267,3 @@ function randInt(rng: SimRNG, min: number, max: number): number {
 }
 
 /** Nearest free floor tile to (x, y) by BFS. */
-function freeTileNear(
-  map: GameMap,
-  occupied: Set<string>,
-  x: number,
-  y: number,
-): [number, number] | null {
-  if (isFloor(map, x, y) && !occupied.has(`${x},${y}`)) return [x, y];
-  const seen = new Set<string>([`${x},${y}`]);
-  const queue: Array<[number, number]> = [[x, y]];
-  while (queue.length > 0) {
-    const [cx, cy] = queue.shift()!;
-    for (const [dx, dy] of [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    ] as const) {
-      const nx = cx + dx;
-      const ny = cy + dy;
-      const key = `${nx},${ny}`;
-      if (seen.has(key) || !isFloor(map, nx, ny)) continue;
-      seen.add(key);
-      queue.push([nx, ny]);
-      if (!occupied.has(key)) return [nx, ny];
-    }
-  }
-  return null;
-}

@@ -1,3 +1,4 @@
+import { HOTBAR_SLOTS } from "../../src/data/items";
 import { WEAPONS, weaponDef } from "../../src/data/weapons";
 import { recomputeFov } from "../../src/sim/fov";
 import { createSimRng } from "../../src/sim/rng";
@@ -55,6 +56,7 @@ export function makeState(
     stairs?: { x: number; y: number };
     carrierId?: string | null;
     spareplates?: number;
+    hotbar?: GameState["hotbar"];
   } = {},
 ): GameState {
   const map = opts.map ?? openMap();
@@ -96,6 +98,7 @@ export function makeState(
     ammo: opts.ammo ?? { pistol: 24, shell: 0, rifle: 0, heavy: 0 },
     carrierId: opts.carrierId ?? null,
     spareplates: opts.spareplates ?? 0,
+    hotbar: opts.hotbar ?? new Array(HOTBAR_SLOTS).fill(null),
     nextId: 1000,
     log: [],
   };

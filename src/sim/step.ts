@@ -1,5 +1,6 @@
 import { carrierCapacity, carrierDef, SPARE_PLATE_CAP } from "../data/carriers";
 import { AP_COSTS } from "../data/costs";
+import { itemDef, type ItemDef } from "../data/items";
 import { maxRange, weaponDef } from "../data/weapons";
 import type { Action } from "./actions";
 import { runEnemyTurns } from "./ai";
@@ -11,11 +12,13 @@ import { simRngFromState, type SimRNG } from "./rng";
 import {
   distance,
   entityAt,
+  freeTilesNear,
   idx,
   isFloor,
   pushLog,
   type Entity,
   type GameState,
+  type GroundItemPayload,
   type WeaponSlot,
 } from "./state";
 
@@ -219,6 +222,21 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         pushLog(state, `You strap on the ${carrierDef(item.carrierId).name}.`);
         return;
       }
+      if (item.kind === "consumable") {
+        const def = itemDef(item.itemId);
+        const slot = hotbarSlotFor(state, item.itemId);
+        if (slot === -1) {
+          pushLog(state, `No room for the ${def.name}.`);
+          return;
+        }
+        player.ap -= AP_COSTS.pickup;
+        state.items = state.items.filter((i) => i.id !== item.id);
+        const stack = state.hotbar[slot];
+        if (stack) stack.count += 1;
+        else state.hotbar[slot] = { itemId: item.itemId, count: 1 };
+        pushLog(state, `You pick up the ${def.name}.`);
+        return;
+      }
       // Weapon: fill an empty slot; if all three are full, swap with the
       // gun in hand (which drops where you stand).
       const slots = player.slots;
@@ -287,9 +305,134 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       pushLog(state, `You slot a plate. (${player.shield}/${capacity})`);
       return;
     }
+    case "useItem": {
+      const stack = state.hotbar[action.slot];
+      if (!stack) {
+        pushLog(state, "That slot is empty.");
+        return;
+      }
+      const def = itemDef(stack.itemId);
+      if (player.ap < def.apUse) {
+        pushLog(state, `Not enough AP to use the ${def.name}.`);
+        return;
+      }
+      if (!applyItemEffect(state, def)) return; // refused, and refused for free
+      player.ap -= def.apUse;
+      stack.count -= 1;
+      if (stack.count <= 0) state.hotbar[action.slot] = null;
+      return;
+    }
+    case "drop": {
+      if (player.ap < AP_COSTS.drop) {
+        pushLog(state, "Not enough AP to drop that.");
+        return;
+      }
+      if (action.kind === "weapon") {
+        const slots = player.slots;
+        if (!slots) return;
+        const isActive = player.activeSlot === action.slot;
+        const held = isActive
+          ? player.weaponId
+            ? { weaponId: player.weaponId, ammoInMag: player.ammoInMag }
+            : null
+          : slots[action.slot];
+        if (!held) {
+          pushLog(state, "That slot is empty.");
+          return;
+        }
+        player.ap -= AP_COSTS.drop;
+        slots[action.slot] = null;
+        if (isActive) {
+          player.weaponId = null;
+          player.ammoInMag = 0;
+          delete player.chambered;
+        }
+        scatterItem(state, { kind: "weapon", weaponId: held.weaponId, ammoInMag: held.ammoInMag });
+        pushLog(state, `You drop the ${weaponDef(held.weaponId).name}.`);
+        return;
+      }
+      const stack = state.hotbar[action.slot];
+      if (!stack) {
+        pushLog(state, "That slot is empty.");
+        return;
+      }
+      player.ap -= AP_COSTS.drop;
+      stack.count -= 1;
+      if (stack.count <= 0) state.hotbar[action.slot] = null;
+      scatterItem(state, { kind: "consumable", itemId: stack.itemId });
+      pushLog(state, `You drop the ${itemDef(stack.itemId).name}.`);
+      return;
+    }
     case "wait": {
       player.ap = 0;
       return;
+    }
+  }
+}
+
+/** An existing stack of this type, else the first empty slot, else -1. */
+function hotbarSlotFor(state: GameState, itemId: string): number {
+  const cap = itemDef(itemId).stack;
+  const existing = state.hotbar.findIndex((s) => s?.itemId === itemId && s.count < cap);
+  if (existing !== -1) return existing;
+  return state.hotbar.findIndex((s) => s === null);
+}
+
+/**
+ * One item per tile is law — piles would mean pickup menus, and this game does
+ * not have an inventory screen. Anything dropped onto an occupied tile walks
+ * outward to the nearest free one.
+ */
+function scatterItem(state: GameState, item: GroundItemPayload): void {
+  const spot = freeTilesNear(
+    state.map,
+    state.player.x,
+    state.player.y,
+    1,
+    (x, y) => !state.items.some((i) => i.x === x && i.y === y),
+  )[0];
+  if (!spot) return; // nowhere to put it; the item is simply gone
+  state.items.push({ ...item, id: state.nextId++, x: spot.x, y: spot.y });
+}
+
+/**
+ * Returns false when the effect declines to happen (already at full HP, floor
+ * already mapped), so the caller can honour the typo rule and charge nothing.
+ */
+function applyItemEffect(state: GameState, def: ItemDef): boolean {
+  const player = state.player;
+  switch (def.effect.kind) {
+    case "heal": {
+      if (player.hp >= player.maxHp) {
+        pushLog(state, "You are not hurt.");
+        return false;
+      }
+      const healed = Math.min(def.effect.amount, player.maxHp - player.hp);
+      player.hp += healed;
+      pushLog(state, `You use the ${def.name}. (+${healed} HP)`);
+      return true;
+    }
+    case "healFull": {
+      if (player.hp >= player.maxHp) {
+        pushLog(state, "You are not hurt.");
+        return false;
+      }
+      player.hp = player.maxHp;
+      pushLog(state, `You work the ${def.name}. Patched up.`);
+      return true;
+    }
+    case "stim": {
+      player.ap += def.effect.bonus;
+      player.pendingApDrain = Math.max(player.pendingApDrain ?? 0, def.effect.comedown);
+      pushLog(state, `The stim bites. (+${def.effect.bonus} AP now, -${def.effect.comedown} next turn)`);
+      return true;
+    }
+    case "reveal": {
+      for (let i = 0; i < state.map.tiles.length; i++) {
+        if (state.map.tiles[i] === 1) state.explored[i] = true;
+      }
+      pushLog(state, "You unfold the schematics. The floor plan resolves.");
+      return true;
     }
   }
 }

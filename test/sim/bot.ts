@@ -1,5 +1,6 @@
 import { Path } from "rot-js";
 import { SPARE_PLATE_CAP, carrierCapacity, carrierDef } from "../../src/data/carriers";
+import { HOTBAR_SLOTS, itemDef } from "../../src/data/items";
 import { maxRange, weaponDef } from "../../src/data/weapons";
 import type { Action } from "../../src/sim/actions";
 import { newGame } from "../../src/sim/floor";
@@ -45,6 +46,10 @@ function wantsItem(state: GameState, item: GroundItem): boolean {
     // Only an upgrade — matching the sim's own rule keeps the bot from
     // re-collecting the carrier it just swapped off.
     return !state.carrierId || carrierCapacity(state.carrierId) < carrierCapacity(item.carrierId);
+  }
+  if (item.kind === "consumable") {
+    const cap = itemDef(item.itemId).stack;
+    return state.hotbar.some((s) => s === null || (s.itemId === item.itemId && s.count < cap));
   }
   if (item.kind === "weapon") {
     // Only take a gun into a genuinely empty slot. Picking one up with all
@@ -98,6 +103,19 @@ function decide(state: GameState, memory: BotMemory): Action {
       dx: Math.sign(adjacent.x - p.x) as -1 | 0 | 1,
       dy: Math.sign(adjacent.y - p.y) as -1 | 0 | 1,
     };
+  }
+
+  // Patch up when badly hurt, cheapest effective heal first. Exercises the
+  // consumable path on every run instead of only when a test remembers to.
+  if (p.hp <= p.maxHp * 0.5) {
+    const healSlot = state.hotbar.findIndex((s) => {
+      if (!s) return false;
+      const effect = itemDef(s.itemId).effect;
+      return (
+        (effect.kind === "heal" || effect.kind === "healFull") && p.ap >= itemDef(s.itemId).apUse
+      );
+    });
+    if (healSlot !== -1) return { type: "useItem", slot: healSlot };
   }
 
   // Plate up when there is room and a spare — cheap, and it exercises the
