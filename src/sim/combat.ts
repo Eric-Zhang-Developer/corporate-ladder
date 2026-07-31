@@ -109,7 +109,30 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
     );
   }
 
+  const wasAlive = defender.hp > 0;
   if (totalDmg > 0) dealDamage(state, rng, attacker, defender, totalDmg, killVerbFor(attacker));
+  const killed = wasAlive && defender.hp <= 0;
+
+  // Guns are loud. A suppressed weapon buys silence only on a clean kill — a
+  // wounded target still shouts, which is what keeps the VSS a scalpel rather
+  // than an invisibility cloak.
+  if (!(weapon.silentKills && killed)) wakeNeighbours(state, defender.x, defender.y);
+}
+
+/**
+ * How far a gunshot carries. Measured, not guessed: at 6 the bot lost ~0.8
+ * floors of average depth, at 4 about 0.3. Four keeps suppressors meaningful
+ * without turning every fight into the whole room. The balance pass owns the
+ * final number.
+ */
+const NOISE_RADIUS = 4;
+
+function wakeNeighbours(state: GameState, x: number, y: number): void {
+  for (const enemy of state.enemies) {
+    if (enemy.alerted) continue;
+    if (distance(enemy, { x, y }) > NOISE_RADIUS) continue;
+    enemy.alerted = true;
+  }
 }
 
 /**

@@ -55,6 +55,7 @@ export function renderViewport(
   }
 
   for (const e of state.enemies) {
+    if (e.hidden) continue; // active camo: nothing to draw
     if (!state.visible[idx(map, e.x, e.y)]) continue;
     blit(e.defId, e.x, e.y);
     // §9 telegraph: an armed camera shows its countdown one turn ahead.

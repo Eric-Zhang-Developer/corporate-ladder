@@ -5,7 +5,9 @@ import { bandFor, weaponDef } from "../../src/data/weapons";
 import { CAMERA_WAVE_CAP } from "../../src/sim/ai";
 import { buildFloor } from "../../src/sim/floor";
 import { applyAction } from "../../src/sim/step";
-import { makeEnemy, makeState, openMap } from "./helpers";
+import { fireWeapon } from "../../src/sim/combat";
+import { spawnEnemy } from "../../src/sim/state";
+import { makeEnemy, makeState, openMap, setWall } from "./helpers";
 
 /**
  * The bestiary's half of the §8 contract. Enemy lethality is tuned by data —
@@ -125,6 +127,16 @@ describe("alarms are finite", () => {
   });
 });
 
+describe("the DATA CENTER is empty of people", () => {
+  it("floor 6 spawns machines only — the one aesthetic exit criterion", () => {
+    const floor6 = FLOORS.find((f) => f.depth === 6)!;
+    for (const id of Object.keys(floor6.weights)) {
+      expect(enemyDef(id).machine, `${id} is a person on the zero-human floor`).toBe(true);
+    }
+    expect(enemyDef(floor6.boss!).machine).toBe(true);
+  });
+});
+
 describe("bosses", () => {
   it("the Janitor left the regular pool and became an event", () => {
     for (const floor of FLOORS) expect(floor.weights).not.toHaveProperty("janitor");
@@ -156,5 +168,98 @@ describe("the FPV drone", () => {
     applyAction(state, { type: "wait" }); // it closes and detonates
     expect(state.enemies).toHaveLength(0); // it is the cost
     expect(state.player.hp).toBeLessThan(40);
+  });
+});
+
+describe("wave-2 behaviors", () => {
+  it("a stealth unit is neither visible nor targetable until it is close", () => {
+    const unit = spawnEnemy(99, "stealth", 9, 2);
+    const state = makeState({ map: openMap(20, 10), enemies: [unit] });
+    applyAction(state, { type: "wait" }); // it notices you first
+    expect(unit.hidden).toBe(true);
+    // Firing cannot pick it: it is not on the board yet.
+    applyAction(state, { type: "fire" });
+    expect(state.log.at(-1)).toContain("No target in sight");
+
+    for (let i = 0; i < 6 && unit.hidden; i++) applyAction(state, { type: "wait" });
+    expect(unit.hidden).toBeUndefined();
+    expect(state.log.join(" ")).toContain("shimmers");
+  });
+
+  it("a turret holds its lane and telegraphs before it fires", () => {
+    const turret = makeEnemy({
+      defId: "turret",
+      x: 8,
+      y: 2,
+      hp: 12,
+      weaponId: "turret_gun",
+      ap: 2,
+      alerted: false,
+    });
+    const state = makeState({ map: openMap(20, 10), enemies: [turret], player: { hp: 60, maxHp: 60 } });
+    const spot = { x: turret.x, y: turret.y };
+    applyAction(state, { type: "wait" }); // acquires
+    applyAction(state, { type: "wait" }); // sights down the lane
+    expect(state.log.join(" ")).toContain("sights down the lane");
+    expect(turret).toMatchObject(spot); // emplacements never move
+    applyAction(state, { type: "wait" }); // fires
+    expect(state.player.hp).toBeLessThan(60);
+  });
+
+  it("stepping out of the lane during the telegraph wastes the shot", () => {
+    // Unalerted, so the acquire turn happens and the duck lands inside the
+    // telegraph rather than after a shot has already been taken.
+    const turret = makeEnemy({
+      defId: "turret",
+      x: 8,
+      y: 2,
+      hp: 12,
+      weaponId: "turret_gun",
+      ap: 2,
+      alerted: false,
+    });
+    const map = openMap(20, 10);
+    for (let y = 1; y < 9; y++) if (y !== 2) setWall(map, 5, y);
+    const state = makeState({ map, enemies: [turret], player: { x: 2, y: 2, hp: 60, maxHp: 60 } });
+    applyAction(state, { type: "wait" });
+    applyAction(state, { type: "wait" }); // telegraph starts
+    applyAction(state, { type: "move", dx: 0, dy: 1 });
+    applyAction(state, { type: "move", dx: 0, dy: 1 }); // fully behind the wall
+    applyAction(state, { type: "wait" });
+    applyAction(state, { type: "wait" });
+    expect(state.player.hp).toBe(60);
+    expect(state.log.join(" ")).toContain("loses its firing solution");
+  });
+
+  it("the Warden's pulse wakes the machines and leaves the people asleep", () => {
+    const warden = makeEnemy({ defId: "warden", x: 4, y: 2, hp: 30, weaponId: "warden_slam", ap: 2 });
+    const drone = makeEnemy({ defId: "fpv", x: 14, y: 8, hp: 1, weaponId: null as never, alerted: false });
+    const cop = makeEnemy({ defId: "rentacop", x: 15, y: 8, alerted: false });
+    const state = makeState({
+      map: openMap(20, 12),
+      enemies: [warden, drone, cop],
+      player: { hp: 90, maxHp: 90 },
+    });
+    for (let i = 0; i < 6; i++) applyAction(state, { type: "wait" });
+    expect(drone.alerted).toBe(true);
+    expect(cop.alerted).toBe(false); // the pulse speaks only to machines
+  });
+});
+
+describe("suppressed fire", () => {
+  it("a clean kill with the VSS wakes nobody; a wound still shouts", () => {
+    const run = (targetHp: number) => {
+      const target = makeEnemy({ x: 4, y: 2, hp: targetHp });
+      const bystander = makeEnemy({ x: 5, y: 3, hp: 30, alerted: false });
+      const state = makeState({
+        map: openMap(20, 10),
+        player: { weaponId: "vss", ammoInMag: 10 },
+        enemies: [target, bystander],
+      });
+      fireWeapon(state, { next: () => 0, getState: () => [0, 0, 0, 1] }, state.player, target);
+      return bystander.alerted;
+    };
+    expect(run(1)).toBe(false); // died quietly
+    expect(run(80)).toBe(true); // survived and shouted
   });
 });

@@ -52,6 +52,13 @@ export interface Entity {
   alarmTimer?: number;
   /** Alarm callers: waves already sent. Past the cap they go dark. */
   alarmWaves?: number;
+  /** Overwatch / spin-up telegraph: turns until the thing goes off. */
+  chargeTimer?: number;
+  /**
+   * Stealth units before the reveal. Neither rendered nor targetable — the
+   * absence on screen is the design.
+   */
+  hidden?: boolean;
   /** Set on response-team cops so the alive-cap can count them. */
   spawnedBy?: string;
   /**
@@ -269,6 +276,8 @@ export function spawnEnemy(id: number, defId: string, x: number, y: number): Ent
   // future cracked-armor mechanic has somewhere to write. Omitted when zero —
   // invariant 2 forbids undefined-valued keys.
   if (def.armor) entity.armor = def.armor;
+  // Camo is on from the moment it exists, not from the moment it notices you.
+  if (def.revealRange) entity.hidden = true;
   return entity;
 }
 

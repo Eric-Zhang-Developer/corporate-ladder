@@ -56,7 +56,8 @@ describe("buildFloor", () => {
   });
 });
 
-const MELEE_BEHAVIORS = new Set(["meleeRush", "detonate"]);
+// Anything whose job is to reach you counts toward the anti-camping quota.
+const MELEE_BEHAVIORS = new Set(["meleeRush", "detonate", "stealthApproach"]);
 
 describe("floor data (§2 pillar 3)", () => {
   it("keeps melee spawn weight between 28% and 45% on every floor", () => {

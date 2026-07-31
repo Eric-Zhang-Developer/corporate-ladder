@@ -111,7 +111,7 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
   const target =
     state.enemies.find((e) => e.id === ui.targetId) ??
     state.enemies
-      .filter((e) => state.visible[idx(state.map, e.x, e.y)])
+      .filter((e) => !e.hidden && state.visible[idx(state.map, e.x, e.y)])
       .sort((a, b) => distance(player, a) - distance(player, b))[0];
   q(".gun-card .card-dpa").textContent =
     gun && target ? `${dmgPerAp(gun, distance(player, target)).toFixed(2)} dmg/AP @ target` : "— dmg/AP";

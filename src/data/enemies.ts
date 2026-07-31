@@ -4,7 +4,14 @@ import type { Caliber } from "./weapons";
  * Enemies are data entries (handoff §6 rule 2): adding one later must be a
  * new entry here plus, at most, one behavior function in sim/ai.ts.
  */
-export type BehaviorId = "pursueAndShoot" | "meleeRush" | "cameraAlarm" | "detonate";
+export type BehaviorId =
+  | "pursueAndShoot"
+  | "meleeRush"
+  | "cameraAlarm"
+  | "detonate"
+  | "stealthApproach"
+  | "overwatch"
+  | "spinup";
 
 export interface EnemyDrop {
   /** 0..1 — rolled independently per entry. */
@@ -63,6 +70,12 @@ export interface EnemyDef {
   escorts?: string[];
   /** One per floor pair, placed deliberately rather than rolled. */
   boss?: boolean;
+  /** Stealth units: invisible until the player is this close. */
+  revealRange?: number;
+  /** Turns of telegraph before an overwatch shot or a spin-up burst. */
+  chargeTurns?: number;
+  /** 0..1 chance of a wasted, random step — breaks kiting arithmetic. */
+  erratic?: number;
   /** Log line on spotting the player. */
   spotLine?: string;
   /** Death-screen prefix, e.g. "Bitten to death by". */
@@ -336,6 +349,134 @@ export const ENEMIES = {
       { chance: 1, cash: { min: 30, max: 50 } },
       { chance: 1, itemId: "medshot" },
       { chance: 1, ammo: { caliber: "pistol", min: 10, max: 18 } },
+    ],
+  },
+  // ---- T3: R&D and the data center ----
+  rifleman: {
+    id: "rifleman",
+    name: "Merc Rifleman",
+    glyph: "M",
+    color: "#6699cc",
+    hp: 14,
+    ap: 2,
+    xp: 11,
+    weaponId: "m4_merc",
+    sightRange: 9,
+    preferredRange: 5,
+    behavior: "pursueAndShoot",
+    // The first enemy who backs off while firing, which breaks the two-floor
+    // habit of walking at shooters because they stand still.
+    spotLine: `The Merc Rifleman calls it in. "Contact, moving."`,
+    killVerb: "Shot to death by",
+    drops: [
+      { chance: 1, ammo: { caliber: "rifle", min: 10, max: 18 } },
+      { chance: 1, cash: { min: 12, max: 20 } },
+      { chance: 0.3, itemId: "medshot" },
+    ],
+  },
+  gunner: {
+    id: "gunner",
+    name: "Heavy Gunner",
+    glyph: "G",
+    color: "#dd8844",
+    hp: 16,
+    ap: 2,
+    xp: 12,
+    weaponId: "m249_gunner",
+    sightRange: 9,
+    preferredRange: 6,
+    behavior: "pursueAndShoot",
+    // The player's own LMG rules pointed backwards: murderous in his lane,
+    // helpless for the full turn of his 3-AP reload. Fighting him fair is the
+    // mistake; fighting him during the belt change is the ritual.
+    spotLine: "The Heavy Gunner plants his feet and the barrel comes around.",
+    killVerb: "Cut down by",
+    drops: [
+      { chance: 1, ammo: { caliber: "rifle", min: 16, max: 26 } },
+      { chance: 1, cash: { min: 12, max: 22 } },
+    ],
+  },
+  stealth: {
+    id: "stealth",
+    name: "Stealth Unit",
+    glyph: "u",
+    color: "#99aabb",
+    hp: 10,
+    ap: 3,
+    xp: 12,
+    machine: true,
+    sightRange: 10,
+    revealRange: 2,
+    meleeDamage: 7,
+    attacksPerTurn: 1,
+    behavior: "stealthApproach",
+    // The counter to sniping from darkness. One tile of surprise is worth more
+    // than any stat in a turn-based game; the camo IS its armor budget.
+    spotLine: "Something shimmers, close.",
+    killVerb: "Gutted by",
+  },
+  turret: {
+    id: "turret",
+    name: "Sentry Turret",
+    glyph: "T",
+    color: "#cc6666",
+    hp: 12,
+    armor: 2,
+    ap: 2,
+    xp: 10,
+    machine: true,
+    weaponId: "turret_gun",
+    sightRange: 10,
+    chargeTurns: 1,
+    behavior: "overwatch",
+    // The lane made literal. It cannot follow you around the corner, so map
+    // knowledge is the whole fight — and schematics quietly appreciate.
+    spotLine: "A sentry turret swivels. Servos whine.",
+    killVerb: "Perforated by",
+  },
+  prototype: {
+    id: "prototype",
+    name: "Malfunctioning Prototype",
+    glyph: "P",
+    color: "#bb77dd",
+    hp: 15,
+    ap: 3,
+    xp: 11,
+    machine: true,
+    sightRange: 8,
+    meleeDamage: 7,
+    attacksPerTurn: 1,
+    erratic: 0.34,
+    behavior: "meleeRush",
+    // The habit it counters is optimisation itself: players who turned melee
+    // kiting into arithmetic meet the one enemy whose arithmetic is broken.
+    spotLine: `The Prototype greets you. "THANK YOU FOR CHOOSING MERI—" It lurches.`,
+    killVerb: "Recalled by",
+  },
+  warden: {
+    id: "warden",
+    name: "Server Warden",
+    glyph: "W",
+    color: "#66ddcc",
+    hp: 30,
+    armor: 3,
+    ap: 2,
+    xp: 25,
+    boss: true,
+    machine: true,
+    weaponId: "warden_slam",
+    sightRange: 8,
+    preferredRange: 1,
+    chargeTurns: 2,
+    behavior: "spinup",
+    // Fights like infrastructure. Armor 3 walls out spray entirely; the fight
+    // is about INTERRUPTING the charge, not out-damaging it.
+    spotLine: `The Server Warden powers up. "Thank you for your patience."`,
+    killVerb: "Serviced by",
+    // Drops nothing but the silence afterward — and the plates off its rack.
+    drops: [
+      { chance: 1, itemId: "medkit" },
+      { chance: 1, itemId: "emp" },
     ],
   },
 } satisfies Record<string, EnemyDef>;

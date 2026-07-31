@@ -101,7 +101,7 @@ function escapeHtml(text: string): string {
 function cycleTarget(): void {
   const p = state.player;
   const candidates = state.enemies
-    .filter((e) => state.visible[idx(state.map, e.x, e.y)] && hasLos(state.map, p.x, p.y, e.x, e.y))
+    .filter((e) => !e.hidden && state.visible[idx(state.map, e.x, e.y)] && hasLos(state.map, p.x, p.y, e.x, e.y))
     .sort((a, b) => distance(p, a) - distance(p, b));
   if (candidates.length === 0) {
     ui.targetId = null;

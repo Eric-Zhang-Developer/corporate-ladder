@@ -58,6 +58,11 @@ export interface WeaponDef {
   reloadDiscards?: boolean;
   /** Accuracy bonus when the shooter spent no AP moving this turn (LMGs). */
   bracedBonus?: number;
+  /**
+   * A killing shot wakes nobody; a wounding one still does. Only meaningful
+   * because gunfire now carries to nearby enemies.
+   */
+  silentKills?: boolean;
   /** Loot tier; absent on enemy-only variants, which are tuned separately. */
   tier?: 0 | 1 | 2 | 3 | 4;
   cls?: WeaponClass;
@@ -631,9 +636,9 @@ export const WEAPONS = {
     ],
     magSize: 10,
     caliber: "heavy",
-    // The assassin's sniper: semi-auto, integrally suppressed, deliberately
-    // short-legged. Its silent-kill rule lands with the stealth milestone,
-    // where there is finally something to be silent about.
+    // The assassin's sniper: integrally suppressed and subsonic. Thin the
+    // patrol from the dark, one clean kill at a time — a wound still shouts.
+    silentKills: true,
     intendedBand: 1,
     tier: 3,
     cls: "sniper",
@@ -776,7 +781,7 @@ export const WEAPONS = {
     ],
     magSize: 50,
     caliber: "rifle",
-    pellets: 5,
+    pellets: 4,
     bracedBonus: 0.15,
   },
   // T4 anchors: ~8.5 per hit.
@@ -842,6 +847,33 @@ export const WEAPONS = {
     magSize: 10,
     caliber: "heavy",
     armorPierce: 2,
+  },
+  /** Fixed emplacement: brutal accuracy, no legs, and it cannot turn a corner. */
+  turret_gun: {
+    id: "turret_gun",
+    name: "Sentry Gun",
+    apFire: 1,
+    apReload: 2,
+    damage: 7,
+    baseAccuracy: 0.9,
+    bands: [
+      { maxDist: 2, accMult: 0.9, dmgMult: 1.0 },
+      { maxDist: 10, accMult: 0.95, dmgMult: 1.0 },
+    ],
+    magSize: 12,
+    caliber: "rifle",
+  },
+  /** The Server Warden's slam — a chassis the size of a rack. */
+  warden_slam: {
+    id: "warden_slam",
+    name: "Servo Arm",
+    apFire: 1,
+    apReload: 1,
+    damage: 8,
+    baseAccuracy: 0.85,
+    bands: [{ maxDist: 2, accMult: 1.0, dmgMult: 1.0 }],
+    magSize: 99,
+    caliber: "rifle",
   },
   /** The Dozer's. Spin-up is the telegraph; the burst is the punishment. */
   minigun: {

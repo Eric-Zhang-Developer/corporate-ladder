@@ -98,10 +98,43 @@ export const FLOORS: FloorDef[] = [
     vendingMachines: 2,
     boss: "handler",
   },
+  {
+    depth: 5,
+    name: "R&D",
+    groups: { min: 6, max: 8 },
+    // The weirdness budget: prototypes and the first stealth units.
+    weights: { rifleman: 30, gunner: 14, stealth: 10, turret: 10, prototype: 12, k9: 10, fpv: 8, camera: 6 },
+    lootWeapons: ["m4", "akm", "ump45", "spas12", "fal", "vss", "m249", "rem700"],
+    lootAmmo: { min: 16, max: 26 },
+    scatterPiles: 3,
+    scatterAmount: { min: 8, max: 14 },
+    platePiles: 3,
+    consumablePiles: 3,
+    consumablePool: ["medkit", "medshot", "stim", "flashbang", "emp", "frag"],
+    vendingMachines: 2,
+  },
+  {
+    depth: 6,
+    name: "DATA CENTER",
+    // Zero humans, asserted in data. After five floors of people shouting spot
+    // lines, a floor of nothing but turret hum should feel wrong.
+    groups: { min: 6, max: 8 },
+    weights: { turret: 44, k9: 12, fpv: 10, stealth: 10, prototype: 12, camera: 12 },
+    lootWeapons: ["m4", "akm", "ump45", "spas12", "fal", "vss", "m249"],
+    lootAmmo: { min: 18, max: 28 },
+    scatterPiles: 4,
+    scatterAmount: { min: 8, max: 16 },
+    platePiles: 3,
+    carrier: "carrier_iv",
+    consumablePiles: 4,
+    consumablePool: ["medkit", "stim", "emp", "flashbang"],
+    vendingMachines: 1,
+    boss: "warden",
+  },
 ];
 
 /** The tower grows one pair at a time; alpha ends at 8. */
-export const LAST_FLOOR = 4;
+export const LAST_FLOOR = 6;
 
 export function floorDef(depth: number): FloorDef {
   const def = FLOORS.find((f) => f.depth === depth);

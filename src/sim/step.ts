@@ -732,6 +732,7 @@ function pickTarget(state: GameState, targetId?: number): Entity | null {
   const candidates = state.enemies.filter(
     (e) =>
       (targetId === undefined || e.id === targetId) &&
+      !e.hidden &&
       state.visible[idx(map, e.x, e.y)] === true &&
       hasLos(map, player.x, player.y, e.x, e.y),
   );

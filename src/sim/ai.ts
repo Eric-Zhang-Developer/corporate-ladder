@@ -39,6 +39,9 @@ const BEHAVIORS: Record<BehaviorId, Behavior> = {
   meleeRush,
   cameraAlarm,
   detonate,
+  stealthApproach,
+  overwatch,
+  spinup,
 };
 
 /**
@@ -118,6 +121,12 @@ function meleeRush(state: GameState, rng: SimRNG, enemy: Entity): void {
   while (enemy.ap > 0 && state.phase === "playing") {
     const adjacent = distance(enemy, player) <= 1;
 
+    // A broken pathfinder is the point: you cannot count its approach, so you
+    // cannot cut your kiting that fine.
+    if (def.erratic && rng.next() < def.erratic && wanderStep(state, rng, enemy)) {
+      enemy.ap -= 1;
+      continue;
+    }
     if (adjacent && attacks < maxAttacks) {
       enemy.ap -= 1;
       attacks += 1;
@@ -195,6 +204,116 @@ function cameraAlarm(state: GameState, _rng: SimRNG, enemy: Entity): void {
 }
 
 /**
+ * Active camo. Not on the map until it is nearly on top of you: the reveal is
+ * the entire fight, and one tile of surprise is worth more than any stat in a
+ * turn-based game. Fragile once seen — the camo IS its armor budget.
+ */
+function stealthApproach(state: GameState, rng: SimRNG, enemy: Entity): void {
+  const def = enemyDef(enemy.defId);
+  const reveal = def.revealRange ?? 2;
+  if (!enemy.alerted) {
+    if (distance(enemy, state.player) > def.sightRange) return;
+    enemy.alerted = true; // it has seen you; you have not seen it
+    return;
+  }
+
+  while (enemy.ap > 0 && state.phase === "playing") {
+    const dist = distance(enemy, state.player);
+    if (enemy.hidden && dist <= reveal) {
+      delete enemy.hidden;
+      pushLog(state, def.spotLine ?? "Something shimmers, close.");
+      return; // the reveal costs it the rest of the turn — one turn of warning
+    }
+    if (dist <= 1) {
+      enemy.ap -= 1;
+      meleeAttack(state, rng, enemy, state.player);
+      return;
+    }
+    if (!stepToward(state, enemy)) break;
+    enemy.ap -= 1;
+  }
+}
+
+/**
+ * Emplacements. Never move, never chase: the threat is the LANE. One turn of
+ * visible telegraph, then anything still standing in the line pays for it —
+ * which turns map knowledge into the whole counter.
+ */
+function overwatch(state: GameState, rng: SimRNG, enemy: Entity): void {
+  const def = enemyDef(enemy.defId);
+  if (!enemy.weaponId) return;
+  const weapon = weaponDef(enemy.weaponId);
+  const inLane =
+    distance(enemy, state.player) <= maxRange(weapon) &&
+    hasLos(state.map, enemy.x, enemy.y, state.player.x, state.player.y);
+
+  if (enemy.chargeTimer !== undefined) {
+    enemy.chargeTimer -= 1;
+    if (enemy.chargeTimer > 0) return;
+    delete enemy.chargeTimer;
+    // Step out of the lane during the telegraph and the shot goes nowhere.
+    if (inLane && enemy.ap >= weapon.apFire) fireWeapon(state, rng, enemy, state.player);
+    else pushLog(state, `The ${enemy.name} loses its firing solution.`);
+    return;
+  }
+  if (!inLane) return;
+  if (!enemy.alerted) {
+    enemy.alerted = true;
+    pushLog(state, def.spotLine ?? `The ${enemy.name} acquires you.`);
+    return;
+  }
+  enemy.chargeTimer = def.chargeTurns ?? 1;
+  pushLog(state, `The ${enemy.name} sights down the lane.`);
+}
+
+/**
+ * Heavy chassis. Charges for a couple of visible turns and then either fires
+ * or, for the ones without a barrel, pulses an alarm that wakes every machine
+ * on the floor. Either way the fight is about interrupting the charge — break
+ * line of sight, stun it, or burst it down — never about out-damaging it.
+ */
+function spinup(state: GameState, rng: SimRNG, enemy: Entity): void {
+  const def = enemyDef(enemy.defId);
+  if (!checkSpotted(state, enemy, def)) return;
+
+  if (enemy.chargeTimer !== undefined) {
+    enemy.chargeTimer -= 1;
+    if (enemy.chargeTimer > 0) {
+      pushLog(state, `The ${enemy.name} winds up.`);
+      return;
+    }
+    delete enemy.chargeTimer;
+    const weapon = enemy.weaponId ? weaponDef(enemy.weaponId) : null;
+    const dist = distance(enemy, state.player);
+    if (weapon && dist <= maxRange(weapon) && hasLos(state.map, enemy.x, enemy.y, state.player.x, state.player.y)) {
+      fireWeapon(state, rng, enemy, state.player);
+    } else {
+      pushLog(state, `The ${enemy.name} discharges into empty air.`);
+    }
+    // The pulse: every dormant machine on the floor comes online.
+    let woken = 0;
+    for (const other of state.enemies) {
+      if (other.id === enemy.id || other.alerted) continue;
+      if (!enemyDef(other.defId).machine) continue;
+      other.alerted = true;
+      woken += 1;
+    }
+    if (woken > 0) pushLog(state, `The floor answers. ${woken} systems come online.`);
+    return;
+  }
+
+  // Closes slowly, then commits to a charge once it is in reach.
+  const weapon = enemy.weaponId ? weaponDef(enemy.weaponId) : null;
+  const reach = weapon ? maxRange(weapon) : 1;
+  if (distance(enemy, state.player) <= reach) {
+    enemy.chargeTimer = def.chargeTurns ?? 2;
+    pushLog(state, `The ${enemy.name} begins to spin up.`);
+    return;
+  }
+  if (stepToward(state, enemy)) enemy.ap -= 1;
+}
+
+/**
  * Kamikaze drones. Closes fast and trades itself for a blast — the answer to a
  * player who has learned to fight from a fortified doorway, because it does not
  * care about doorways. Reuses the grenade blast helper from the other side.
@@ -223,6 +342,25 @@ function detonate(state: GameState, rng: SimRNG, enemy: Entity): void {
     if (!stepToward(state, enemy)) break;
     enemy.ap -= 1;
   }
+}
+
+/** A wasted step in a random direction. Consumes RNG, so it stays seeded. */
+function wanderStep(state: GameState, rng: SimRNG, enemy: Entity): boolean {
+  const dirs = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ] as const;
+  // Drawn from the seeded stream, not from the snapshot: rngState is stale
+  // mid-turn and reading it would make the wander both fixed and unreplayable.
+  const [dx, dy] = dirs[Math.floor(rng.next() * dirs.length)]!;
+  const nx = enemy.x + dx;
+  const ny = enemy.y + dy;
+  if (!isFloor(state.map, nx, ny) || entityAt(state, nx, ny)) return false;
+  enemy.x = nx;
+  enemy.y = ny;
+  return true;
 }
 
 /** One A* step toward the player; never steps onto an occupied tile. */
