@@ -57,6 +57,7 @@ export function makeState(
     carrierId?: string | null;
     spareplates?: number;
     hotbar?: GameState["hotbar"];
+    cash?: number;
     xp?: number;
     level?: number;
     perks?: string[];
@@ -102,6 +103,7 @@ export function makeState(
     carrierId: opts.carrierId ?? null,
     spareplates: opts.spareplates ?? 0,
     hotbar: opts.hotbar ?? new Array(HOTBAR_SLOTS).fill(null),
+    cash: opts.cash ?? 0,
     xp: opts.xp ?? 0,
     level: opts.level ?? 1,
     perks: opts.perks ?? [],

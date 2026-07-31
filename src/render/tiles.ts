@@ -8,6 +8,7 @@ const ITEM_TILE: Record<GroundItem["kind"], string> = {
   plate: "item_plate",
   carrier: "item_carrier",
   consumable: "item_consumable",
+  vending: "vending",
 };
 
 /** Render-side state the sim never sees (Tab targeting, etc.). */

@@ -25,6 +25,8 @@ export interface FloorDef {
   /** Loose consumables, drawn uniformly from this pool. */
   consumablePiles?: number;
   consumablePool?: string[];
+  /** Vending machines. Unlimited stock — the limit is cash and the walk back. */
+  vendingMachines?: number;
 }
 
 export const FLOORS: FloorDef[] = [
@@ -40,6 +42,7 @@ export const FLOORS: FloorDef[] = [
     platePiles: 1,
     consumablePiles: 2,
     consumablePool: ["bandage", "snack", "medshot"],
+    vendingMachines: 1,
   },
   {
     depth: 2,
@@ -54,6 +57,7 @@ export const FLOORS: FloorDef[] = [
     carrier: "carrier_ii",
     consumablePiles: 3,
     consumablePool: ["bandage", "snack", "medshot", "stim", "schematics", "frag", "flashbang"],
+    vendingMachines: 2,
   },
 ];
 

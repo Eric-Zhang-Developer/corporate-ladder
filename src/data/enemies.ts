@@ -12,6 +12,8 @@ export interface EnemyDrop {
   weaponId?: string;
   /** A consumable from data/items.ts. */
   itemId?: string;
+  /** Meridian scrip. Never on a machine — capital expenditure is not salaried. */
+  cash?: { min: number; max: number };
   ammo?: { caliber: Caliber; min: number; max: number };
 }
 
@@ -74,6 +76,7 @@ export const ENEMIES = {
     drops: [
       { chance: 1, ammo: { caliber: "pistol", min: 4, max: 8 } },
       { chance: 0.25, itemId: "bandage" },
+      { chance: 1, cash: { min: 5, max: 10 } },
     ],
   },
   dog: {
@@ -106,7 +109,10 @@ export const ENEMIES = {
     behavior: "meleeRush",
     spotLine: `The Taser Guard yells, "Compliance is mandatory!"`,
     killVerb: "Tased into retirement by",
-    drops: [{ chance: 1, ammo: { caliber: "pistol", min: 2, max: 4 } }],
+    drops: [
+      { chance: 1, ammo: { caliber: "pistol", min: 2, max: 4 } },
+      { chance: 1, cash: { min: 5, max: 10 } },
+    ],
   },
   shotgun: {
     id: "shotgun",
@@ -125,6 +131,7 @@ export const ENEMIES = {
     drops: [
       { chance: 1, ammo: { caliber: "shell", min: 3, max: 5 } },
       { chance: 0.25, itemId: "bandage" },
+      { chance: 1, cash: { min: 6, max: 12 } },
     ],
   },
   camera: {
@@ -155,7 +162,10 @@ export const ENEMIES = {
     spotLine: "The Janitor sighs and hefts his wrench. Thirty years of this.",
     killVerb: "Mopped up by",
     // Thirty years on the job and OSHA-certified for every one of them.
-    drops: [{ chance: 1, itemId: "medkit" }],
+    drops: [
+      { chance: 1, itemId: "medkit" },
+      { chance: 1, cash: { min: 20, max: 35 } },
+    ],
   },
 } satisfies Record<string, EnemyDef>;
 

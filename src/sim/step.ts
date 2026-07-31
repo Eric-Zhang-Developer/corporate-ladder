@@ -1,6 +1,14 @@
 import { carrierCapacity, carrierDef, SPARE_PLATE_CAP } from "../data/carriers";
+import { CALIBERS, floorDef } from "../data/floors";
 import { AP_COSTS } from "../data/costs";
 import { itemDef, type ItemDef } from "../data/items";
+import {
+  PRICES,
+  SHOP_CONSUMABLES,
+  priceWithPerks,
+  type ShopEntry,
+  type ShopState,
+} from "../data/shop";
 import {
   HP_PER_PROMOTION,
   PERK_IDS,
@@ -8,12 +16,12 @@ import {
   perkDef,
   xpForLevel,
 } from "../data/perks";
-import { maxRange, weaponDef } from "../data/weapons";
+import { maxRange, weaponDef, type Caliber } from "../data/weapons";
 import type { Action } from "./actions";
 import { runEnemyTurns } from "./ai";
 import { detonate } from "./aoe";
 import { apToFire, fireWeapon, meleeAttack } from "./combat";
-import { applyFloor, hashSeed, LAST_FLOOR } from "./floor";
+import { applyFloor, carriedCalibers, hashSeed, LAST_FLOOR } from "./floor";
 import { recomputeFov } from "./fov";
 import { hasLos } from "./los";
 import { createSimRng, simRngFromState, type SimRNG } from "./rng";
@@ -33,6 +41,10 @@ import {
 
 /** Keeps the perk draw off the map and floor-content streams. */
 const PERK_OFFER_SALT = 7;
+/** Keeps shop stock off the map, spawn and perk streams. */
+const SHOP_SALT = 11;
+/** Per-item prices, narrowed away from the nested ammo/weapon tables. */
+const ITEM_PRICES = PRICES as unknown as Record<string, number>;
 
 /**
  * The whole game advances through this single entry point. A player turn is
@@ -44,6 +56,17 @@ export function applyAction(state: GameState, action: Action): GameState {
   // a certification, and the choice is a sim action so replays stay exact.
   if (state.phase === "promoting") {
     if (action.type === "choosePerk") resolvePromotion(state, action.perkId);
+    return state;
+  }
+  if (state.phase === "shopping") {
+    if (action.type === "buy") handlePurchase(state, action.index);
+    if (action.type === "leaveShop") {
+      delete state.shop;
+      state.phase = "playing";
+      applyFloor(state, state.floor + 1);
+      state.player.ap = state.player.maxAp; // fresh floor, fresh turn
+      recomputeFov(state);
+    }
     return state;
   }
   if (state.phase !== "playing") return state;
@@ -307,6 +330,27 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         pushLog(state, `You strap on the ${carrierDef(item.carrierId).name}.`);
         return;
       }
+      if (item.kind === "vending") {
+        const price = priceWithPerks(PRICES.snack, hasPerk(state, "expense_account"));
+        if (state.cash < price) {
+          pushLog(state, `The machine wants ${price} credits. You have ${state.cash}.`);
+          return;
+        }
+        const slot = hotbarSlotFor(state, "snack");
+        if (slot === -1) {
+          pushLog(state, "No room for another snack.");
+          return;
+        }
+        player.ap -= AP_COSTS.pickup;
+        state.cash -= price;
+        const stack = state.hotbar[slot];
+        if (stack) stack.count += 1;
+        else state.hotbar[slot] = { itemId: "snack", count: 1 };
+        // Machines never run out: the limit is cash, the carry cap, and the
+        // walk back through a hostile floor.
+        pushLog(state, `The machine clunks. (-${price} credits)`);
+        return;
+      }
       if (item.kind === "consumable") {
         const def = itemDef(item.itemId);
         const slot = hotbarSlotFor(state, item.itemId);
@@ -362,8 +406,11 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         pushLog(state, "You reach the roof access. To be continued.");
         return;
       }
-      applyFloor(state, state.floor + 1);
-      player.ap = player.maxAp; // fresh floor, fresh turn
+      // The stairwell landing: a safe breather with a merchant on it. The
+      // next floor is not built until the player leaves.
+      state.phase = "shopping";
+      state.shop = rollShop(state, state.floor + 1);
+      pushLog(state, "You duck into the stairwell. Someone has set up shop.");
       return;
     }
     case "plate": {
@@ -507,6 +554,107 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       return;
     }
   }
+}
+
+/**
+ * Stock for the landing above `floor`. Seeded from (seed, floor) like every
+ * other piece of floor content, so a shared seed shows the same shelf.
+ * Always at least one plate lot and one ammo lot; a weapon is the jackpot slot.
+ */
+function rollShop(state: GameState, floor: number): ShopState {
+  const rng = createSimRng(hashSeed(state.seed, floor, SHOP_SALT));
+  const def = floorDef(Math.min(floor, LAST_FLOOR));
+  const entries: ShopEntry[] = [{ kind: "plate", price: PRICES.plate }];
+
+  // Ammo biased toward what the player actually carries (§4.3's 60% rule).
+  const carried = carriedCalibers(state.player);
+  for (let i = 0; i < 2; i++) {
+    const caliber: Caliber =
+      carried.length > 0 && rng.next() < 0.6
+        ? carried[Math.floor(rng.next() * carried.length)]!
+        : CALIBERS[Math.floor(rng.next() * CALIBERS.length)]!;
+    const amount = 8 + Math.floor(rng.next() * 9);
+    entries.push({
+      kind: "ammo",
+      caliber,
+      amount,
+      price: Math.max(4, Math.round(amount * PRICES.ammo[caliber])),
+    });
+  }
+
+  const pool = SHOP_CONSUMABLES[floor] ?? SHOP_CONSUMABLES[1]!;
+  for (let i = 0; i < 2; i++) {
+    const itemId = pool[Math.floor(rng.next() * pool.length)]!;
+    entries.push({
+      kind: "consumable",
+      itemId,
+      price: ITEM_PRICES[itemId] ?? 12,
+    });
+  }
+
+  // The jackpot slot: a gun from the floor's pool, most of the time.
+  if (rng.next() < 0.7 && def.lootWeapons.length > 0) {
+    const weaponId = def.lootWeapons[Math.floor(rng.next() * def.lootWeapons.length)]!;
+    const tier = weaponDef(weaponId).tier ?? 1;
+    entries.push({ kind: "weapon", weaponId, price: PRICES.weapon[tier] ?? 50 });
+  }
+  if (def.carrier && rng.next() < 0.4) {
+    entries.push({ kind: "carrier", carrierId: def.carrier, price: PRICES.carrier });
+  }
+  return { entries, sold: [] };
+}
+
+function handlePurchase(state: GameState, index: number): void {
+  const shop = state.shop;
+  const entry = shop?.entries[index];
+  if (!shop || !entry) return;
+  if (shop.sold.includes(index)) {
+    pushLog(state, "Already sold.");
+    return;
+  }
+  const price = priceWithPerks(entry.price, hasPerk(state, "expense_account"));
+  if (state.cash < price) {
+    pushLog(state, `That costs ${price}. You have ${state.cash}.`);
+    return;
+  }
+  // Delivery first: if it cannot be carried, nothing is charged.
+  if (entry.kind === "ammo") {
+    state.ammo[entry.caliber] += entry.amount;
+  } else if (entry.kind === "plate") {
+    const cap =
+      SPARE_PLATE_CAP + (hasPerk(state, "deep_pockets") ? (perkDef("deep_pockets").value ?? 0) : 0);
+    if (state.spareplates >= cap) {
+      pushLog(state, "You cannot carry another plate.");
+      return;
+    }
+    state.spareplates += 1;
+  } else if (entry.kind === "consumable") {
+    const slot = hotbarSlotFor(state, entry.itemId);
+    if (slot === -1) {
+      pushLog(state, `No room for the ${itemDef(entry.itemId).name}.`);
+      return;
+    }
+    const stack = state.hotbar[slot];
+    if (stack) stack.count += 1;
+    else state.hotbar[slot] = { itemId: entry.itemId, count: 1 };
+  } else if (entry.kind === "carrier") {
+    if (state.carrierId && carrierCapacity(state.carrierId) >= carrierCapacity(entry.carrierId)) {
+      pushLog(state, "You are already better equipped.");
+      return;
+    }
+    state.carrierId = entry.carrierId;
+  } else {
+    const slots = state.player.slots;
+    const empty = slots?.findIndex((s, i) => s === null && i !== state.player.activeSlot) ?? -1;
+    if (!slots || empty === -1) {
+      pushLog(state, "You have no free slot for that.");
+      return;
+    }
+    slots[empty] = { weaponId: entry.weaponId, ammoInMag: weaponDef(entry.weaponId).magSize };
+  }
+  state.cash -= price;
+  shop.sold.push(index);
+  pushLog(state, `Bought. (-${price} credits, ${state.cash} left)`);
 }
 
 /** An existing stack of this type, else the first empty slot, else -1. */

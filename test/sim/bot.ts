@@ -62,6 +62,12 @@ function wantsItem(state: GameState, item: GroundItem): boolean {
   return false;
 }
 
+/** One pass along the shelf, then out. Exercises buying without optimising. */
+function shopAction(state: GameState, step: number): Action {
+  const entries = state.shop?.entries ?? [];
+  return step < entries.length ? { type: "buy", index: step } : { type: "leaveShop" };
+}
+
 function stepToward(state: GameState, gx: number, gy: number): Action | null {
   const p = state.player;
   if (p.x === gx && p.y === gy) return null;
@@ -190,15 +196,21 @@ export function runBot(seed: number, options: BotOptions = {}): BotResult {
   // is legal (a free typo-rule bail), but a long run of them means the bot has
   // no way forward and the test should fail loudly rather than spin.
   let idle = 0;
+  // Walks the shelf once, buying what it can afford, then climbs on.
+  let shopStep = 0;
 
-  while ((state.phase === "playing" || state.phase === "promoting") && actions < maxActions) {
+  const RUNNING = new Set(["playing", "promoting", "shopping"]);
+  while (RUNNING.has(state.phase) && actions < maxActions) {
     const before = { turn: state.turn, x: state.player.x, y: state.player.y };
     // Promotions pause the game until a certification is chosen. The bot always
     // takes the first offer — it is exercising the flow, not optimising a build.
     const action: Action =
       state.phase === "promoting"
         ? { type: "choosePerk", perkId: state.perkOffer?.[0] ?? "" }
-        : decide(state, memory);
+        : state.phase === "shopping"
+          ? shopAction(state, shopStep++)
+          : decide(state, memory);
+    if (state.phase !== "shopping") shopStep = 0;
     const floorBefore = state.floor;
     state = applyAction(state, action);
     if (state.floor !== floorBefore) memory.goal = null; // new floor, new map
@@ -208,6 +220,7 @@ export function runBot(seed: number, options: BotOptions = {}): BotResult {
 
     deepestFloor = Math.max(deepestFloor, state.floor);
     const moved =
+      state.phase === "shopping" ||
       state.turn !== before.turn ||
       state.player.x !== before.x ||
       state.player.y !== before.y ||

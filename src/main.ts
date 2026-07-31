@@ -124,6 +124,16 @@ window.addEventListener("keydown", (e) => {
     }
     return;
   }
+  if (state.phase === "shopping") {
+    e.preventDefault();
+    if (e.key === "Enter") state = applyAction(state, { type: "leaveShop" });
+    else {
+      const index = Number(e.key) - 1;
+      if (Number.isInteger(index) && index >= 0) state = applyAction(state, { type: "buy", index });
+    }
+    render();
+    return;
+  }
   if (state.phase !== "playing") {
     if (e.key === "Enter") {
       seed = randomSeed();

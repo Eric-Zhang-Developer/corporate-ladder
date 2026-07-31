@@ -1,4 +1,5 @@
 import { enemyDef } from "../data/enemies";
+import type { ShopState } from "../data/shop";
 import { weaponDef, type Caliber } from "../data/weapons";
 
 /** 0 = wall, 1 = floor */
@@ -72,7 +73,9 @@ export type GroundItemPayload =
   | { kind: "ammo"; caliber: Caliber; amount: number }
   | { kind: "plate" }
   | { kind: "carrier"; carrierId: string }
-  | { kind: "consumable"; itemId: string };
+  | { kind: "consumable"; itemId: string }
+  /** A machine, not an item: it is never picked up, only bought from. */
+  | { kind: "vending" };
 
 export type GroundItem = { id: number; x: number; y: number } & GroundItemPayload;
 
@@ -82,7 +85,7 @@ export interface ItemStack {
   count: number;
 }
 
-export type GamePhase = "playing" | "promoting" | "dead" | "won";
+export type GamePhase = "playing" | "promoting" | "shopping" | "dead" | "won";
 
 export interface GameState {
   seed: number;
@@ -114,6 +117,10 @@ export interface GameState {
   spareplates: number;
   /** Six typed stacks on keys 4-9. There is no bag; this is the inventory. */
   hotbar: (ItemStack | null)[];
+  /** Meridian scrip. Humans carry it; machines are capital expenditure. */
+  cash: number;
+  /** Present only while phase is "shopping" — the landing between floors. */
+  shop?: ShopState;
   xp: number;
   level: number;
   /** Chosen certification ids, in the order they were taken. */

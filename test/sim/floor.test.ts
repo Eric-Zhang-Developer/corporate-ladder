@@ -99,6 +99,9 @@ describe("ascend", () => {
     state.player.x = state.stairs.x;
     state.player.y = state.stairs.y;
     applyAction(state, { type: "ascend" });
+    // Ascending now stops at the stairwell landing; leaving it builds the floor.
+    expect(state.phase).toBe("shopping");
+    applyAction(state, { type: "leaveShop" });
     expect(state.floor).toBe(2);
     expect(state.player.hp).toBe(6);
     expect(state.ammo.pistol).toBe(11);
@@ -113,6 +116,7 @@ describe("ascend", () => {
       state.player.x = state.stairs.x;
       state.player.y = state.stairs.y;
       applyAction(state, { type: "ascend" });
+      applyAction(state, { type: "leaveShop" });
     }
     state.player.x = state.stairs.x;
     state.player.y = state.stairs.y;

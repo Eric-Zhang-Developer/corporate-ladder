@@ -156,6 +156,14 @@ export function buildFloor(
     items.push({ id: nextId++, x: spot[0], y: spot[1], kind: "consumable", itemId });
   }
 
+  for (let i = 0; i < (def.vendingMachines ?? 0) && spawnRooms.length > 0; i++) {
+    const room = spawnRooms[randInt(rng, 0, spawnRooms.length - 1)]!;
+    const spot = freeTileNear(gen.map, occupied, room.x, room.y);
+    if (!spot) continue;
+    occupied.add(`${spot[0]},${spot[1]}`);
+    items.push({ id: nextId++, x: spot[0], y: spot[1], kind: "vending" });
+  }
+
   return { map: gen.map, entrance, stairs, enemies, items, nextId };
 }
 
@@ -228,6 +236,7 @@ export function newGame(seed: number): GameState {
     carrierId: null,
     spareplates: 0,
     hotbar: new Array(HOTBAR_SLOTS).fill(null),
+    cash: 0,
     xp: 0,
     level: 1,
     perks: [],
@@ -238,7 +247,7 @@ export function newGame(seed: number): GameState {
   return state;
 }
 
-function carriedCalibers(player: Entity): Caliber[] {
+export function carriedCalibers(player: Entity): Caliber[] {
   const ids = (player.slots ?? [])
     .filter((s): s is NonNullable<typeof s> => s !== null)
     .map((s) => s.weaponId);

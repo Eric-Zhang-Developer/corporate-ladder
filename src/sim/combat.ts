@@ -220,6 +220,12 @@ function rollDrops(state: GameState, rng: SimRNG, corpse: Entity): void {
       const amount = hasPerk(state, "asset_recovery") ? Math.ceil(rolled * 1.5) : rolled;
       state.items.push({ id: state.nextId++, x: corpse.x, y: corpse.y, kind: "ammo", caliber, amount });
     }
+    if (drop.cash) {
+      const { min, max } = drop.cash;
+      const amount = min + Math.floor(rng.next() * (max - min + 1));
+      state.cash += amount;
+      pushLog(state, `You pocket ${amount} credits.`);
+    }
     if (drop.itemId) {
       state.items.push({
         id: state.nextId++,

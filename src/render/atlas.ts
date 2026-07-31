@@ -30,6 +30,7 @@ export function buildAtlas(): Atlas {
     { key: "item_plate", glyph: "]", fg: "#5599dd" },
     { key: "item_carrier", glyph: "[", fg: "#5599dd" },
     { key: "item_consumable", glyph: "*", fg: "#dd7799" },
+    { key: "vending", glyph: "\u00a4", fg: "#66bb88" },
   ];
   for (const def of Object.values(ENEMIES)) {
     specs.push({ key: def.id, glyph: def.glyph, fg: def.color });

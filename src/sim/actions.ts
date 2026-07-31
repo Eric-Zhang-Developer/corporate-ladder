@@ -13,4 +13,6 @@ export type Action =
   /** Take the stairs up (must be standing on them). */
   | { type: "ascend" }
   | { type: "choosePerk"; perkId: string }
+  | { type: "buy"; index: number }
+  | { type: "leaveShop" }
   | { type: "wait" };
