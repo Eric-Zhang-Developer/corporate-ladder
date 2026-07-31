@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { enemyDef, ENEMIES } from "../../src/data/enemies";
 import { EXPENSE_ACCOUNT_DISCOUNT, PRICES, priceWithPerks } from "../../src/data/shop";
+import { weaponDef } from "../../src/data/weapons";
 import { newGame } from "../../src/sim/floor";
 import { meleeAttack } from "../../src/sim/combat";
 import { createSimRng } from "../../src/sim/rng";
@@ -139,5 +140,78 @@ describe("Expense Account", () => {
     });
     applyAction(state, { type: "pickup" });
     expect(state.cash).toBe(100 - priceWithPerks(PRICES.snack, true));
+  });
+});
+
+describe("trading a gun in", () => {
+  /** A landing whose shelf definitely holds a gun, with a full weapon rack. */
+  function atLandingWithGun(seed = 4242) {
+    const HELD = ["glock", "revolver", "uzi"];
+    for (let s = seed; s < seed + 40; s++) {
+      const state = atTheLanding(s);
+      // Deliberately a gun the player does NOT already carry, so "the old one
+      // is gone" is distinguishable from "the shop sold the same model".
+      const index = state.shop!.entries.findIndex(
+        (e) => e.kind === "weapon" && !HELD.includes(e.weaponId),
+      );
+      if (index === -1) continue;
+      state.player.slots = [
+        { weaponId: "glock", ammoInMag: 7 },
+        { weaponId: "revolver", ammoInMag: 6 },
+        { weaponId: "uzi", ammoInMag: 20 },
+      ];
+      state.player.activeSlot = 0;
+      state.player.weaponId = "glock";
+      state.player.ammoInMag = 7;
+      state.cash = 500;
+      return { state, index };
+    }
+    throw new Error("no seed in range stocked a gun");
+  }
+
+  it("refuses without a choice, and charges nothing", () => {
+    const { state, index } = atLandingWithGun();
+    const before = state.cash;
+    applyAction(state, { type: "buy", index });
+    expect(state.cash).toBe(before);
+    expect(state.shop!.sold).not.toContain(index);
+    expect(state.log.at(-1)).toContain("choose a gun to trade in");
+  });
+
+  it("swaps the named slot and leaves the old gun behind", () => {
+    const { state, index } = atLandingWithGun();
+    const bought = state.shop!.entries[index]!;
+    applyAction(state, { type: "buy", index, replaceSlot: 1 });
+    expect(state.player.slots![1]!.weaponId).toBe((bought as { weaponId: string }).weaponId);
+    expect(state.player.slots!.some((s) => s?.weaponId === "revolver")).toBe(false);
+    expect(state.shop!.sold).toContain(index);
+    expect(state.log.join(" ")).toContain("on his counter");
+  });
+
+  it("moves the in-hand mirror when the ACTIVE slot is traded in", () => {
+    const { state, index } = atLandingWithGun();
+    const bought = (state.shop!.entries[index] as { weaponId: string }).weaponId;
+    applyAction(state, { type: "buy", index, replaceSlot: 0 });
+    // slots[activeSlot] is stale while a gun is held; both must move or the
+    // player keeps firing the gun they just gave away.
+    expect(state.player.weaponId).toBe(bought);
+    expect(state.player.slots![0]!.weaponId).toBe(bought);
+    expect(state.player.ammoInMag).toBe(weaponDef(bought).magSize);
+  });
+
+  it("prefers a genuinely empty slot and ignores the trade-in", () => {
+    const { state, index } = atLandingWithGun();
+    state.player.slots![2] = null;
+    applyAction(state, { type: "buy", index, replaceSlot: 1 });
+    expect(state.player.slots![1]!.weaponId).toBe("revolver"); // untouched
+    expect(state.player.slots![2]).not.toBeNull();
+  });
+
+  it("ignores an out-of-range slot rather than dropping the purchase", () => {
+    const { state, index } = atLandingWithGun();
+    const before = state.cash;
+    applyAction(state, { type: "buy", index, replaceSlot: 7 as 0 });
+    expect(state.cash).toBe(before);
+    expect(state.player.slots!.map((s) => s?.weaponId)).toEqual(["glock", "revolver", "uzi"]);
   });
 });

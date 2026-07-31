@@ -36,6 +36,8 @@ const ui: UIState = { targetId: null };
 let dropMode = false;
 let hint = "";
 let throwAim: { slot: number; x: number; y: number; radius: number; range: number } | null = null;
+/** Trading a gun in at the merchant: pick a slot, then confirm. */
+let tradeIn: { index: number; slot?: 0 | 1 | 2 } | null = null;
 
 const AIM_KEYS: Record<string, [number, number]> = {
   arrowup: [0, -1],
@@ -69,6 +71,15 @@ function syncAim(): void {
   };
 }
 
+/** True when this shop line is a gun and there is nowhere to put it. */
+function needsTradeIn(index: number): boolean {
+  const entry = state.shop?.entries[index];
+  if (!entry || entry.kind !== "weapon" || state.shop?.sold.includes(index)) return false;
+  const slots = state.player.slots;
+  if (!slots) return false;
+  return !slots.some((slot, i) => slot === null && i !== state.player.activeSlot);
+}
+
 function render(): void {
   if (viewport.width !== state.map.width * TILE || viewport.height !== state.map.height * TILE) {
     viewport.width = state.map.width * TILE;
@@ -81,7 +92,7 @@ function render(): void {
   }
   renderViewport(ctx!, atlas, state, ui);
   updateSidebar(sidebar, state, ui);
-  updateScreens(overlay, state);
+  updateScreens(overlay, state, tradeIn);
   header.innerHTML = `<b>${floorDef(state.floor).name}</b>: ${state.floor}/${LAST_FLOOR}`;
   const recent = state.log.slice(-3);
   // Escaped, not interpolated raw: log text is internal today, but it is about
@@ -126,10 +137,32 @@ window.addEventListener("keydown", (e) => {
   }
   if (state.phase === "shopping") {
     e.preventDefault();
-    if (e.key === "Enter") state = applyAction(state, { type: "leaveShop" });
-    else {
-      const index = Number(e.key) - 1;
-      if (Number.isInteger(index) && index >= 0) state = applyAction(state, { type: "buy", index });
+    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+
+    if (tradeIn) {
+      if (tradeIn.slot === undefined) {
+        const slot = "123".indexOf(key);
+        if (slot === -1) tradeIn = null; // anything else backs out
+        else tradeIn.slot = slot as 0 | 1 | 2;
+      } else if (key === "y" || key === "Enter") {
+        // Permadeath: never let one keystroke destroy a gun you were carrying.
+        state = applyAction(state, { type: "buy", index: tradeIn.index, replaceSlot: tradeIn.slot });
+        tradeIn = null;
+      } else {
+        tradeIn = null;
+      }
+      render();
+      return;
+    }
+
+    if (key === "Enter") {
+      state = applyAction(state, { type: "leaveShop" });
+    } else {
+      const index = Number(key) - 1;
+      if (Number.isInteger(index) && index >= 0) {
+        if (needsTradeIn(index)) tradeIn = { index };
+        else state = applyAction(state, { type: "buy", index });
+      }
     }
     render();
     return;

@@ -59,7 +59,7 @@ export function applyAction(state: GameState, action: Action): GameState {
     return state;
   }
   if (state.phase === "shopping") {
-    if (action.type === "buy") handlePurchase(state, action.index);
+    if (action.type === "buy") handlePurchase(state, action.index, action.replaceSlot);
     if (action.type === "leaveShop") {
       delete state.shop;
       state.phase = "playing";
@@ -608,7 +608,7 @@ function rollShop(state: GameState, floor: number): ShopState {
   return { entries, sold: [] };
 }
 
-function handlePurchase(state: GameState, index: number): void {
+function handlePurchase(state: GameState, index: number, replaceSlot?: 0 | 1 | 2): void {
   const shop = state.shop;
   const entry = shop?.entries[index];
   if (!shop || !entry) return;
@@ -648,13 +648,29 @@ function handlePurchase(state: GameState, index: number): void {
     }
     state.carrierId = entry.carrierId;
   } else {
-    const slots = state.player.slots;
-    const empty = slots?.findIndex((s, i) => s === null && i !== state.player.activeSlot) ?? -1;
-    if (!slots || empty === -1) {
-      pushLog(state, "You have no free slot for that.");
+    const player = state.player;
+    const slots = player.slots;
+    if (!slots) return;
+    const empty = slots.findIndex((s, i) => s === null && i !== player.activeSlot);
+    // A free slot is always preferred; the trade-in only exists for a full rack.
+    const target = empty !== -1 ? empty : replaceSlot;
+    if (target === undefined || target < 0 || target >= slots.length) {
+      pushLog(state, "Your slots are full — choose a gun to trade in.");
       return;
     }
-    slots[empty] = { weaponId: entry.weaponId, ammoInMag: weaponDef(entry.weaponId).magSize };
+    const fresh = { weaponId: entry.weaponId, ammoInMag: weaponDef(entry.weaponId).magSize };
+    if (empty === -1) {
+      // slots[activeSlot] is stale while a gun is in hand, so trading in the
+      // ACTIVE slot has to move the mirrored pair too or the old gun survives.
+      const discarded = target === player.activeSlot ? player.weaponId : slots[target]?.weaponId;
+      if (discarded) pushLog(state, `You leave the ${weaponDef(discarded).name} on his counter.`);
+      if (target === player.activeSlot) {
+        player.weaponId = fresh.weaponId;
+        player.ammoInMag = fresh.ammoInMag;
+        delete player.chambered;
+      }
+    }
+    slots[target] = fresh;
   }
   state.cash -= price;
   shop.sold.push(index);
