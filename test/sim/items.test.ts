@@ -154,7 +154,9 @@ describe("dropping", () => {
 
 describe("item data integrity", () => {
   it("every effect maps to a known one-touchpoint mechanism", () => {
-    const allowed = new Set(["heal", "healFull", "stim", "reveal"]);
+    // Deliberately a closed list: a new kind should fail here and be added on
+    // purpose, which is what keeps this from drifting into a status framework.
+    const allowed = new Set(["heal", "healFull", "stim", "reveal", "throw"]);
     for (const id of Object.keys(ITEMS)) {
       expect(allowed, `${id} introduced a new effect kind`).toContain(itemDef(id).effect.kind);
     }

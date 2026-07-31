@@ -16,7 +16,20 @@ export type ItemEffect =
   | { kind: "stim"; bonus: number; comedown: number }
   /** Layout only — knowing where the stairs are changes routing; knowing where
    *  everything is deletes exploration. */
-  | { kind: "reveal" };
+  | { kind: "reveal" }
+  /**
+   * Thrown radius effects. Each grenade answers a different half of the mixed
+   * bestiary, so a throwable loadout is a bet on what you expect to fight.
+   */
+  | {
+      kind: "throw";
+      range: number;
+      radius: number;
+      damage?: number;
+      stun?: boolean;
+      targets?: "all" | "machines" | "organics";
+      sparesPlayer?: boolean;
+    };
 
 export interface ItemDef {
   id: string;
@@ -85,6 +98,45 @@ export const ITEMS = {
     apUse: 1,
     stack: 3,
     effect: { kind: "reveal" },
+  },
+  frag: {
+    id: "frag",
+    name: "Frag Grenade",
+    glyph: "o",
+    color: "#cc7744",
+    apUse: 1,
+    stack: 3,
+    // Hits everyone, including you. Throwing it at your own feet is a mistake
+    // the game will let you make.
+    effect: { kind: "throw", range: 5, radius: 1, damage: 9 },
+  },
+  flashbang: {
+    id: "flashbang",
+    name: "Flashbang",
+    glyph: "o",
+    color: "#eeeecc",
+    apUse: 1,
+    stack: 3,
+    // No damage at all: the whole item is one stolen turn. Organics only —
+    // machines have no eyes to take away.
+    effect: {
+      kind: "throw",
+      range: 5,
+      radius: 1,
+      stun: true,
+      targets: "organics",
+      sparesPlayer: true,
+    },
+  },
+  emp: {
+    id: "emp",
+    name: "EMP Grenade",
+    glyph: "o",
+    color: "#66ccee",
+    apUse: 1,
+    stack: 3,
+    // The other half of the bestiary, and the anti-chassis panic button.
+    effect: { kind: "throw", range: 5, radius: 1, damage: 12, stun: true, targets: "machines" },
   },
 } satisfies Record<string, ItemDef>;
 

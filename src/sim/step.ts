@@ -4,6 +4,7 @@ import { itemDef, type ItemDef } from "../data/items";
 import { maxRange, weaponDef } from "../data/weapons";
 import type { Action } from "./actions";
 import { runEnemyTurns } from "./ai";
+import { detonate } from "./aoe";
 import { apToFire, fireWeapon, meleeAttack } from "./combat";
 import { applyFloor, LAST_FLOOR } from "./floor";
 import { recomputeFov } from "./fov";
@@ -322,6 +323,57 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       if (stack.count <= 0) state.hotbar[action.slot] = null;
       return;
     }
+    case "throwItem": {
+      const stack = state.hotbar[action.slot];
+      if (!stack) {
+        pushLog(state, "That slot is empty.");
+        return;
+      }
+      const def = itemDef(stack.itemId);
+      if (def.effect.kind !== "throw") {
+        pushLog(state, `The ${def.name} is not for throwing.`);
+        return;
+      }
+      const blast = def.effect;
+      if (!isFloor(state.map, action.x, action.y)) {
+        pushLog(state, "You cannot throw into a wall.");
+        return;
+      }
+      if (distance(player, action) > blast.range) {
+        pushLog(state, "That is out of throwing range.");
+        return;
+      }
+      // LOS, not arcs: lobbing over walls would need trajectory rules this
+      // game has not bought.
+      if (!hasLos(state.map, player.x, player.y, action.x, action.y)) {
+        pushLog(state, "You have no line to throw there.");
+        return;
+      }
+      if (player.ap < def.apUse) {
+        pushLog(state, `Not enough AP to throw the ${def.name}.`);
+        return;
+      }
+      player.ap -= def.apUse;
+      stack.count -= 1;
+      if (stack.count <= 0) state.hotbar[action.slot] = null;
+      pushLog(state, `You throw the ${def.name}.`);
+      detonate(
+        state,
+        rng,
+        action.x,
+        action.y,
+        {
+          radius: blast.radius,
+          ...(blast.damage !== undefined ? { damage: blast.damage } : {}),
+          ...(blast.stun ? { stun: true } : {}),
+          ...(blast.targets ? { targets: blast.targets } : {}),
+          ...(blast.sparesPlayer ? { sparesPlayer: true } : {}),
+        },
+        player,
+        "Blown up by",
+      );
+      return;
+    }
     case "drop": {
       if (player.ap < AP_COSTS.drop) {
         pushLog(state, "Not enough AP to drop that.");
@@ -433,6 +485,12 @@ function applyItemEffect(state: GameState, def: ItemDef): boolean {
       }
       pushLog(state, "You unfold the schematics. The floor plan resolves.");
       return true;
+    }
+    case "throw": {
+      // Grenades are thrown at a tile, never "used" in place. The UI turns the
+      // hotbar key into a targeting mode; reaching here means a stray action.
+      pushLog(state, `The ${def.name} needs somewhere to go.`);
+      return false;
     }
   }
 }

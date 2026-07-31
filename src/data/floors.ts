@@ -53,7 +53,7 @@ export const FLOORS: FloorDef[] = [
     platePiles: 2,
     carrier: "carrier_ii",
     consumablePiles: 3,
-    consumablePool: ["bandage", "snack", "medshot", "stim", "schematics"],
+    consumablePool: ["bandage", "snack", "medshot", "stim", "schematics", "frag", "flashbang"],
   },
 ];
 

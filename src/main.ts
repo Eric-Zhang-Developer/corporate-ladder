@@ -1,4 +1,5 @@
 import { floorDef, LAST_FLOOR } from "./data/floors";
+import { itemDef } from "./data/items";
 import { actionForKey } from "./input/keyboard";
 import { buildAtlas, TILE } from "./render/atlas";
 import { buildSidebar, updateSidebar } from "./render/dom/sidebar";
@@ -6,7 +7,7 @@ import { updateScreens } from "./render/dom/screens";
 import { renderViewport, type UIState } from "./render/tiles";
 import { newGame } from "./sim/floor";
 import { hasLos } from "./sim/los";
-import { distance, idx } from "./sim/state";
+import { distance, idx, isFloor } from "./sim/state";
 import { applyAction } from "./sim/step";
 import { randomSeed, seedFromUrl, writeSeedToUrl } from "./seed";
 
@@ -34,6 +35,39 @@ const ui: UIState = { targetId: null };
 // Two-key input modes live here, never in the sim.
 let dropMode = false;
 let hint = "";
+let throwAim: { slot: number; x: number; y: number; radius: number; range: number } | null = null;
+
+const AIM_KEYS: Record<string, [number, number]> = {
+  arrowup: [0, -1],
+  arrowdown: [0, 1],
+  arrowleft: [-1, 0],
+  arrowright: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  w: [0, -1],
+  s: [0, 1],
+  a: [-1, 0],
+  d: [1, 0],
+};
+
+/** Mirrors the aim cursor into render-side state, with its legality. */
+function syncAim(): void {
+  if (!throwAim) {
+    ui.throwAim = null;
+    return;
+  }
+  const p = state.player;
+  const inRange = distance(p, throwAim) <= throwAim.range;
+  const clear = hasLos(state.map, p.x, p.y, throwAim.x, throwAim.y);
+  ui.throwAim = {
+    x: throwAim.x,
+    y: throwAim.y,
+    radius: throwAim.radius,
+    valid: inRange && clear,
+  };
+}
 
 function render(): void {
   if (viewport.width !== state.map.width * TILE || viewport.height !== state.map.height * TILE) {
@@ -135,8 +169,59 @@ window.addEventListener("keydown", (e) => {
     return;
   }
 
+  // Grenade aiming. First tap of the hotbar key opens the cursor, arrows move
+  // it, and only the confirm key commits — a mis-tap should never spend the
+  // grenade in a permadeath run.
+  if (throwAim) {
+    e.preventDefault();
+    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    const step = AIM_KEYS[key];
+    if (step) {
+      const nx = throwAim.x + step[0];
+      const ny = throwAim.y + step[1];
+      if (isFloor(state.map, nx, ny)) {
+        throwAim.x = nx;
+        throwAim.y = ny;
+      }
+    } else if (key === "Enter" || key === "f") {
+      const { slot, x, y } = throwAim;
+      throwAim = null;
+      hint = "";
+      state = applyAction(state, { type: "throwItem", slot, x, y });
+    } else {
+      throwAim = null;
+      hint = "";
+    }
+    syncAim();
+    render();
+    return;
+  }
+
   let action = actionForKey(e);
   if (!action) return;
+
+  // Using a throwable *means* throwing it, so the hotbar key opens the cursor
+  // instead of dispatching a useItem the sim would only refuse.
+  if (action.type === "useItem") {
+    const stack = state.hotbar[action.slot];
+    const effect = stack ? itemDef(stack.itemId).effect : null;
+    if (effect?.kind === "throw") {
+      e.preventDefault();
+      const start = state.enemies.find((en) => en.id === ui.targetId) ?? state.player;
+      throwAim = {
+        slot: action.slot,
+        x: start.x,
+        y: start.y,
+        radius: effect.radius,
+        range: effect.range,
+      };
+      hint = `THROW ${itemDef(stack!.itemId).name} — move the cursor, Enter to throw, any other key to cancel.`;
+      syncAim();
+      render();
+      return;
+    }
+  }
+
   if (action.type === "fire" && ui.targetId !== null) {
     action = { type: "fire", targetId: ui.targetId };
   }
