@@ -3,7 +3,7 @@
 A turn-based roguelike about shooting your way up an evil corporation's tower.
 Currently at **Stage 2 — The Vertical Slice**: floors 1–2, the tier-1 arsenal,
 six enemy types, the ammo economy, and the first tile renderer + sidebar.
-Design doc: [tower-design-handoff.md](tower-design-handoff.md).
+Design docs: [docs/](docs/) — the original handoff plus the alpha design set.
 
 ## Run
 

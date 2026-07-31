@@ -1,6 +1,6 @@
 # AGENTS.md — Severance Package
 
-Guidance for AI agents (and humans) working in this codebase. Read this before writing code. The design document `tower-design-handoff.md` is the constitution — section references below (§) point into it. When a design question is undecided, the tiebreaker is: *"what would Rogue Fable do, but with guns."*
+Guidance for AI agents (and humans) working in this codebase. Read this before writing code. The design document `docs/tower-design-handoff.md` is the constitution — section references below (§) point into it — but the alpha design docs in `docs/` (`arsenal-design.md`, `progression-design.md`, `consumables-design.md`, `bestiary-design.md`, `ui-design.md`) supersede it where they conflict: they were argued from playtests and design merits, which outrank doc citations. When a design question is undecided, the tiebreaker is: *"what would Rogue Fable do, but with guns."*
 
 ## What this is
 
