@@ -9,6 +9,12 @@ export const AP_COSTS = {
    * twice, and start the next fight with the bolt open and regretting it.
    */
   cycle: 1,
+  /**
+   * Slotting a plate mid-fight competes with shooting and moving, exactly like
+   * reloading. That competition is what makes this turn-based rather than
+   * borrowed from a shooter.
+   */
+  plate: 1,
 } as const;
 
 /**

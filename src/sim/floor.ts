@@ -127,6 +127,24 @@ export function buildFloor(
     });
   }
 
+  // Plates and carriers. Placed after ammo so adding them cannot shift the
+  // scatter rolls above, keeping older seeds' ammo layout intact.
+  for (let i = 0; i < (def.platePiles ?? 0) && spawnRooms.length > 0; i++) {
+    const room = spawnRooms[randInt(rng, 0, spawnRooms.length - 1)]!;
+    const spot = freeTileNear(gen.map, occupied, room.x, room.y);
+    if (!spot) continue;
+    occupied.add(`${spot[0]},${spot[1]}`);
+    items.push({ id: nextId++, x: spot[0], y: spot[1], kind: "plate" });
+  }
+  if (def.carrier && spawnRooms.length > 0) {
+    const room = spawnRooms[randInt(rng, 0, spawnRooms.length - 1)]!;
+    const spot = freeTileNear(gen.map, occupied, room.x, room.y);
+    if (spot) {
+      occupied.add(`${spot[0]},${spot[1]}`);
+      items.push({ id: nextId++, x: spot[0], y: spot[1], kind: "carrier", carrierId: def.carrier });
+    }
+  }
+
   return { map: gen.map, entrance, stairs, enemies, items, nextId };
 }
 
@@ -185,6 +203,8 @@ export function newGame(seed: number): GameState {
     enemies: [],
     items: [],
     ammo: { pistol: 24, shell: 0, rifle: 0, heavy: 0 },
+    carrierId: null,
+    spareplates: 0,
     nextId: 1,
     log: ["Find whoever signs the checks."],
   };

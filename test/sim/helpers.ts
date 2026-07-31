@@ -53,6 +53,8 @@ export function makeState(
     ammo?: GameState["ammo"];
     items?: GameState["items"];
     stairs?: { x: number; y: number };
+    carrierId?: string | null;
+    spareplates?: number;
   } = {},
 ): GameState {
   const map = opts.map ?? openMap();
@@ -92,6 +94,8 @@ export function makeState(
     enemies: opts.enemies ?? [],
     items: opts.items ?? [],
     ammo: opts.ammo ?? { pistol: 24, shell: 0, rifle: 0, heavy: 0 },
+    carrierId: opts.carrierId ?? null,
+    spareplates: opts.spareplates ?? 0,
     nextId: 1000,
     log: [],
   };

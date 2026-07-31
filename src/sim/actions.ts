@@ -5,6 +5,7 @@ export type Action =
   | { type: "reload" }
   | { type: "swap"; slot: 0 | 1 | 2 }
   | { type: "pickup" }
+  | { type: "plate" }
   /** Take the stairs up (must be standing on them). */
   | { type: "ascend" }
   | { type: "wait" };

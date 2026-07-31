@@ -124,7 +124,17 @@ export function meleeAttack(state: GameState, rng: SimRNG, attacker: Entity, def
     pushLog(state, `Your muscles seize. (-${drain} AP next turn)`);
   }
 
-  dealDamage(state, rng, attacker, defender, dmg, killVerbFor(attacker));
+  dealDamage(state, rng, attacker, defender, dmg, killVerbFor(attacker), { bypassShield: true });
+}
+
+export interface DamageOptions {
+  /**
+   * Melee sets this. Blades find the gaps in plate, so armor DR and the shield
+   * pool are both skipped — which is what keeps a fully-plated player afraid of
+   * exactly the enemies designed to punish camping. Load-bearing: if plates
+   * ever feel too safe, cut plate values, never this.
+   */
+  bypassShield?: boolean;
 }
 
 export function dealDamage(
@@ -134,8 +144,27 @@ export function dealDamage(
   defender: Entity,
   dmg: number,
   killVerb: string,
+  options: DamageOptions = {},
 ): void {
-  defender.hp -= dmg;
+  let remaining = dmg;
+  const shield = defender.shield ?? 0;
+  if (!options.bypassShield && shield > 0) {
+    const absorbed = Math.min(shield, remaining);
+    remaining -= absorbed;
+    const left = shield - absorbed;
+    if (left > 0) defender.shield = left;
+    else delete defender.shield;
+    pushLog(
+      state,
+      defender.id === state.player.id
+        ? left > 0
+          ? `Your plates take ${absorbed}. (${left} left)`
+          : "Your last plate shatters."
+        : `The ${defender.name}'s plates take ${absorbed}.`,
+    );
+  }
+  if (remaining <= 0) return;
+  defender.hp -= remaining;
   if (defender.hp <= 0) kill(state, rng, attacker, defender, killVerb);
 }
 

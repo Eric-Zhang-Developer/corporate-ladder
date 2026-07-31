@@ -1,4 +1,5 @@
 import { Path } from "rot-js";
+import { SPARE_PLATE_CAP, carrierCapacity, carrierDef } from "../../src/data/carriers";
 import { maxRange, weaponDef } from "../../src/data/weapons";
 import type { Action } from "../../src/sim/actions";
 import { newGame } from "../../src/sim/floor";
@@ -39,6 +40,12 @@ export interface BotOptions {
 /** Item kinds the bot will detour for, given its current inventory. */
 function wantsItem(state: GameState, item: GroundItem): boolean {
   if (item.kind === "ammo") return true;
+  if (item.kind === "plate") return state.spareplates < SPARE_PLATE_CAP;
+  if (item.kind === "carrier") {
+    // Only an upgrade — matching the sim's own rule keeps the bot from
+    // re-collecting the carrier it just swapped off.
+    return !state.carrierId || carrierCapacity(state.carrierId) < carrierCapacity(item.carrierId);
+  }
   if (item.kind === "weapon") {
     // Only take a gun into a genuinely empty slot. Picking one up with all
     // slots full drops the held gun at our feet, which a "walk to nearest
@@ -91,6 +98,15 @@ function decide(state: GameState, memory: BotMemory): Action {
       dx: Math.sign(adjacent.x - p.x) as -1 | 0 | 1,
       dy: Math.sign(adjacent.y - p.y) as -1 | 0 | 1,
     };
+  }
+
+  // Plate up when there is room and a spare — cheap, and it exercises the
+  // shield path on every run rather than only when a human remembers to.
+  if (state.carrierId && state.spareplates > 0) {
+    const capacity = carrierCapacity(state.carrierId);
+    if ((p.shield ?? 0) + carrierDef(state.carrierId).plateValue <= capacity) {
+      return { type: "plate" };
+    }
   }
 
   if (p.weaponId) {

@@ -32,6 +32,12 @@ export interface Entity {
   /** Flat DR subtracted from EVERY pellet. Blades ignore it. */
   armor?: number;
   /**
+   * Plate pool. Absorbs before HP, does not regenerate, and melee ignores it
+   * entirely — so plates buy confidence against gunfire and none at all
+   * against the things that punish camping. Deleted at zero.
+   */
+  shield?: number;
+  /**
    * Bolt guns only, and only ever set to false: absent means the chamber is
    * loaded. Storing the exceptional state means no spawn, pickup, or test
    * fixture has to know bolts exist.
@@ -63,6 +69,8 @@ export interface WeaponSlot {
 export type GroundItem = { id: number; x: number; y: number } & (
   | { kind: "weapon"; weaponId: string; ammoInMag: number }
   | { kind: "ammo"; caliber: Caliber; amount: number }
+  | { kind: "plate" }
+  | { kind: "carrier"; carrierId: string }
 );
 
 export type GamePhase = "playing" | "dead" | "won";
@@ -89,6 +97,12 @@ export interface GameState {
   items: GroundItem[];
   /** Player's per-caliber ammo reserve — the soft clock (§4.3). */
   ammo: Record<Caliber, number>;
+  /**
+   * Run-scoped player possessions live flat on the state alongside `ammo`,
+   * rather than on the player Entity, which stays about position and combat.
+   */
+  carrierId: string | null;
+  spareplates: number;
   /** Monotonic id source for spawned entities and items. */
   nextId: number;
   log: string[];

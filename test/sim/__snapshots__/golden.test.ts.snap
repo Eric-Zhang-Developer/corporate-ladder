@@ -67,9 +67,8 @@ exports[`golden run > a scripted combat run reproduces the same fight 1`] = `
     },
   ],
   "floor": 2,
-  "itemCount": 4,
+  "itemCount": 7,
   "log": [
-    "The Taser Guard yells, "Compliance is mandatory!"",
     "You hit the Taser Guard for 3.",
     "You miss the Taser Guard.",
     "You hit the Taser Guard for 3.",
@@ -98,6 +97,7 @@ exports[`golden run > a scripted combat run reproduces the same fight 1`] = `
     "You pocket 6 pistol rounds.",
     "You pocket 8 pistol rounds.",
     "You pocket 5 shell rounds.",
+    "You stow a plate. (1 spare)",
     "OFFICES — floor 2 of the tower.",
   ],
   "phase": "playing",
@@ -105,7 +105,7 @@ exports[`golden run > a scripted combat run reproduces the same fight 1`] = `
     "ammoInMag": 7,
     "ap": 2,
     "hp": 10,
-    "x": 32,
+    "x": 29,
     "y": 12,
   },
   "rngState": [
@@ -171,7 +171,7 @@ exports[`golden run > seed 1 with a scripted turn sequence reproduces the same s
     },
   ],
   "floor": 1,
-  "itemCount": 4,
+  "itemCount": 5,
   "log": [
     "Find whoever signs the checks.",
     "LOBBY — floor 1 of the tower.",

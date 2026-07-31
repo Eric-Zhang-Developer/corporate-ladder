@@ -1,3 +1,4 @@
+import { carrierCapacity, carrierDef, SPARE_PLATE_CAP } from "../data/carriers";
 import { AP_COSTS } from "../data/costs";
 import { maxRange, weaponDef } from "../data/weapons";
 import type { Action } from "./actions";
@@ -190,6 +191,34 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         pushLog(state, `You pocket ${item.amount} ${item.caliber} rounds.`);
         return;
       }
+      if (item.kind === "plate") {
+        if (state.spareplates >= SPARE_PLATE_CAP) {
+          pushLog(state, "You cannot carry another plate.");
+          return;
+        }
+        player.ap -= AP_COSTS.pickup;
+        state.spareplates += 1;
+        state.items = state.items.filter((i) => i.id !== item.id);
+        pushLog(state, `You stow a plate. (${state.spareplates} spare)`);
+        return;
+      }
+      if (item.kind === "carrier") {
+        const worn = state.carrierId;
+        // Only an upgrade is worth the AP — and refusing sideways swaps keeps
+        // the dropped-carrier pickup loop from existing at all.
+        if (worn && carrierCapacity(worn) >= carrierCapacity(item.carrierId)) {
+          pushLog(state, `Your ${carrierDef(worn).name} is already better.`);
+          return;
+        }
+        player.ap -= AP_COSTS.pickup;
+        state.items = state.items.filter((i) => i.id !== item.id);
+        if (worn) {
+          state.items.push({ id: state.nextId++, x: player.x, y: player.y, kind: "carrier", carrierId: worn });
+        }
+        state.carrierId = item.carrierId;
+        pushLog(state, `You strap on the ${carrierDef(item.carrierId).name}.`);
+        return;
+      }
       // Weapon: fill an empty slot; if all three are full, swap with the
       // gun in hand (which drops where you stand).
       const slots = player.slots;
@@ -232,6 +261,30 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       }
       applyFloor(state, state.floor + 1);
       player.ap = player.maxAp; // fresh floor, fresh turn
+      return;
+    }
+    case "plate": {
+      if (!state.carrierId) {
+        pushLog(state, "You have no plate carrier.");
+        return;
+      }
+      const capacity = carrierCapacity(state.carrierId);
+      if ((player.shield ?? 0) >= capacity) {
+        pushLog(state, "Your carrier is full.");
+        return;
+      }
+      if (state.spareplates <= 0) {
+        pushLog(state, "No spare plates.");
+        return;
+      }
+      if (player.ap < AP_COSTS.plate) {
+        pushLog(state, "Not enough AP to plate up.");
+        return;
+      }
+      player.ap -= AP_COSTS.plate;
+      state.spareplates -= 1;
+      player.shield = Math.min(capacity, (player.shield ?? 0) + carrierDef(state.carrierId).plateValue);
+      pushLog(state, `You slot a plate. (${player.shield}/${capacity})`);
       return;
     }
     case "wait": {

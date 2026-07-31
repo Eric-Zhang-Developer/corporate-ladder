@@ -18,6 +18,10 @@ export interface FloorDef {
   /** Scattered ammo piles beyond the loot room. */
   scatterPiles: number;
   scatterAmount: { min: number; max: number };
+  /** Loose plates lying around — the renewable half of the armor economy. */
+  platePiles?: number;
+  /** Carrier upgrade available on this floor, if any. */
+  carrier?: string;
 }
 
 export const FLOORS: FloorDef[] = [
@@ -30,16 +34,19 @@ export const FLOORS: FloorDef[] = [
     lootAmmo: { min: 10, max: 16 },
     scatterPiles: 2,
     scatterAmount: { min: 4, max: 8 },
+    platePiles: 1,
   },
   {
     depth: 2,
     name: "OFFICES",
     groups: { min: 5, max: 7 },
     weights: { rentacop: 20, shotgun: 18, camera: 12, dog: 16, taser: 14, janitor: 8 },
-    lootWeapons: ["revolver", "uzi", "serbu", "mosin"],
+    lootWeapons: ["revolver", "uzi", "serbu", "mosin", "sks", "mini14", "tec9"],
     lootAmmo: { min: 10, max: 16 },
     scatterPiles: 2,
     scatterAmount: { min: 4, max: 8 },
+    platePiles: 2,
+    carrier: "carrier_ii",
   },
 ];
 

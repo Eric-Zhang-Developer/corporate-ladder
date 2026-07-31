@@ -1,5 +1,6 @@
 import { dmgPerAp, weaponDef } from "../../data/weapons";
 import { KNIFE } from "../../data/costs";
+import { carrierCapacity, carrierDef } from "../../data/carriers";
 import { CALIBERS, LAST_FLOOR } from "../../data/floors";
 import { distance, idx, type GameState } from "../../sim/state";
 import type { UIState } from "../tiles";
@@ -12,6 +13,7 @@ import type { UIState } from "../tiles";
 export function buildSidebar(root: HTMLElement): void {
   root.innerHTML = `
     <section class="vitals">
+      <div class="shield-row"><span class="label">AR</span><div class="shield-bar"></div><span class="shield-num"></span></div>
       <div class="hp-row"><span class="label">HP</span><div class="hp-bar"><div class="hp-fill"></div></div><span class="hp-num"></span></div>
       <div class="ap-row"><span class="label">AP</span><span class="ap-pips"></span><span class="floor-cell"></span></div>
     </section>
@@ -60,6 +62,25 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
     return el;
   };
   const player = state.player;
+
+  // Plates: a segmented blue bar, one cell per plate the carrier holds, so the
+  // player reads "two plates left" at a glance rather than a number.
+  const carrier = state.carrierId ? carrierDef(state.carrierId) : null;
+  const shield = player.shield ?? 0;
+  const capacity = carrier ? carrierCapacity(carrier.id) : 0;
+  const bar = q<HTMLDivElement>(".shield-bar");
+  if (carrier) {
+    const filled = shield / carrier.plateValue;
+    bar.innerHTML = Array.from({ length: carrier.slots }, (_, i) => {
+      const frac = Math.max(0, Math.min(1, filled - i));
+      return `<span class="plate-cell"><span class="plate-fill" style="width:${frac * 100}%"></span></span>`;
+    }).join("");
+  } else {
+    bar.innerHTML = "";
+  }
+  q(".shield-num").textContent = carrier
+    ? `${shield}/${capacity}${state.spareplates > 0 ? ` +${state.spareplates}` : ""}`
+    : "none";
 
   // Vitals
   q<HTMLDivElement>(".hp-fill").style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
