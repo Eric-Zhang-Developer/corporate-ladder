@@ -1,16 +1,55 @@
 import { carrierDef } from "../../data/carriers";
+import { CONTROL_GROUPS } from "../../input/controls";
 import { itemDef } from "../../data/items";
 import { perkDef } from "../../data/perks";
 import type { ShopEntry } from "../../data/shop";
 import { weaponDef } from "../../data/weapons";
 import type { GameState } from "../../sim/state";
 
+/** Overlay modes that live in the UI, never in GameState. */
+export interface ScreenUI {
+  tradeIn?: { index: number; slot?: 0 | 1 | 2 } | null;
+  controlsOpen?: boolean;
+}
+
+/**
+ * The controls panel, built from `CONTROL_GROUPS` so it cannot drift from the
+ * bindings. Pure and string-returning so the test can read it without a DOM.
+ */
+export function controlsBox(): string {
+  const groups = CONTROL_GROUPS.map(
+    (group) => `
+      <section class="ctrl-group">
+        <h2>${escapeHtml(group.title)}</h2>
+        ${group.rows
+          .map(
+            (row) =>
+              `<div class="ctrl-row"><span class="ctrl-keys">${escapeHtml(row.keys)}</span>` +
+              `<span class="ctrl-label">${escapeHtml(row.label)}</span></div>`,
+          )
+          .join("")}
+      </section>`,
+  ).join("");
+  return `
+    <div class="end-box controls-box">
+      <h1>CONTROLS</h1>
+      ${groups}
+      <p class="hint">[ESC] or [?] to close</p>
+    </div>
+  `;
+}
+
 /** Death / win / promotion overlays. Input stays on the keyboard. */
-export function updateScreens(
-  overlay: HTMLElement,
-  state: GameState,
-  tradeIn?: { index: number; slot?: 0 | 1 | 2 } | null,
-): void {
+export function updateScreens(overlay: HTMLElement, state: GameState, ui: ScreenUI = {}): void {
+  const { tradeIn } = ui;
+  // Above the phase checks on purpose: the panel has to open during live play,
+  // which is the only time anyone needs it, and over the death screen, so it
+  // cannot trap you.
+  if (ui.controlsOpen) {
+    overlay.hidden = false;
+    overlay.innerHTML = controlsBox();
+    return;
+  }
   if (state.phase === "playing") {
     overlay.hidden = true;
     return;
@@ -72,7 +111,7 @@ export function updateScreens(
 function tradePrompt(
   state: GameState,
   entries: ShopEntry[],
-  tradeIn?: { index: number; slot?: 0 | 1 | 2 } | null,
+  tradeIn: ScreenUI["tradeIn"],
 ): string {
   if (!tradeIn) return "Number keys to buy &nbsp;&nbsp; [Enter] climb on";
   const entry = entries[tradeIn.index];

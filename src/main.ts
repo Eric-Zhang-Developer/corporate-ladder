@@ -1,5 +1,6 @@
 import { floorDef, LAST_FLOOR } from "./data/floors";
 import { itemDef } from "./data/items";
+import { CLOSE_KEYS, OPEN_KEYS } from "./input/controls";
 import { actionForKey } from "./input/keyboard";
 import { buildAtlas, TILE } from "./render/atlas";
 import { buildSidebar, updateSidebar } from "./render/dom/sidebar";
@@ -38,6 +39,8 @@ let hint = "";
 let throwAim: { slot: number; x: number; y: number; radius: number; range: number } | null = null;
 /** Trading a gun in at the merchant: pick a slot, then confirm. */
 let tradeIn: { index: number; slot?: 0 | 1 | 2 } | null = null;
+/** The controls panel. Reference only — it never reaches the sim or costs AP. */
+let controlsOpen = false;
 
 const AIM_KEYS: Record<string, [number, number]> = {
   arrowup: [0, -1],
@@ -92,7 +95,7 @@ function render(): void {
   }
   renderViewport(ctx!, atlas, state, ui);
   updateSidebar(sidebar, state, ui);
-  updateScreens(overlay, state, tradeIn);
+  updateScreens(overlay, state, { tradeIn, controlsOpen });
   header.innerHTML = `<b>${floorDef(state.floor).name}</b>: ${state.floor}/${LAST_FLOOR}`;
   const recent = state.log.slice(-3);
   // Escaped, not interpolated raw: log text is internal today, but it is about
@@ -125,6 +128,24 @@ function cycleTarget(): void {
 render();
 
 window.addEventListener("keydown", (e) => {
+  // Ahead of every phase branch, because they all return early. While the panel
+  // is up, keys that do not close it are swallowed rather than passed through:
+  // in a permadeath run, reading the controls must not be able to spend AP.
+  if (controlsOpen) {
+    e.preventDefault();
+    if (CLOSE_KEYS.has(e.key)) {
+      controlsOpen = false;
+      render();
+    }
+    return;
+  }
+  if (OPEN_KEYS.has(e.key)) {
+    e.preventDefault(); // F1 would otherwise open the browser's own help
+    controlsOpen = true;
+    render();
+    return;
+  }
+
   if (state.phase === "promoting") {
     const pick = Number(e.key) - 1;
     const perkId = state.perkOffer?.[pick];

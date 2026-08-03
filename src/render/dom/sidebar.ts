@@ -56,6 +56,10 @@ export function buildSidebar(root: HTMLElement): void {
       ).join("")}
     </section>
     <footer class="run-meta"><span class="seed"></span><span class="turn"></span></footer>
+    <!-- The game has no buttons, so the only way anyone finds the panel is if
+         the key is printed somewhere. Static: it never changes, so it stays out
+         of updateSidebar. -->
+    <div class="controls-hint">[?] controls</div>
   `;
 }
 

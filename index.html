@@ -96,6 +96,8 @@
       .consumable-empty { flex: 1; text-align: center; color: #333; background: #141419;
         border: 1px dashed var(--line); padding: 8px 0; }
       .run-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+      #sidebar .controls-hint { border-bottom: none; color: #55555f; font-size: 11px; letter-spacing: 1px;
+        padding-bottom: 0; text-align: center; }
       #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); display: grid; place-items: center; }
       #overlay[hidden] { display: none; }
       .end-box { text-align: center; border: 1px solid var(--line); background: var(--panel); padding: 28px 44px; }
@@ -103,6 +105,15 @@
       .end-box.dead h1 { color: #ff5555; }
       .end-box.won h1 { color: #66dd66; }
       .end-box .hint { color: var(--muted); }
+      .controls-box { min-width: 380px; text-align: left; }
+      .controls-box h1 { text-align: center; }
+      .controls-box .hint { margin-bottom: 0; text-align: center; }
+      .ctrl-group { margin-bottom: 14px; }
+      .ctrl-group h2 { color: var(--muted); font-size: 10px; font-weight: normal; letter-spacing: 3px;
+        margin: 0 0 5px; }
+      .ctrl-row { display: grid; gap: 12px; grid-template-columns: 116px 1fr; padding: 2px 0; }
+      .ctrl-keys { color: var(--accent); }
+      .ctrl-label { color: var(--text); }
     </style>
   </head>
   <body>
