@@ -1,6 +1,9 @@
 import { dmgPerAp, weaponDef } from "../../data/weapons";
 import { KNIFE } from "../../data/costs";
-import { LAST_FLOOR } from "../../data/floors";
+import { carrierCapacity, carrierDef } from "../../data/carriers";
+import { enemyDef } from "../../data/enemies";
+import { CALIBERS, LAST_FLOOR } from "../../data/floors";
+import { HOTBAR_SLOTS, itemDef } from "../../data/items";
 import { distance, idx, type GameState } from "../../sim/state";
 import type { UIState } from "../tiles";
 
@@ -12,14 +15,17 @@ import type { UIState } from "../tiles";
 export function buildSidebar(root: HTMLElement): void {
   root.innerHTML = `
     <section class="vitals">
+      <div class="shield-row"><span class="label">AR</span><div class="shield-bar"></div><span class="shield-num"></span></div>
       <div class="hp-row"><span class="label">HP</span><div class="hp-bar"><div class="hp-fill"></div></div><span class="hp-num"></span></div>
       <div class="ap-row"><span class="label">AP</span><span class="ap-pips"></span><span class="floor-cell"></span></div>
     </section>
     <section class="ammo">
-      <div class="ammo-cell"><span class="cal">SMALL</span><span class="amt" data-cal="small"></span></div>
-      <div class="ammo-cell"><span class="cal">MEDIUM</span><span class="amt" data-cal="medium"></span></div>
-      <div class="ammo-cell"><span class="cal">LARGE</span><span class="amt" data-cal="large"></span></div>
+      ${CALIBERS.map(
+        (cal) =>
+          `<div class="ammo-cell"><span class="cal">${cal.toUpperCase()}</span><span class="amt" data-cal="${cal}"></span></div>`,
+      ).join("")}
     </section>
+    <section class="target-card"><div class="tgt-none">no target</div></section>
     <section class="minimap-wrap">
       <canvas class="minimap" width="144" height="90"></canvas>
       <div class="minimap-placeholder">UNEXPLORED</div>
@@ -29,6 +35,7 @@ export function buildSidebar(root: HTMLElement): void {
         <div class="card-name"></div>
         <div class="card-mag"></div>
         <div class="card-dpa"></div>
+        <div class="card-state"></div>
       </div>
       <div class="card knife-card">
         <div class="card-name">Knife</div>
@@ -42,13 +49,32 @@ export function buildSidebar(root: HTMLElement): void {
       <div class="slot" data-slot="2"><span class="key">3</span><span class="slot-name"></span><span class="slot-mag"></span></div>
     </section>
     <section class="consumables">
-      <div class="consumable-empty">—</div>
-      <div class="consumable-empty">—</div>
-      <div class="consumable-empty">—</div>
-      <div class="consumable-empty">—</div>
+      ${Array.from(
+        { length: HOTBAR_SLOTS },
+        (_, i) =>
+          `<div class="hotbar-cell" data-hot="${i}"><span class="key">${i + 4}</span><span class="hot-name">—</span><span class="hot-count"></span></div>`,
+      ).join("")}
     </section>
     <footer class="run-meta"><span class="seed"></span><span class="turn"></span></footer>
   `;
+}
+
+/**
+ * AP as pips, and bonus AP as its own `+◆` run rather than more of the same.
+ *
+ * Going over maxAp is legal and deliberate — Hazard Pay adds 1 on a quiet turn,
+ * a stim adds 3 — so the empty count `maxAp - ap` goes NEGATIVE, and the naive
+ * `"◇".repeat(...)` threw a RangeError mid-render. That aborted the frame after
+ * the HP bar and before everything else, freezing the log, the turn counter and
+ * the weapon slots while the sim kept advancing underneath. Splitting the run
+ * makes the overflow visible instead of impossible.
+ */
+export function apPips(ap: number, maxAp: number): string {
+  const spent = Math.max(0, Math.min(ap, maxAp));
+  const base = "◆".repeat(spent) + "◇".repeat(maxAp - spent);
+  const bonus = Math.max(0, ap - maxAp);
+  // Numeric input only, so there is nothing here to escape.
+  return bonus > 0 ? `${base}<span class="ap-bonus">+${"◆".repeat(bonus)}</span>` : base;
 }
 
 export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState): void {
@@ -59,14 +85,33 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
   };
   const player = state.player;
 
+  // Plates: a segmented blue bar, one cell per plate the carrier holds, so the
+  // player reads "two plates left" at a glance rather than a number.
+  const carrier = state.carrierId ? carrierDef(state.carrierId) : null;
+  const shield = player.shield ?? 0;
+  const capacity = carrier ? carrierCapacity(carrier.id) : 0;
+  const bar = q<HTMLDivElement>(".shield-bar");
+  if (carrier) {
+    const filled = shield / carrier.plateValue;
+    bar.innerHTML = Array.from({ length: carrier.slots }, (_, i) => {
+      const frac = Math.max(0, Math.min(1, filled - i));
+      return `<span class="plate-cell"><span class="plate-fill" style="width:${frac * 100}%"></span></span>`;
+    }).join("");
+  } else {
+    bar.innerHTML = "";
+  }
+  q(".shield-num").textContent = carrier
+    ? `${shield}/${capacity}${state.spareplates > 0 ? ` +${state.spareplates}` : ""}`
+    : "none";
+
   // Vitals
   q<HTMLDivElement>(".hp-fill").style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
   q(".hp-num").textContent = `${Math.max(0, player.hp)}/${player.maxHp}`;
-  q(".ap-pips").textContent = "◆".repeat(Math.max(0, player.ap)) + "◇".repeat(player.maxAp - Math.max(0, player.ap));
+  q(".ap-pips").innerHTML = apPips(player.ap, player.maxAp);
   q(".floor-cell").textContent = `F${state.floor}/${LAST_FLOOR}`;
 
   // Ammo — always on screen; it is the food clock (§9.2)
-  for (const cal of ["small", "medium", "large"] as const) {
+  for (const cal of CALIBERS) {
     q(`.amt[data-cal="${cal}"]`).textContent = String(state.ammo[cal]);
   }
 
@@ -84,10 +129,40 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
   const target =
     state.enemies.find((e) => e.id === ui.targetId) ??
     state.enemies
-      .filter((e) => state.visible[idx(state.map, e.x, e.y)])
+      .filter((e) => !e.hidden && state.visible[idx(state.map, e.x, e.y)])
       .sort((a, b) => distance(player, a) - distance(player, b))[0];
   q(".gun-card .card-dpa").textContent =
     gun && target ? `${dmgPerAp(gun, distance(player, target)).toFixed(2)} dmg/AP @ target` : "— dmg/AP";
+
+  // Weapon states the player cannot otherwise see: an open bolt costs an extra
+  // AP on the next shot, and braced is live only until they move.
+  const flags: string[] = [];
+  if (gun?.boltAction) flags.push(player.chambered === false ? "CYCLE" : "READY");
+  if (gun?.bracedBonus && !player.movedThisTurn) flags.push("BRACED");
+  if (gun?.reloadDiscards && player.ammoInMag > 0) flags.push(`CLIP ${player.ammoInMag}`);
+  const stateEl = q<HTMLDivElement>(".gun-card .card-state");
+  stateEl.textContent = flags.join(" · ");
+  stateEl.classList.toggle("warn", flags.includes("CYCLE"));
+
+  // Melee card: a bayonet replaces the knife while its rifle is in hand
+  q(".knife-card .card-name").textContent = gun?.bayonet ? "Bayonet" : "Knife";
+  q(".knife-card .card-dpa").textContent = `${(gun?.bayonet ?? KNIFE.damage).toFixed(1)} dmg/AP`;
+
+  // Target card: the readability half of the armor system. A player must be
+  // able to see that the riot guard has plate and the K9 is a machine BEFORE
+  // wasting a magazine learning it.
+  const card = q<HTMLDivElement>(".target-card");
+  if (target) {
+    const def = enemyDef(target.defId);
+    const pips = target.armor ? `<span class="tgt-armor">${"\u25c6".repeat(target.armor)}</span>` : "";
+    const tag = def.machine ? `<span class="tgt-machine">MACHINE</span>` : "";
+    card.innerHTML =
+      `<div class="tgt-row"><span class="tgt-name">${target.name}</span>${tag}</div>` +
+      `<div class="tgt-row"><span class="tgt-hp">${target.hp}/${target.maxHp} HP</span>${pips}` +
+      `<span class="tgt-dist">${distance(player, target).toFixed(1)} tiles</span></div>`;
+  } else {
+    card.innerHTML = `<div class="tgt-none">no target</div>`;
+  }
 
   // Weapon slots
   for (let i = 0; i < 3; i++) {
@@ -98,6 +173,15 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
     cell.classList.toggle("active", isActive);
     cell.querySelector(".slot-name")!.textContent = shown ? weaponDef(shown.weaponId).name : "empty";
     cell.querySelector(".slot-mag")!.textContent = shown ? `${shown.ammoInMag}/${weaponDef(shown.weaponId).magSize}` : "";
+  }
+
+  // Hotbar: one item type per slot with a stack badge (§9.6)
+  for (let i = 0; i < HOTBAR_SLOTS; i++) {
+    const cell = q<HTMLDivElement>(`.hotbar-cell[data-hot="${i}"]`);
+    const stack = state.hotbar[i] ?? null;
+    cell.classList.toggle("filled", stack !== null);
+    cell.querySelector(".hot-name")!.textContent = stack ? itemDef(stack.itemId).name : "—";
+    cell.querySelector(".hot-count")!.textContent = stack && stack.count > 1 ? `x${stack.count}` : "";
   }
 
   // Seed / turn — the seeded-runs rule made public (§9.7)

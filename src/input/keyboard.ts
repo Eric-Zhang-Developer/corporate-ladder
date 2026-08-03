@@ -18,9 +18,13 @@ export function actionForKey(e: KeyboardEvent): Action | null {
   if (key === "f") return { type: "fire" };
   if (key === "r") return { type: "reload" };
   if (key === "g") return { type: "pickup" };
+  if (key === "p") return { type: "plate" };
   if (key === "1") return { type: "swap", slot: 0 };
   if (key === "2") return { type: "swap", slot: 1 };
   if (key === "3") return { type: "swap", slot: 2 };
+  // 4-9 are the hotbar. main.ts intercepts this for throwables and opens the
+  // aiming cursor instead of dispatching it.
+  if (key >= "4" && key <= "9") return { type: "useItem", slot: Number(key) - 4 };
   if (key === ">") return { type: "ascend" };
   if (key === " " || key === ".") return { type: "wait" };
   return null;

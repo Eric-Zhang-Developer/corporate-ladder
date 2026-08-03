@@ -1,11 +1,12 @@
 import { enemyDef } from "../data/enemies";
 import { CALIBERS, floorDef, LAST_FLOOR } from "../data/floors";
+import { HOTBAR_SLOTS } from "../data/items";
 import { WEAPONS, weaponDef, type Caliber } from "../data/weapons";
 import { generateMap } from "./mapgen";
 import { recomputeFov } from "./fov";
 import { createSimRng, type SimRNG } from "./rng";
 import {
-  isFloor,
+  freeTilesNear,
   pushLog,
   spawnEnemy,
   PLAYER_MAX_AP,
@@ -22,7 +23,7 @@ export { LAST_FLOOR };
  * Floor content depends only on (seed, floor) — never on sim history —
  * so a shared seed reproduces the entire tower.
  */
-function hashSeed(seed: number, floor: number, salt = 0): number {
+export function hashSeed(seed: number, floor: number, salt = 0): number {
   let h = (seed >>> 0) ^ Math.imul(floor + 1, 0x9e3779b9) ^ Math.imul(salt + 1, 0x85ebca6b);
   h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
   h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
@@ -83,6 +84,23 @@ export function buildFloor(
     }
   }
 
+  // The pair's miniboss, placed deliberately and never in the entrance room.
+  if (def.boss && spawnRooms.length > 0) {
+    const bossDef = enemyDef(def.boss);
+    const room = spawnRooms[spawnRooms.length - 1]!;
+    const spot = freeTileNear(gen.map, occupied, room.x, room.y);
+    if (spot) {
+      occupied.add(`${spot[0]},${spot[1]}`);
+      enemies.push(spawnEnemy(nextId++, def.boss, spot[0], spot[1]));
+      for (const escortId of bossDef.escorts ?? []) {
+        const escortSpot = freeTileNear(gen.map, occupied, room.x, room.y);
+        if (!escortSpot) continue;
+        occupied.add(`${escortSpot[0]},${escortSpot[1]}`);
+        enemies.push(spawnEnemy(nextId++, escortId, escortSpot[0], escortSpot[1]));
+      }
+    }
+  }
+
   // Loot room: the unused (or last) spawn room gets a weapon + its ammo.
   const lootRoom = spawnRooms[groupCount % spawnRooms.length] ?? spawnRooms[spawnRooms.length - 1];
   if (lootRoom) {
@@ -127,7 +145,54 @@ export function buildFloor(
     });
   }
 
+  // Plates and carriers. Placed after ammo so adding them cannot shift the
+  // scatter rolls above, keeping older seeds' ammo layout intact.
+  for (let i = 0; i < (def.platePiles ?? 0) && spawnRooms.length > 0; i++) {
+    const room = spawnRooms[randInt(rng, 0, spawnRooms.length - 1)]!;
+    const spot = freeTileNear(gen.map, occupied, room.x, room.y);
+    if (!spot) continue;
+    occupied.add(`${spot[0]},${spot[1]}`);
+    items.push({ id: nextId++, x: spot[0], y: spot[1], kind: "plate" });
+  }
+  if (def.carrier && spawnRooms.length > 0) {
+    const room = spawnRooms[randInt(rng, 0, spawnRooms.length - 1)]!;
+    const spot = freeTileNear(gen.map, occupied, room.x, room.y);
+    if (spot) {
+      occupied.add(`${spot[0]},${spot[1]}`);
+      items.push({ id: nextId++, x: spot[0], y: spot[1], kind: "carrier", carrierId: def.carrier });
+    }
+  }
+
+  const pool = def.consumablePool ?? [];
+  for (let i = 0; i < (def.consumablePiles ?? 0) && pool.length > 0 && spawnRooms.length > 0; i++) {
+    const room = spawnRooms[randInt(rng, 0, spawnRooms.length - 1)]!;
+    const itemId = pool[Math.floor(rng.next() * pool.length)]!;
+    const spot = freeTileNear(gen.map, occupied, room.x, room.y);
+    if (!spot) continue;
+    occupied.add(`${spot[0]},${spot[1]}`);
+    items.push({ id: nextId++, x: spot[0], y: spot[1], kind: "consumable", itemId });
+  }
+
+  for (let i = 0; i < (def.vendingMachines ?? 0) && spawnRooms.length > 0; i++) {
+    const room = spawnRooms[randInt(rng, 0, spawnRooms.length - 1)]!;
+    const spot = freeTileNear(gen.map, occupied, room.x, room.y);
+    if (!spot) continue;
+    occupied.add(`${spot[0]},${spot[1]}`);
+    items.push({ id: nextId++, x: spot[0], y: spot[1], kind: "vending" });
+  }
+
   return { map: gen.map, entrance, stairs, enemies, items, nextId };
+}
+
+/** First open tile at or near (x,y) that no one has claimed yet. */
+function freeTileNear(
+  map: GameMap,
+  occupied: Set<string>,
+  x: number,
+  y: number,
+): [number, number] | null {
+  const spot = freeTilesNear(map, x, y, 1, (fx, fy) => !occupied.has(`${fx},${fy}`))[0];
+  return spot ? [spot.x, spot.y] : null;
 }
 
 /** Rebuild state for a floor, preserving the player, reserves, and log. */
@@ -184,7 +249,14 @@ export function newGame(seed: number): GameState {
     player,
     enemies: [],
     items: [],
-    ammo: { small: 24, medium: 0, large: 0 },
+    ammo: { pistol: 24, shell: 0, rifle: 0, heavy: 0 },
+    carrierId: null,
+    spareplates: 0,
+    hotbar: new Array(HOTBAR_SLOTS).fill(null),
+    cash: 0,
+    xp: 0,
+    level: 1,
+    perks: [],
     nextId: 1,
     log: ["Find whoever signs the checks."],
   };
@@ -192,7 +264,7 @@ export function newGame(seed: number): GameState {
   return state;
 }
 
-function carriedCalibers(player: Entity): Caliber[] {
+export function carriedCalibers(player: Entity): Caliber[] {
   const ids = (player.slots ?? [])
     .filter((s): s is NonNullable<typeof s> => s !== null)
     .map((s) => s.weaponId);
@@ -223,31 +295,3 @@ function randInt(rng: SimRNG, min: number, max: number): number {
 }
 
 /** Nearest free floor tile to (x, y) by BFS. */
-function freeTileNear(
-  map: GameMap,
-  occupied: Set<string>,
-  x: number,
-  y: number,
-): [number, number] | null {
-  if (isFloor(map, x, y) && !occupied.has(`${x},${y}`)) return [x, y];
-  const seen = new Set<string>([`${x},${y}`]);
-  const queue: Array<[number, number]> = [[x, y]];
-  while (queue.length > 0) {
-    const [cx, cy] = queue.shift()!;
-    for (const [dx, dy] of [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    ] as const) {
-      const nx = cx + dx;
-      const ny = cy + dy;
-      const key = `${nx},${ny}`;
-      if (seen.has(key) || !isFloor(map, nx, ny)) continue;
-      seen.add(key);
-      queue.push([nx, ny]);
-      if (!occupied.has(key)) return [nx, ny];
-    }
-  }
-  return null;
-}

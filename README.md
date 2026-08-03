@@ -1,9 +1,10 @@
 # SEVERANCE PACKAGE (working title)
 
 A turn-based roguelike about shooting your way up an evil corporation's tower.
-Currently at **Stage 2 — The Vertical Slice**: floors 1–2, the tier-1 arsenal,
-six enemy types, the ammo economy, and the first tile renderer + sidebar.
-Design doc: [tower-design-handoff.md](tower-design-handoff.md).
+Currently at **alpha**: all eight floors, 30 weapons across four tiers, ~21
+enemies, four minibosses and the CEO, plus armor and plates, consumables and
+grenades, promotions, and the credit economy. Balance tuning comes next.
+Design docs: [docs/](docs/) — the original handoff plus the alpha design set.
 
 ## Run
 
@@ -23,7 +24,10 @@ Death screens name the killer, floor, and seed — share them.
 | F | Fire at target, or nearest visible enemy (weapon AP) |
 | Tab | Cycle target |
 | R | Reload from your caliber reserve (weapon AP) |
-| G | Pick up what you're standing on (1 AP) |
+| G | Pick up what you're standing on, or buy from a vending machine (1 AP) |
+| P | Slot an armor plate (1 AP) |
+| 4–9 | Use a consumable; a grenade opens the throw cursor |
+| X then a slot | Drop a weapon (1–3) or an item (4–9) |
 | 1 / 2 / 3 | Swap weapon slot (1 AP) |
 | > | Take the stairs up |
 | Space / `.` | End turn |
