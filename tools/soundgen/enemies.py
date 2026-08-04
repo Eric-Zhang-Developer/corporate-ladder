@@ -24,32 +24,33 @@ def spot_human():
 
 
 def spot_machine():
-    # Sensor pair: two rising beeps, clean and bloodless.
+    # Sensor pair: two rising beeps, clean and bloodless. Pitched down a
+    # fourth from the first draft — the whole machine register sat too high.
     def beep(f):
         return osc(0.07, "pulse", f, f, duty=0.3, env=gate(0.7, 6.0), vol=0.5)
-    return mix(lp1(beep(1180.0), 6000.0), at(0.11, lp1(beep(1570.0), 6000.0)))
+    return mix(lp1(beep(880.0), 6000.0), at(0.11, lp1(beep(1175.0), 6000.0)))
 
 
 def camera_alert():
     # Servo swivel, then klaxon beep-beep. Red light in audio form.
     servo = fm(0.14, 300.0, 520.0, ratio=1.98, index0=1.5, env=adec(0.4, 1.5), vol=0.30)
     def kbeep(i):
-        return osc(0.11, "pulse", 960.0, 940.0, duty=0.45, env=gate(0.75, 5.0), vol=0.5)
+        return osc(0.11, "pulse", 720.0, 705.0, duty=0.45, env=gate(0.75, 5.0), vol=0.5)
     beeps = at(0.16, grains(2, 0.16, kbeep, seed=153))
     return mix(servo, lp1(beeps, 5200.0))
 
 
 def alarm_klaxon():
     # Two-tone alarm bar, loopable. The floor knows.
-    hi = osc(0.24, "pulse", 830.0, 830.0, duty=0.5, env=gate(0.9, 6.0), vol=0.45)
-    lo = osc(0.24, "pulse", 622.0, 622.0, duty=0.5, env=gate(0.9, 6.0), vol=0.45)
+    hi = osc(0.24, "pulse", 622.0, 622.0, duty=0.5, env=gate(0.9, 6.0), vol=0.45)
+    lo = osc(0.24, "pulse", 466.0, 466.0, duty=0.5, env=gate(0.9, 6.0), vol=0.45)
     bar = mix(lp1(hi, 4200.0), at(0.26, lp1(lo, 4200.0)))
     return echo(bar, delay=0.09, feedback=0.25, mix_level=0.18)
 
 
 def elevator_arrival():
     # Ding. Doors. Boots. Funny and threatening at once — the response team.
-    ding = fm(0.5, 1568.0, 1560.0, ratio=2.76, index0=1.6, index1=0.2, env=dec(1.8), vol=0.7)
+    ding = fm(0.5, 1175.0, 1168.0, ratio=2.76, index0=1.6, index1=0.2, env=dec(1.8), vol=0.7)
     doors = at(0.34, lp1(white(0.28, 154, adec(0.3, 1.6)), 1500.0, 700.0))
     def boot(i):
         return mix(
@@ -81,10 +82,10 @@ def taser_zap():
 
 def drone_arm():
     # Rising whine + beep accelerando. This sound means RUN.
-    whine = fm(0.7, 620.0, 1750.0, ratio=1.01, index0=0.6, index1=1.4, env=adec(0.15, 0.8), vol=0.45)
+    whine = fm(0.7, 480.0, 1300.0, ratio=1.01, index0=0.6, index1=1.4, env=adec(0.15, 0.8), vol=0.45)
     beeps = mix(*[
         at(0.7 * (1.0 - 0.82 ** (i + 1)) / 0.18 * 0.18,  # accelerating positions
-           osc(0.035, "pulse", 1900.0, 1900.0, duty=0.4, env=gate(0.8, 5.0), vol=0.35))
+           osc(0.035, "pulse", 1400.0, 1400.0, duty=0.4, env=gate(0.8, 5.0), vol=0.35))
         for i in range(6)
     ])
     return mix(lp1(whine, 5200.0), lp1(beeps, 6000.0))
@@ -95,9 +96,9 @@ def turret_lock():
     def beep(dur, f):
         return lp1(osc(dur, "pulse", f, f, duty=0.35, env=gate(0.8, 6.0), vol=0.5), 5600.0)
     return mix(
-        beep(0.06, 1240.0),
-        at(0.22, beep(0.06, 1240.0)),
-        at(0.44, beep(0.16, 1650.0)),
+        beep(0.06, 930.0),
+        at(0.22, beep(0.06, 930.0)),
+        at(0.44, beep(0.16, 1240.0)),
     )
 
 

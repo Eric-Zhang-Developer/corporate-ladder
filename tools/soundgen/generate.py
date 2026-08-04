@@ -38,6 +38,12 @@ PEAK_OVERRIDES = {
     "frag_blast": 0.85, "flashbang_blast": 0.85, "emp_blast": 0.8,
     "promote": 0.65, "death": 0.65, "win": 0.65,
     "ui_blip": 0.4, "low_hp": 0.5, "dry_click": 0.5,
+    # Audition pass: the high-pitched machine beeps read louder than their
+    # peak because the ear is most sensitive up there — pull them under the
+    # organic signatures rather than EQing the character out of them.
+    "spot_machine": 0.45, "camera_alert": 0.45, "alarm_klaxon": 0.45,
+    "elevator_arrival": 0.45, "drone_arm": 0.45, "turret_lock": 0.45,
+    "kill_machine": 0.45, "miss_ricochet": 0.45,
 }
 
 

@@ -32,8 +32,8 @@ def hit_hard():
 def miss_ricochet():
     # Pweeong: metallic ring + falling whistle. Seeded, but reads as random.
     return mix(
-        gain(hp1(lfsr(0.11, 8800.0, short=True, env=dec(2.0)), 1400.0), 0.5),
-        osc(0.16, "sine", 2300.0, 480.0, vib=0.03, vib_rate=22.0, env=dec(1.6), vol=0.55),
+        gain(hp1(lfsr(0.11, 7200.0, short=True, env=dec(2.0)), 1200.0), 0.5),
+        osc(0.16, "sine", 1750.0, 400.0, vib=0.03, vib_rate=22.0, env=dec(1.6), vol=0.55),
     )
 
 
@@ -101,7 +101,7 @@ def kill_human():
 
 def kill_machine():
     # Powering down: a falling whine and sparks. Capital expenditure, written off.
-    whine = fm(0.30, 1150.0, 90.0, ratio=1.5, index0=1.2, index1=2.5, env=dec(1.1), vol=0.6)
+    whine = fm(0.30, 850.0, 75.0, ratio=1.5, index0=1.2, index1=2.5, env=dec(1.1), vol=0.6)
     def spark(i):
         return gain(hp1(lfsr(0.03, 8600.0, short=True, env=dec(4.0)), 2400.0), 0.35)
     sparks = grains(3, 0.07, spark, gain_slope=0.75, spacing_jitter=0.3, seed=138)

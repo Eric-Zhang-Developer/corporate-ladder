@@ -92,7 +92,8 @@ def ascend_elevator():
     doors = gain(lp1(white(0.22, 186, adec(0.3, 1.8)), 1400.0, 600.0), 0.45)
     hum = at(0.20, lp1(osc(0.7, "saw", 65.0, 105.0, vib=0.01, vib_rate=8.0,
                            env=adec(0.2, 1.2), vol=0.5), 700.0))
-    ding = at(0.85, fm(0.4, 1568.0, 1560.0, ratio=2.76, index0=1.5, index1=0.2, env=dec(2.0), vol=0.55))
+    # Ding matches elevator_arrival — same elevator, same bell.
+    ding = at(0.85, fm(0.4, 1175.0, 1168.0, ratio=2.76, index0=1.5, index1=0.2, env=dec(2.0), vol=0.55))
     return mix(doors, hum, ding)
 
 
