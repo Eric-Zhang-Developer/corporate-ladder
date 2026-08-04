@@ -5,7 +5,7 @@ import { perkDef } from "../../data/perks";
 import type { ShopEntry } from "../../data/shop";
 import { weaponDef } from "../../data/weapons";
 import type { GameState } from "../../sim/state";
-import { apLine, bandRows, stripHtml, traitLine } from "../weaponinfo";
+import { bandRows, costLine, formulaLine, stripHtml, traitLine } from "../weaponinfo";
 
 /** Overlay modes that live in the UI, never in GameState. */
 export interface ScreenUI {
@@ -64,21 +64,35 @@ export function arsenalBox(state: GameState): string {
       }
       const def = weaponDef(shown.weaponId);
       const bands = bandRows(def)
-        .map(
-          (row) =>
-            `<div class="ars-band${row.dpa === null ? " out" : ""}"><span>${row.span}</span>` +
-            `<span class="dpa">${row.dpa === null ? "out of range" : `${row.dpa.toFixed(2)} dmg/AP`}</span></div>`,
+        .map((row) =>
+          row.dpa === null
+            ? `<div class="ars-band out"><span class="rng">${row.span}</span><span>—</span><span>—</span><span class="dpa">out</span></div>`
+            : `<div class="ars-band${row.intended ? " intended" : ""}">` +
+              `<span class="rng">${row.intended ? "▸" : ""}${row.span}</span>` +
+              `<span>${Math.round(row.acc! * 100)}%</span>` +
+              `<span>${row.dmg!.toFixed(1)}</span>` +
+              `<span class="dpa">${row.dpa.toFixed(2)}</span></div>`,
         )
         .join("");
-      const traits = traitLine(def);
+      // Pellets sit with the traits up top; the DMG line repeats the ×N so
+      // "3.0 damage" is never mistaken for the whole pull.
+      const specials = [def.pellets ? `${def.pellets} rds/pull` : "", traitLine(def)]
+        .filter(Boolean)
+        .join(" · ");
       return `
         <div class="ars-col${active}">
           <div class="ars-name"><span class="perk-key">${i + 1}</span> ${escapeHtml(def.name)}</div>
-          <div class="ars-sub">${def.caliber} · ${shown.ammoInMag}/${def.magSize} mag · acc ${Math.round(def.baseAccuracy * 100)}%</div>
-          <div class="ars-sub">${escapeHtml(apLine(def))}</div>
-          ${traits ? `<div class="ars-flags">${escapeHtml(traits)}</div>` : ""}
+          <div class="ars-sub">${def.caliber} · ${shown.ammoInMag}/${def.magSize} mag</div>
+          <div class="ars-sub">${escapeHtml(costLine(def))}</div>
+          ${specials ? `<div class="ars-flags">${escapeHtml(specials)}</div>` : ""}
+          <div class="ars-stat"><span class="lbl">DMG</span> ${def.damage.toFixed(1)} /round${def.pellets ? ` ×${def.pellets}` : ""}</div>
+          <div class="ars-stat"><span class="lbl">ACC</span> ${Math.round(def.baseAccuracy * 100)}% base</div>
           <div class="ars-strip">${stripHtml(def, null)}</div>
-          <div class="ars-bands">${bands}</div>
+          <div class="ars-table">
+            <div class="ars-th"><span class="rng">RANGE</span><span>ACC</span><span>DMG</span><span class="dpa">/AP</span></div>
+            ${bands}
+          </div>
+          <div class="ars-formula">${escapeHtml(formulaLine(def))}</div>
         </div>`;
     })
     .join("");

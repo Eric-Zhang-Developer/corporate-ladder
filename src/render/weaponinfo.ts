@@ -46,32 +46,66 @@ export function stripHtml(def: WeaponDef, targetDist: number | null): string {
     .join("");
 }
 
-/** "fire 1+1 AP · reload 2 AP · 4 rds/pull" — the costs the card never showed. */
-export function apLine(def: WeaponDef): string {
+/** "fire 1+1 AP · reload 2 AP" — the costs the card never showed. */
+export function costLine(def: WeaponDef): string {
   // A bolt gun's fire cost is honest only as fire+cycle; the cycle can be
   // deferred, never skipped (§ arsenal: the -12% premium already prices it).
   const fire = def.boltAction ? `${def.apFire}+${AP_COSTS.cycle}` : `${def.apFire}`;
-  const parts = [`fire ${fire} AP`, `reload ${def.apReload} AP`];
-  if (def.pellets) parts.push(`${def.pellets} rds/pull`);
-  return parts.join(" · ");
+  return `fire ${fire} AP · reload ${def.apReload} AP`;
+}
+
+/** The sidebar variant: costs plus the pull size, one line. */
+export function apLine(def: WeaponDef): string {
+  return def.pellets ? `${costLine(def)} · ${def.pellets} rds/pull` : costLine(def);
 }
 
 export interface BandRow {
-  /** "0–4" spans, then a terminal "8+" out-of-range row with dpa null. */
+  /** "0–4" spans, then a terminal "8+" out-of-range row, all stats null. */
   span: string;
+  /** Effective hit chance in this band (base × band mult), 0–1. */
+  acc: number | null;
+  /** Per-round damage in this band (base × band mult). */
+  dmg: number | null;
   dpa: number | null;
+  /** The gun's home band, straight from the data's intendedBand. */
+  intended?: true;
 }
 
-/** The band table for the overlay: real dmg/AP per band, then the cliff. */
+/**
+ * The band table for the overlay: the numbers the sim actually rolls, band by
+ * band, then the cliff. The out-row's stats are null, not zero — past the
+ * last band there is no roll at all, and 0% would imply the curve continues.
+ */
 export function bandRows(def: WeaponDef): BandRow[] {
   let prev = 0;
-  const rows: BandRow[] = def.bands.map((band) => {
-    const row: BandRow = { span: `${prev}–${band.maxDist}`, dpa: dmgPerAp(def, band.maxDist) };
+  const rows: BandRow[] = def.bands.map((band, i) => {
+    const row: BandRow = {
+      span: `${prev}–${band.maxDist}`,
+      acc: def.baseAccuracy * band.accMult,
+      dmg: def.damage * band.dmgMult,
+      dpa: dmgPerAp(def, band.maxDist),
+      ...(i === def.intendedBand ? { intended: true as const } : {}),
+    };
     prev = band.maxDist;
     return row;
   });
-  rows.push({ span: `${prev}+`, dpa: null });
+  rows.push({ span: `${prev}+`, acc: null, dmg: null, dpa: null });
   return rows;
+}
+
+/**
+ * One worked example of the dmg/AP arithmetic, at the gun's home band, in the
+ * gun's true form — the Uzi shows its "4 rds ×" term, a bolt gun shows
+ * "÷ (1+1) AP". Teaches the formula once; the table is legible after that.
+ */
+export function formulaLine(def: WeaponDef): string {
+  const band = def.bands[def.intendedBand ?? 0]!;
+  const dpa = dmgPerAp(def, band.maxDist);
+  const dmg = (def.damage * band.dmgMult).toFixed(1);
+  const acc = Math.round(def.baseAccuracy * band.accMult * 100);
+  const ap = def.boltAction ? `(${def.apFire}+${AP_COSTS.cycle})` : `${def.apFire}`;
+  const rds = def.pellets ? `${def.pellets} rds × ` : "";
+  return `${dpa.toFixed(2)} = ${rds}${dmg} dmg × ${acc}% ÷ ${ap} AP`;
 }
 
 /** The rare-flag line: only what this gun does that others don't. */

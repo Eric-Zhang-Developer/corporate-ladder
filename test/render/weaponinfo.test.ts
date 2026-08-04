@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { maxRange, WEAPONS, type WeaponDef } from "../../src/data/weapons";
 import { arsenalBox } from "../../src/render/dom/screens";
-import { apLine, bandRows, STRIP_AXIS, stripCells, traitLine } from "../../src/render/weaponinfo";
+import { apLine, bandRows, formulaLine, STRIP_AXIS, stripCells, traitLine } from "../../src/render/weaponinfo";
 import { makeState } from "../sim/helpers";
 
 /**
@@ -66,11 +66,41 @@ describe("bandRows", () => {
       let prev = 0;
       rows.slice(0, -1).forEach((row, i) => {
         expect(row.span).toBe(`${prev}–${def.bands[i]!.maxDist}`);
+        expect(row.acc).toBeGreaterThan(0);
+        expect(row.dmg).toBeGreaterThan(0);
         expect(row.dpa).toBeGreaterThan(0);
         prev = def.bands[i]!.maxDist;
       });
-      expect(rows.at(-1)).toEqual({ span: `${maxRange(def)}+`, dpa: null });
+      // Null, not zero: past the last band there is no roll at all.
+      expect(rows.at(-1)).toEqual({ span: `${maxRange(def)}+`, acc: null, dmg: null, dpa: null });
     }
+  });
+
+  it("shows the numbers the sim actually rolls, band by band", () => {
+    const rows = bandRows(WEAPONS.glock);
+    expect(rows[0]).toMatchObject({ span: "0–1", acc: 0.95, dmg: 3 });
+    expect(Math.round(rows[1]!.acc! * 100)).toBe(86);
+    // The Serbu's damage collapse lives in the DMG column, not just dmg/AP.
+    const serbu = bandRows(WEAPONS.serbu);
+    expect(serbu[0]!.dmg).toBe(6);
+    expect(serbu[2]!.dmg).toBeCloseTo(2.1);
+  });
+
+  it("marks exactly the intended band as the gun's home row", () => {
+    for (const def of Object.values(WEAPONS) as WeaponDef[]) {
+      const rows = bandRows(def);
+      const marked = rows.flatMap((row, i) => (row.intended ? [i] : []));
+      expect(marked, def.id).toEqual(def.intendedBand === undefined ? [] : [def.intendedBand]);
+    }
+  });
+});
+
+describe("formulaLine", () => {
+  it("works one example at the home band, in each gun's true form", () => {
+    expect(formulaLine(WEAPONS.glock)).toBe("2.56 = 3.0 dmg × 86% ÷ 1 AP");
+    // The Uzi shows its rounds term; the Mosin shows the bolt tax in the AP.
+    expect(formulaLine(WEAPONS.uzi)).toBe("4.79 = 4 rds × 3.0 dmg × 40% ÷ 1 AP");
+    expect(formulaLine(WEAPONS.mosin)).toBe("3.15 = 7.0 dmg × 90% ÷ (1+1) AP");
   });
 });
 

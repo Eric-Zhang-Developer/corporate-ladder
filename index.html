@@ -126,11 +126,20 @@
       .ars-name .perk-key { margin-right: 4px; }
       .ars-sub { color: var(--muted); font-size: 11px; }
       .ars-flags { color: #66ccee; font-size: 10px; letter-spacing: 1px; margin-top: 3px; }
+      .ars-stat { font-size: 11px; margin-top: 2px; }
+      .ars-stat:first-of-type { margin-top: 6px; }
+      .ars-stat .lbl { color: var(--muted); letter-spacing: 1px; margin-right: 4px; }
       .ars-strip { font-size: 11px; letter-spacing: 1px; line-height: 1; margin-top: 6px; }
-      .ars-bands { border-top: 1px solid var(--line); font-size: 11px; margin-top: 6px; padding-top: 5px; }
-      .ars-band { display: flex; justify-content: space-between; }
+      .ars-table { border-top: 1px solid var(--line); font-size: 11px; margin-top: 6px; padding-top: 5px; }
+      .ars-th, .ars-band { display: grid; grid-template-columns: 2fr 1fr 1fr 1.6fr; }
+      .ars-th { color: var(--muted); font-size: 9px; letter-spacing: 1px; margin-bottom: 2px; }
+      .ars-th span:not(.rng), .ars-band span:not(.rng) { text-align: right; }
       .ars-band .dpa { color: var(--accent); }
-      .ars-band.out .dpa { color: var(--muted); }
+      /* The gun's home band, straight from intendedBand in the data. */
+      .ars-band.intended .rng { color: var(--accent); }
+      .ars-band.out, .ars-band.out .dpa { color: var(--muted); }
+      .ars-formula { border-top: 1px solid var(--line); color: var(--muted); font-size: 10px;
+        margin-top: 6px; padding-top: 5px; }
       .controls-box h1 { text-align: center; }
       .controls-box .hint { margin-bottom: 0; text-align: center; }
       .ctrl-group { margin-bottom: 14px; }
