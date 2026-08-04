@@ -50,9 +50,10 @@ export function assertStateInvariants(state: GameState, context = ""): void {
  * Invariant 2: GameState survives a JSON round-trip. Walks for the things that
  * silently break it — functions, class instances, Map/Set, and `undefined`
  * values (which is why the codebase deletes optional fields instead of
- * assigning undefined).
+ * assigning undefined). Exported: the event stream holds itself to the same
+ * discipline (events.test.ts).
  */
-function assertSerializable(value: unknown, path: string, fail: (msg: string) => never): void {
+export function assertSerializable(value: unknown, path: string, fail: (msg: string) => never): void {
   if (value === null) return;
   const t = typeof value;
   if (t === "number" || t === "string" || t === "boolean") return;

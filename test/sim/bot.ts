@@ -212,7 +212,7 @@ export function runBot(seed: number, options: BotOptions = {}): BotResult {
           : decide(state, memory);
     if (state.phase !== "shopping") shopStep = 0;
     const floorBefore = state.floor;
-    state = applyAction(state, action);
+    applyAction(state, action);
     if (state.floor !== floorBefore) memory.goal = null; // new floor, new map
     actions += 1;
     options.onAction?.(state, action);

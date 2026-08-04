@@ -3,6 +3,7 @@ import { enemyDef, type BehaviorId, type EnemyDef } from "../data/enemies";
 import { maxRange, weaponDef } from "../data/weapons";
 import { detonate as detonateBlast } from "./aoe";
 import { fireWeapon, meleeAttack } from "./combat";
+import { emit } from "./events";
 import { hasLos } from "./los";
 import type { SimRNG } from "./rng";
 import {
@@ -58,6 +59,14 @@ function checkSpotted(state: GameState, enemy: Entity, def: EnemyDef): boolean {
     hasLos(state.map, enemy.x, enemy.y, player.x, player.y)
   ) {
     enemy.alerted = true;
+    emit({
+      kind: "spot",
+      by: enemy.id,
+      defId: enemy.defId,
+      x: enemy.x,
+      y: enemy.y,
+      ...(def.machine ? { machine: true as const } : {}),
+    });
     pushLog(state, def.spotLine ?? `The ${enemy.name} spots you!`);
   }
   return false;
@@ -84,6 +93,7 @@ function pursueAndShoot(state: GameState, rng: SimRNG, enemy: Entity): void {
       if (enemy.ap < weapon.apReload) break;
       enemy.ap -= weapon.apReload;
       enemy.ammoInMag = weapon.magSize;
+      emit({ kind: "reload", by: enemy.id, weaponId: weapon.id, x: enemy.x, y: enemy.y });
       pushLog(state, `The ${enemy.name} reloads.`);
       continue;
     }
@@ -162,6 +172,7 @@ function cameraAlarm(state: GameState, _rng: SimRNG, enemy: Entity): void {
       hasLos(state.map, enemy.x, enemy.y, player.x, player.y)
     ) {
       enemy.alarmTimer = CAMERA_COUNTDOWN;
+      emit({ kind: "telegraph", style: "camera", by: enemy.id, defId: enemy.defId, x: enemy.x, y: enemy.y });
       pushLog(state, "A camera swivels toward you. Red light. Response team inbound.");
     }
     return;
@@ -200,6 +211,13 @@ function cameraAlarm(state: GameState, _rng: SimRNG, enemy: Entity): void {
     state.enemies.push(cop);
   }
   if (tiles.length > 0) {
+    emit({
+      kind: "alarmWave",
+      by: enemy.id,
+      spawned: tiles.length,
+      x: state.entrance.x,
+      y: state.entrance.y,
+    });
     pushLog(state, `Elevator chime. A response team fans out from the entrance.`);
   }
 }
@@ -225,6 +243,7 @@ function duelist(state: GameState, rng: SimRNG, enemy: Entity): void {
     enemy.stimUsed = true;
     enemy.ap += 2;
     enemy.pendingApDrain = Math.max(enemy.pendingApDrain ?? 0, 1);
+    emit({ kind: "duelistStim", by: enemy.id, x: enemy.x, y: enemy.y });
     pushLog(state, `The ${enemy.name} jabs something into his thigh and straightens up.`);
   }
 
@@ -238,6 +257,7 @@ function duelist(state: GameState, rng: SimRNG, enemy: Entity): void {
       enemy.spares -= 1;
       enemy.shield = 5;
       enemy.ap -= 1;
+      emit({ kind: "duelistPlate", by: enemy.id, x: enemy.x, y: enemy.y });
       pushLog(state, `The ${enemy.name} slots a fresh plate without looking away.`);
       continue;
     }
@@ -245,6 +265,7 @@ function duelist(state: GameState, rng: SimRNG, enemy: Entity): void {
       if (enemy.ap < weapon.apReload) break;
       enemy.ap -= weapon.apReload;
       enemy.ammoInMag = weapon.magSize;
+      emit({ kind: "reload", by: enemy.id, weaponId: weapon.id, x: enemy.x, y: enemy.y });
       pushLog(state, `The ${enemy.name} reloads, unhurried.`);
       continue;
     }
@@ -283,6 +304,7 @@ function stealthApproach(state: GameState, rng: SimRNG, enemy: Entity): void {
     const dist = distance(enemy, state.player);
     if (enemy.hidden && dist <= reveal) {
       delete enemy.hidden;
+      emit({ kind: "telegraph", style: "reveal", by: enemy.id, defId: enemy.defId, x: enemy.x, y: enemy.y });
       pushLog(state, def.spotLine ?? "Something shimmers, close.");
       return; // the reveal costs it the rest of the turn — one turn of warning
     }
@@ -321,10 +343,19 @@ function overwatch(state: GameState, rng: SimRNG, enemy: Entity): void {
   if (!inLane) return;
   if (!enemy.alerted) {
     enemy.alerted = true;
+    emit({
+      kind: "spot",
+      by: enemy.id,
+      defId: enemy.defId,
+      x: enemy.x,
+      y: enemy.y,
+      ...(def.machine ? { machine: true as const } : {}),
+    });
     pushLog(state, def.spotLine ?? `The ${enemy.name} acquires you.`);
     return;
   }
   enemy.chargeTimer = def.chargeTurns ?? 1;
+  emit({ kind: "telegraph", style: "lock", by: enemy.id, defId: enemy.defId, x: enemy.x, y: enemy.y });
   pushLog(state, `The ${enemy.name} sights down the lane.`);
 }
 
@@ -360,7 +391,10 @@ function spinup(state: GameState, rng: SimRNG, enemy: Entity): void {
       other.alerted = true;
       woken += 1;
     }
-    if (woken > 0) pushLog(state, `The floor answers. ${woken} systems come online.`);
+    if (woken > 0) {
+      emit({ kind: "telegraph", style: "wake", by: enemy.id, defId: enemy.defId, x: enemy.x, y: enemy.y });
+      pushLog(state, `The floor answers. ${woken} systems come online.`);
+    }
     return;
   }
 
@@ -369,6 +403,15 @@ function spinup(state: GameState, rng: SimRNG, enemy: Entity): void {
   const reach = weapon ? maxRange(weapon) : 1;
   if (distance(enemy, state.player) <= reach) {
     enemy.chargeTimer = def.chargeTurns ?? 2;
+    emit({
+      kind: "telegraph",
+      style: "spinup",
+      by: enemy.id,
+      defId: enemy.defId,
+      x: enemy.x,
+      y: enemy.y,
+      ...(enemy.weaponId ? { weaponId: enemy.weaponId } : {}),
+    });
     pushLog(state, `The ${enemy.name} begins to spin up.`);
     return;
   }
@@ -386,6 +429,7 @@ function detonate(state: GameState, rng: SimRNG, enemy: Entity): void {
 
   while (enemy.ap > 0 && state.phase === "playing") {
     if (distance(enemy, state.player) <= 1) {
+      emit({ kind: "telegraph", style: "dive", by: enemy.id, defId: enemy.defId, x: enemy.x, y: enemy.y });
       pushLog(state, `The ${enemy.name} dives at you.`);
       // Remove it first: the blast must not damage the thing detonating it,
       // and its own death is the cost, not a kill the player is credited for.
@@ -420,6 +464,7 @@ function wanderStep(state: GameState, rng: SimRNG, enemy: Entity): boolean {
   const nx = enemy.x + dx;
   const ny = enemy.y + dy;
   if (!isFloor(state.map, nx, ny) || entityAt(state, nx, ny)) return false;
+  emit({ kind: "step", by: enemy.id, defId: enemy.defId, fromX: enemy.x, fromY: enemy.y, x: nx, y: ny });
   enemy.x = nx;
   enemy.y = ny;
   return true;
@@ -444,6 +489,7 @@ function stepToward(state: GameState, enemy: Entity): boolean {
   if (!next) return false;
   const [nx, ny] = next;
   if (nx === player.x && ny === player.y) return false;
+  emit({ kind: "step", by: enemy.id, defId: enemy.defId, fromX: enemy.x, fromY: enemy.y, x: nx, y: ny });
   enemy.x = nx;
   enemy.y = ny;
   return true;

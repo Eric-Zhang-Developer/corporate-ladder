@@ -1,5 +1,6 @@
 import { enemyDef } from "../data/enemies";
 import { dealDamage } from "./combat";
+import { emit } from "./events";
 import type { SimRNG } from "./rng";
 import { distance, pushLog, type Entity, type GameState } from "./state";
 
@@ -50,6 +51,18 @@ export function detonate(
   attacker: Entity,
   killVerb: string,
 ): void {
+  // One event per blast; per-victim outcomes flow from dealDamage's own
+  // plateHit/hurt/kill emissions.
+  emit({
+    kind: "blast",
+    x: cx,
+    y: cy,
+    radius: blast.radius,
+    ...(blast.damage !== undefined ? { damage: blast.damage } : {}),
+    ...(blast.stun ? { stun: true as const } : {}),
+    ...(blast.targets ? { targets: blast.targets } : {}),
+  });
+
   const centre = { x: cx, y: cy };
   const candidates: Entity[] = [...state.enemies];
   if (!blast.sparesPlayer) candidates.push(state.player);

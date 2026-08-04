@@ -161,7 +161,7 @@ window.addEventListener("keydown", (e) => {
     const perkId = state.perkOffer?.[pick];
     if (perkId) {
       e.preventDefault();
-      state = applyAction(state, { type: "choosePerk", perkId });
+      applyAction(state, { type: "choosePerk", perkId });
       render();
     }
     return;
@@ -177,7 +177,7 @@ window.addEventListener("keydown", (e) => {
         else tradeIn.slot = slot as 0 | 1 | 2;
       } else if (key === "y" || key === "Enter") {
         // Permadeath: never let one keystroke destroy a gun you were carrying.
-        state = applyAction(state, { type: "buy", index: tradeIn.index, replaceSlot: tradeIn.slot });
+        applyAction(state, { type: "buy", index: tradeIn.index, replaceSlot: tradeIn.slot });
         tradeIn = null;
       } else {
         tradeIn = null;
@@ -187,12 +187,12 @@ window.addEventListener("keydown", (e) => {
     }
 
     if (key === "Enter") {
-      state = applyAction(state, { type: "leaveShop" });
+      applyAction(state, { type: "leaveShop" });
     } else {
       const index = Number(key) - 1;
       if (Number.isInteger(index) && index >= 0) {
         if (needsTradeIn(index)) tradeIn = { index };
-        else state = applyAction(state, { type: "buy", index });
+        else applyAction(state, { type: "buy", index });
       }
     }
     render();
@@ -235,7 +235,7 @@ window.addEventListener("keydown", (e) => {
       render();
       return;
     }
-    state = applyAction(
+    applyAction(
       state,
       slot < 3
         ? { type: "drop", kind: "weapon", slot }
@@ -271,7 +271,7 @@ window.addEventListener("keydown", (e) => {
       const { slot, x, y } = throwAim;
       throwAim = null;
       hint = "";
-      state = applyAction(state, { type: "throwItem", slot, x, y });
+      applyAction(state, { type: "throwItem", slot, x, y });
     } else {
       throwAim = null;
       hint = "";
@@ -310,6 +310,6 @@ window.addEventListener("keydown", (e) => {
     action = { type: "fire", targetId: ui.targetId };
   }
   e.preventDefault();
-  state = applyAction(state, action);
+  applyAction(state, action);
   render();
 });

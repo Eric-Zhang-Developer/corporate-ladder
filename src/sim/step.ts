@@ -21,6 +21,7 @@ import type { Action } from "./actions";
 import { runEnemyTurns } from "./ai";
 import { detonate } from "./aoe";
 import { apToFire, fireWeapon, meleeAttack } from "./combat";
+import { beginEvents, drainEvents, emit, type SimEvent } from "./events";
 import { applyFloor, carriedCalibers, hashSeed, LAST_FLOOR } from "./floor";
 import { recomputeFov } from "./fov";
 import { hasLos } from "./los";
@@ -50,13 +51,23 @@ const ITEM_PRICES = PRICES as unknown as Record<string, number>;
  * The whole game advances through this single entry point. A player turn is
  * a budget of AP spent across several actions; when it runs out (or the
  * player waits), every enemy takes its full turn, then AP refills.
+ *
+ * State is mutated in place; the return value is the action's event stream
+ * (sim/events.ts) — the ordered record of what happened, for renderers.
+ * applyAction never nests, so one begin/drain per call holds.
  */
-export function applyAction(state: GameState, action: Action): GameState {
+export function applyAction(state: GameState, action: Action): SimEvent[] {
+  beginEvents();
+  applyActionImpl(state, action);
+  return drainEvents();
+}
+
+function applyActionImpl(state: GameState, action: Action): void {
   // A promotion pauses the game between turns: the only legal move is picking
   // a certification, and the choice is a sim action so replays stay exact.
   if (state.phase === "promoting") {
     if (action.type === "choosePerk") resolvePromotion(state, action.perkId);
-    return state;
+    return;
   }
   if (state.phase === "shopping") {
     if (action.type === "buy") handlePurchase(state, action.index, action.replaceSlot);
@@ -66,10 +77,11 @@ export function applyAction(state: GameState, action: Action): GameState {
       applyFloor(state, state.floor + 1);
       state.player.ap = state.player.maxAp; // fresh floor, fresh turn
       recomputeFov(state);
+      emit({ kind: "floorStart", floor: state.floor });
     }
-    return state;
+    return;
   }
-  if (state.phase !== "playing") return state;
+  if (state.phase !== "playing") return;
   const rng = simRngFromState(state.rngState);
 
   handlePlayerAction(state, rng, action);
@@ -89,7 +101,6 @@ export function applyAction(state: GameState, action: Action): GameState {
 
   recomputeFov(state);
   state.rngState = rng.getState();
-  return state;
 }
 
 /**
@@ -112,6 +123,7 @@ function checkPromotion(state: GameState): void {
   state.player.hp = state.player.maxHp;
   state.phase = "promoting";
   state.perkOffer = rollPerkOffer(state);
+  emit({ kind: "promote", level: state.level });
   pushLog(state, `PERFORMANCE REVIEW — promoted to level ${state.level}.`);
 }
 
@@ -143,6 +155,7 @@ function resolvePromotion(state: GameState, perkId: string): void {
     state.player.hp += def.value ?? 0;
   }
   if (perkId === "field_awareness") recomputeFov(state);
+  emit({ kind: "perkPick", perkId });
   pushLog(state, `Certification acquired: ${def.name}.`);
   // A second threshold can be crossed by one big kill; review again at once.
   checkPromotion(state);
@@ -179,6 +192,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       }
       const weapon = weaponDef(player.weaponId);
       if (player.ammoInMag <= 0) {
+        emit({ kind: "dryClick" });
         pushLog(state, "Click. (R to reload)");
         return;
       }
@@ -213,6 +227,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         }
         player.ap -= AP_COSTS.cycle;
         delete player.chambered;
+        emit({ kind: "boltCycle", by: player.id, x: player.x, y: player.y });
         pushLog(state, "You work the bolt.");
         return;
       }
@@ -241,6 +256,14 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       player.ammoInMag = weapon.reloadDiscards ? take : player.ammoInMag + take;
       state.ammo[weapon.caliber] -= take;
       delete player.chambered; // a fresh magazine closes the bolt
+      emit({
+        kind: "reload",
+        by: player.id,
+        weaponId: weapon.id,
+        x: player.x,
+        y: player.y,
+        ...(wasted > 0 ? { discarded: wasted } : {}),
+      });
       pushLog(
         state,
         wasted > 0
@@ -280,6 +303,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       else delete player.chambered;
       player.activeSlot = action.slot;
       player.ap -= AP_COSTS.swap;
+      emit({ kind: "swap", weaponId: target.weaponId });
       pushLog(state, `You draw the ${weaponDef(target.weaponId).name}.`);
       return;
     }
@@ -301,6 +325,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         player.ap -= AP_COSTS.pickup;
         state.ammo[item.caliber] += item.amount;
         state.items = state.items.filter((i) => i.id !== item.id);
+        emit({ kind: "pickup", what: "ammo" });
         pushLog(state, `You pocket ${item.amount} ${item.caliber} rounds.`);
         return;
       }
@@ -314,6 +339,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         player.ap -= AP_COSTS.pickup;
         state.spareplates += 1;
         state.items = state.items.filter((i) => i.id !== item.id);
+        emit({ kind: "pickup", what: "plate" });
         pushLog(state, `You stow a plate. (${state.spareplates} spare)`);
         return;
       }
@@ -331,12 +357,14 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
           state.items.push({ id: state.nextId++, x: player.x, y: player.y, kind: "carrier", carrierId: worn });
         }
         state.carrierId = item.carrierId;
+        emit({ kind: "pickup", what: "carrier" });
         pushLog(state, `You strap on the ${carrierDef(item.carrierId).name}.`);
         return;
       }
       if (item.kind === "vending") {
         const price = priceWithPerks(PRICES.snack, hasPerk(state, "expense_account"));
         if (state.cash < price) {
+          emit({ kind: "purchase", ok: false, source: "vending" });
           pushLog(state, `The machine wants ${price} credits. You have ${state.cash}.`);
           return;
         }
@@ -352,6 +380,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         else state.hotbar[slot] = { itemId: "snack", count: 1 };
         // Machines never run out: the limit is cash, the carry cap, and the
         // walk back through a hostile floor.
+        emit({ kind: "purchase", ok: true, source: "vending" });
         pushLog(state, `The machine clunks. (-${price} credits)`);
         return;
       }
@@ -367,6 +396,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         const stack = state.hotbar[slot];
         if (stack) stack.count += 1;
         else state.hotbar[slot] = { itemId: item.itemId, count: 1 };
+        emit({ kind: "pickup", what: "consumable" });
         pushLog(state, `You pick up the ${def.name}.`);
         return;
       }
@@ -377,6 +407,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       if (!slots || active === undefined) return;
       player.ap -= AP_COSTS.pickup;
       state.items = state.items.filter((i) => i.id !== item.id);
+      emit({ kind: "pickup", what: "weapon" });
       const empty = slots.findIndex((s, i) => s === null && i !== active);
       if (empty !== -1) {
         slots[empty] = { weaponId: item.weaponId, ammoInMag: item.ammoInMag };
@@ -407,6 +438,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       }
       if (state.floor >= LAST_FLOOR) {
         state.phase = "won";
+        emit({ kind: "win" });
         pushLog(state, "The severance package is on the desk. You take what you are owed.");
         return;
       }
@@ -414,6 +446,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       // next floor is not built until the player leaves.
       state.phase = "shopping";
       state.shop = rollShop(state, state.floor + 1);
+      emit({ kind: "shopEnter" });
       pushLog(state, "You duck into the stairwell. Someone has set up shop.");
       return;
     }
@@ -441,6 +474,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       state.platedThisTurn = true;
       state.spareplates -= 1;
       player.shield = Math.min(capacity, (player.shield ?? 0) + carrierDef(state.carrierId).plateValue);
+      emit({ kind: "plateSlot" });
       pushLog(state, `You slot a plate. (${player.shield}/${capacity})`);
       return;
     }
@@ -459,6 +493,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       player.ap -= def.apUse;
       stack.count -= 1;
       if (stack.count <= 0) state.hotbar[action.slot] = null;
+      emit({ kind: "useItem", itemId: def.id });
       return;
     }
     case "throwItem": {
@@ -494,6 +529,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
       player.ap -= def.apUse;
       stack.count -= 1;
       if (stack.count <= 0) state.hotbar[action.slot] = null;
+      emit({ kind: "throw", x: action.x, y: action.y });
       pushLog(state, `You throw the ${def.name}.`);
       detonate(
         state,
@@ -618,6 +654,7 @@ function handlePurchase(state: GameState, index: number, replaceSlot?: 0 | 1 | 2
   }
   const price = priceWithPerks(entry.price, hasPerk(state, "expense_account"));
   if (state.cash < price) {
+    emit({ kind: "purchase", ok: false, source: "shop" });
     pushLog(state, `That costs ${price}. You have ${state.cash}.`);
     return;
   }
@@ -674,6 +711,7 @@ function handlePurchase(state: GameState, index: number, replaceSlot?: 0 | 1 | 2
   }
   state.cash -= price;
   shop.sold.push(index);
+  emit({ kind: "purchase", ok: true, source: "shop" });
   pushLog(state, `Bought. (-${price} credits, ${state.cash} left)`);
 }
 
