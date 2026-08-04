@@ -1,9 +1,15 @@
-# Alpha Roadmap — feat/alpha
+# Roadmap — alpha (shipped) · v0.2 · v0.3
 
-**Status: implementation plan.** The design phase is closed (`arsenal-design.md`,
-`progression-design.md`, `consumables-design.md`, `bestiary-design.md`, `ui-design.md`).
-The core engine is done; this branch builds the systems those docs specify, then fills
-content on top of them. Sim first, renderer second, always.
+**Status: alpha shipped; the register below is historical.** M1–M11 all landed
+(marked ✅ with their commits); M12's build half shipped and its balance half moved
+to v0.3 with `play-test-08-04-26.md` as the work order. Current work is the
+[v0.2](#v02--ui-close-out) and [v0.3](#v03--camera--balance) sections at the bottom.
+Two workstreams shipped that this plan never anticipated: the sound layer
+(`sound-design.md` — generator, 88 WAVs, event-driven playback) and the event
+stream itself (`applyAction` returns `SimEvent[]`), plus the information layer
+(band strip, ARSENAL overlay, full target card). The design phase docs
+(`arsenal-design.md`, `progression-design.md`, `consumables-design.md`,
+`bestiary-design.md`, `ui-design.md`) remain the specs the systems were built to.
 
 ## Ground rules
 
@@ -31,7 +37,7 @@ feedback comes in. Floors and bosses are never cut; guns, perks, and items are.
 
 ## Phase A — combat systems (the refactor everything stands on)
 
-### M1 — Caliber migration + armor/DR ⟲ *(~2 days)*
+### M1 — Caliber migration + armor/DR ⟲ *(~2 days)* — ✅ shipped (7c83699)
 The load-bearing refactor. Four ammo channels (`pistol`/`shell`/`rifle`/`heavy` —
 rename small/medium/large, add rifle) migrated through weapons, enemies, drops, floor
 tables, and player reserves. `armor` on EnemyDef, `armorPierce` on WeaponDef,
@@ -41,7 +47,7 @@ Sidebar ammo row renames in the same commit.
 test's armored column. **Exit:** current game plays identically except calibers renamed;
 armor exists but no enemy has it yet.
 
-### M2 — New weapon mechanics ⟲ *(~2 days)*
+### M2 — New weapon mechanics ⟲ *(~2 days)* — ✅ shipped (f75502d)
 `boltAction` (chambered flag in slot state, fire-unchambered auto-cycles +1 AP, R
 cycles manually), `bayonet` (bump-melee override), `reloadDiscards` (en-bloc),
 `bracedBonus` (no-move-AP accuracy bonus). Mosin converts to bolt-split. Gun-card
@@ -51,7 +57,7 @@ en-bloc waste warning, braced gating. Balance test gains pistol-contract, shotgu
 and bolt-amortization assertions. **Exit:** Mosin plays the new rhythm; a hand-built
 SKS/Garand/M249 state passes all mechanic tests.
 
-### M3 — Arsenal data fill *(~2 days)*
+### M3 — Arsenal data fill *(~2 days)* — ✅ shipped (a1244fa; 30 tiered guns, not 28)
 All 28 player weapons + enemy variants (`mp5_sec`, `m4_merc`, `m249_gunner`,
 `xm7_exo`, `spas_detail`, fixer pistol, `m82`, minigun, `tec9_thug`) as data entries
 per `arsenal-design.md`. Loot pools get tier tags for later floor use.
@@ -61,7 +67,7 @@ T1 loot from the widened pool; the spreadsheet argues back.
 
 ## Phase B — player systems
 
-### M4 — Plates + carriers ⟲ *(~1.5 days)*
+### M4 — Plates + carriers ⟲ *(~1.5 days)* — ✅ shipped (45d6ff3)
 `shield`/`carrierId`/`spareplates` state; plate-insert action (1 AP); shield absorbs
 before HP; **melee bypasses shields**; carriers as found gear. Sidebar shield bar +
 carrier line ride.
@@ -69,7 +75,7 @@ carrier line ride.
 round-trip. **Exit:** hand-placed carrier + plates make the cop fight measurably
 different and the dog fight identical.
 
-### M5 — Consumables wave 1 + hotbar + drop ⟲ *(~2 days)*
+### M5 — Consumables wave 1 + hotbar + drop ⟲ *(~2 days)* — ✅ shipped (81ed659)
 `data/items.ts`; `GroundItem` grows `kind: "consumable"`; 6-slot typed-stack hotbar;
 `useItem` action; heals/stim/schematics per `consumables-design.md`; **drop action**
 (`X`-then-slot, 1 AP) with nearest-free-tile scatter — merging the duplicated BFS
@@ -78,7 +84,7 @@ helpers (debt #1) in the same commit. Hotbar UI rides.
 drop/scatter, one-item-per-tile law. **Exit:** a run can be played around items;
 bot smoke-run confirms pickup/use/drop loops.
 
-### M6 — AoE system + grenades *(~2 days)*
+### M6 — AoE system + grenades *(~2 days)* — ✅ shipped (29db63c)
 Tile-targeted radius helper; `throw` action; frag/flashbang/EMP with the stun rules
 (full `pendingApDrain`, organics/machines split, one turn hard cap). **Throw-targeting
 input mode** with radius preview + LOS check — the batch's biggest UI item.
@@ -86,7 +92,7 @@ input mode** with radius preview + LOS check — the batch's biggest UI item.
 throw range + LOS gating. **Exit:** flashbang a 3-cop room and alpha-strike it; EMP
 does nothing to humans.
 
-### M7 — Promotions ⟲ *(~2 days)*
+### M7 — Promotions ⟲ *(~2 days)* — ✅ shipped (f87c77b; fourteen perks, not 8)
 `xp`/`level`/`perks` state; XP on kills; thresholds; `promoting` phase + `choosePerk`
 action; seeded 1-of-2 offers from `hash(seed, level)`; +3 HP + full heal; the 8 safest
 perks wired at their one touchpoints. Promotion overlay rides.
@@ -94,7 +100,7 @@ perks wired at their one touchpoints. Promotion overlay rides.
 guardrail-table test (HP vs tier anchors). **Exit:** a floor-1 clear promotes ~once;
 replay from seed shows identical offers.
 
-### M8 — Cash + merchant + vending *(~1.5 days)*
+### M8 — Cash + merchant + vending *(~1.5 days)* — ✅ shipped (0b36f3d; later 3bcbc62 trade-in, cd16f10 ammo repricing)
 `cash` state; human drops + caches; stairwell shop (phase between floors, seeded
 stock rules) + shop overlay; vending tiles (bump-to-buy, no UI); Expense Account perk
 hookup.
@@ -104,7 +110,7 @@ restocks.
 
 ## Phase C — content fill (the tower materializes)
 
-### M9 — Bestiary wave 1 + floors 3–4 ⟲ *(~2.5 days)*
+### M9 — Bestiary wave 1 + floors 3–4 ⟲ *(~2.5 days)* — ✅ shipped (ada6fa0)
 `detonate` behavior; Roomba + baton guard join T1; contractor, riot guard, K9, FPV,
 supervisor (mobile alarm flag); **Janitor promotes to boss** (leaves regular pool);
 K9 Handler (pack flag); camera 2-wave rework; floors 3–4 tables; `LAST_FLOOR = 4`.
@@ -114,7 +120,7 @@ Target-card UI rides (armor pips become necessary knowledge here).
 the first 4-floor runs; camera-farm attempt included. **Exit:** floors 1–4 play with
 distinct textures; Janitor boss fight lands.
 
-### M10 — Bestiary wave 2 + floors 5–6 *(~2.5 days)*
+### M10 — Bestiary wave 2 + floors 5–6 *(~2.5 days)* — ✅ shipped (970c506)
 `stealthApproach` + `overwatch` behaviors; erratic-step flag; rifleman, heavy gunner,
 stealth unit, turret, prototype; Server Warden (`spinup` + alarm pulse); floor 6
 zero-human data assertion; floors 5–6 tables; `LAST_FLOOR = 6`.
@@ -122,7 +128,7 @@ zero-human data assertion; floors 5–6 tables; `LAST_FLOOR = 6`.
 zero-human assertion. **Bot playtest** across seeds. **Exit:** floor 6 feels eerie in
 a manual run — the design's one aesthetic exit criterion.
 
-### M11 — Bestiary wave 3 + floors 7–8 + the CEO ⟲ *(~3 days)*
+### M11 — Bestiary wave 3 + floors 7–8 + the CEO ⟲ *(~3 days)* — ✅ shipped (0186be4)
 `duelist` behavior; exo, fixer (silent shots), marksman (lane telegraph — **lane
 highlight rendering** rides), protection detail, Dozer (spinup, flash-immune,
 EMP-once); the CEO per `bestiary-design.md` §8; win = severance package after the
@@ -132,7 +138,7 @@ lane math. **Bot playtest:** full-tower runs; CEO duel length 4–8 turns; Dozer
 open-field bots and not corner-peekers. **Exit:** the game is winnable, start to
 credits, on multiple seeds.
 
-### M12 — Balance pass + playtest build *(~2 days)*
+### M12 — Balance pass + playtest build *(~2 days)* — ⚠ superseded: build half shipped (CI deploys Pages from `main`); the first full-tower human playtest ran and produced `play-test-08-04-26.md`, which replaces this section's sweep list as the balance work order. Balance tuning moves to v0.3.
 Bot sweeps with logging: heavy-channel starvation, healing budget (≤0.8 alarm),
 cash economy (60–80% affordability), guardrail table, camera waves. Tune data only.
 Log font/5-line bump + scrollback/escaping land here if they haven't already (both
@@ -145,12 +151,12 @@ run take ~30 minutes, do builds feel different, was every death legible?
 The UX backlog (`ux-design.md`) lands here as a separate polish pass after the alpha
 playtest ships, in priority order:
 
-### M13 — Controls overlay + start screen *(~1.5 days)*
+### M13 — Controls overlay + start screen *(~1.5 days)* — ◐ half-shipped: controls overlay landed early (a71a591, `?`/`F1`, data-driven with a drift test); title screen still open
 `?`/`F1` overlay rendering the existing keymap; title screen with START, seed entry
 (replacing raw `?seed=` editing as the shared-run entry point), controls link, build
 stamp.
 
-### M14 — Dev panel *(~1 day, dev-only)*
+### M14 — Dev panel *(~1 day, dev-only)* — ○ open; its `#dev-corner` mount exists (occupied by the SFX soundboard) — scheduled in v0.2
 Gated by **`import.meta.env.DEV`** — dev-server only, dead-code-eliminated from every
 build output (Pages and zip never contain it; no hostname sniffing). Spawn by id,
 grant cash/XP/plates, floor jump, reveal, god mode, re-seed — all as `{type: "debug"}`
@@ -163,14 +169,63 @@ playtest feedback asks for it.
 
 ---
 
-## Schedule reality
+## Schedule reality (historical)
 
 Sums to ~25 focused days — call it 5–7 part-time weeks. Phase A+B (~15 days) is
 systems and will *feel* slow: the game looks unchanged while its skeleton doubles.
 Phase C is where eight floors materialize in ten days, because by then everything is
 a data entry. That asymmetry is the architecture working; don't lose faith during B.
 Cut-line order if slipping: wave-3 consumables → perk pool depth → gun count →
-**never floors or bosses**.
+**never floors or bosses**. *(Outcome: the cut line was never invoked — all 30 guns,
+14 perks, and both consumable waves shipped.)*
+
+---
+
+## v0.2 — UI close-out
+
+Scope: immediate bugs + the remaining UI work + the dev panel. Nothing else rides.
+
+- [x] **Sounds-path fix** — WAV fetches were root-absolute and 404'd on the Pages
+      subpath deploy; now document-relative (211eca8). Zip build stays silent under
+      `file://` (fetch is blocked there) — known limitation, serve over http.
+- [ ] **Hotbar slot grid** — a stale `display: flex` override (leftover from the
+      pre-grid design, plus orphaned `.consumable-empty`) collapses the cells to
+      shrink-to-fit chips. Delete the stale rules; fixed 3×2 grid speaking the
+      weapon-slot visual language (key, name, count; stable size empty or full).
+- [ ] **Log** — 5 visible lines (~7.5em), `overflow-y: auto` over the last ~100
+      entries, sticky autoscroll (pin to bottom only when already at bottom), and
+      the mode `hint` line moved outside the scroll region so it can't scroll away.
+- [ ] **Debug panel (M14)** — `DBG` button in the existing `#dev-corner`, dynamic
+      import, dev-only. First four features are the ones the balance pass needs:
+      floor warp (through the real `applyFloor` path), give cash/ammo/weapon/item
+      (dropdowns fed from the data tables), god mode, reveal map. Mutations live in
+      one `debugActions.ts` module that leaves state consistent (recomputeFov etc.);
+      needs a state getter/setter + render callback passed at mount since `main.ts`
+      reassigns `state` on restart.
+
+## v0.3 — camera & balance
+
+Two arcs, camera first (it's renderer-only and independent of tuning):
+
+- [ ] **Follow camera + responsive viewport** — `ctx.translate` camera with
+      center-lock + edge clamping as a pure, tested helper; fixed tile size with
+      the view derived from the element (ResizeObserver), clamped to a ~25-tile
+      fairness floor (nothing untelegraphed hurts you from off-screen; overwatch
+      charge lines render their on-screen portion). Frees floor dimensions to
+      become per-floor data later — but exotic floor sizes wait until after the
+      balance pass so only one variable moves at a time.
+- [ ] **Balance patch set** — work order is `play-test-08-04-26.md`. Headliners:
+      `xm7_exo` burst cap (`apFire: 2`) + mag cut so the punish window exists;
+      same audit for `m4_merc`/`m249_gunner`; shotgun band-0 accuracy → ~100% paid
+      with harsher falloff; consumable drop-rate cut + stacking; CEO plates
+      rendered (target card reads `shield`) and phase acts on plate breaks;
+      supervisor flees while calling (same `cameraAlarm` code — the camera's
+      `ap: 0` keeps it bolted down); corridor-mouth spawn guard; snipers
+      re-examined only after the burst cap lands.
+- [ ] **Difficulty table** (stretch, rides the balance pass if it fits) —
+      `data/difficulty.ts` deltas: INTERN / SALARIED / SENIOR / PIP. Knobs change
+      the price of error, never the skill check; SALARIED is the single tuned
+      source of truth.
 
 ## Standing verification (every milestone)
 
