@@ -29,7 +29,12 @@ export function stripCells(def: WeaponDef, targetDist: number | null): StripCell
   const peak = Math.max(...byDist);
   // Clamp instead of dropping: a target past the axis still reads as "past the
   // end", which is more honest than a caret that silently vanishes.
-  const caret = targetDist === null ? null : Math.max(1, Math.min(STRIP_AXIS, Math.round(targetDist)));
+  //
+  // Ceil, never round: band edges are integers and bandFor tests dist <= max,
+  // so ceil(dist) always lands in the band the sim will actually roll. Round
+  // put the caret at 4.1 on the bright side of a boundary the shot had
+  // already crossed (and a diagonal-adjacent 1.41 on the point-blank cell).
+  const caret = targetDist === null ? null : Math.max(1, Math.min(STRIP_AXIS, Math.ceil(targetDist)));
   return byDist.map((dpa, i) => {
     const ratio = peak > 0 ? dpa / peak : 0;
     const level: StripLevel = dpa <= 0 ? "out" : ratio >= 0.7 ? "hi" : ratio >= 0.35 ? "mid" : "lo";

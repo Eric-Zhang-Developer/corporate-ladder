@@ -40,9 +40,15 @@ describe("stripCells", () => {
     expect(cells[4]!.level).toBe("hi");
   });
 
-  it("puts the caret on the target's cell, clamped to the axis", () => {
+  it("puts the caret in the band the sim will roll, clamped to the axis", () => {
     const at = (dist: number) => stripCells(WEAPONS.glock, dist).findIndex((c) => c.target);
-    expect(at(4.4)).toBe(3); // round(4.4) = 4 → cell index 3
+    // 4.1 is past the mid band's edge (bandFor tests dist <= 4), so the caret
+    // must sit on cell 5 with the long band's shading — round() put it on the
+    // bright side of a boundary the shot had already crossed.
+    expect(at(4.1)).toBe(4);
+    // A diagonal-adjacent enemy (1.41) already pays second-band accuracy.
+    expect(at(Math.SQRT2)).toBe(1);
+    expect(at(4)).toBe(3); // exact edges stay in their band
     expect(at(0.5)).toBe(0);
     expect(at(30)).toBe(STRIP_AXIS - 1);
     expect(stripCells(WEAPONS.glock, null).some((c) => c.target)).toBe(false);
