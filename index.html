@@ -114,6 +114,32 @@
       .ctrl-row { display: grid; gap: 12px; grid-template-columns: 116px 1fr; padding: 2px 0; }
       .ctrl-keys { color: var(--accent); }
       .ctrl-label { color: var(--text); }
+      /* Dev-tools corner: DEV-only mounts (soundboard now, debug panel later —
+         ux-design.md §2). The container is created by main.ts; these styles are
+         inert in builds because the elements never exist there. */
+      #dev-corner { position: fixed; top: 8px; left: 12px; z-index: 10;
+        display: flex; gap: 6px; }
+      .dev-btn { background: var(--panel); border: 1px solid var(--line); color: var(--muted);
+        font: inherit; font-size: 13px; padding: 2px 8px; cursor: pointer; }
+      .dev-btn:hover { color: var(--accent); border-color: var(--accent); }
+      #soundboard { position: fixed; inset: 0; background: rgba(0,0,0,0.82);
+        display: grid; place-items: center; z-index: 20; }
+      #soundboard[hidden] { display: none; }
+      .sb-box { background: var(--panel); border: 1px solid var(--line);
+        padding: 18px 22px; width: min(640px, 90vw); max-height: 84vh;
+        display: flex; flex-direction: column; gap: 12px; }
+      .sb-box h1 { letter-spacing: 4px; font-size: 16px; margin: 0; text-align: center; }
+      .sb-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+      .sb-tab { background: #16161c; border: 1px solid var(--line); color: var(--muted);
+        font: inherit; font-size: 11px; padding: 3px 8px; cursor: pointer; }
+      .sb-tab.active { color: var(--accent); border-color: var(--accent); }
+      .sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 4px; overflow-y: auto; }
+      .sb-sound { background: #1c1c22; border: 1px solid var(--line); color: var(--text);
+        font: inherit; font-size: 12px; padding: 6px 8px; cursor: pointer; text-align: left; }
+      .sb-sound:hover { border-color: var(--accent); }
+      .sb-sound.active { border-color: var(--accent); color: var(--accent); }
+      .sb-hint { color: var(--muted); font-size: 11px; text-align: center; }
     </style>
   </head>
   <body>

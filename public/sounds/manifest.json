@@ -1,0 +1,140 @@
+[
+  {
+    "category": "Pistols & SMGs",
+    "sounds": [
+      "glock",
+      "revolver",
+      "tec9",
+      "fiveseven",
+      "b93r",
+      "deagle",
+      "uzi",
+      "mp5",
+      "ump45",
+      "p90"
+    ]
+  },
+  {
+    "category": "Shotguns",
+    "sounds": [
+      "serbu",
+      "m870",
+      "spas12",
+      "aa12"
+    ]
+  },
+  {
+    "category": "Rifles",
+    "sounds": [
+      "mini14",
+      "sks",
+      "ar15",
+      "m4",
+      "akm",
+      "an94",
+      "m249",
+      "xm250"
+    ]
+  },
+  {
+    "category": "Heavy",
+    "sounds": [
+      "mosin",
+      "garand",
+      "fal",
+      "rem700",
+      "sr25",
+      "xm7",
+      "awp",
+      "vss"
+    ]
+  },
+  {
+    "category": "Enemy guns",
+    "sounds": [
+      "fixer_pistol",
+      "m82",
+      "turret_gun",
+      "warden_slam",
+      "minigun"
+    ]
+  },
+  {
+    "category": "Mechanisms",
+    "sounds": [
+      "bolt_cycle",
+      "pump_rack",
+      "reload_mag",
+      "reload_shells",
+      "reload_belt",
+      "reload_enbloc",
+      "dry_click"
+    ]
+  },
+  {
+    "category": "Feedback",
+    "sounds": [
+      "hit_flesh",
+      "hit_hard",
+      "miss_ricochet",
+      "armor_clatter",
+      "plate_break",
+      "plate_slot",
+      "player_hurt",
+      "player_hurt_blade",
+      "kill_human",
+      "kill_machine",
+      "knife_stab",
+      "low_hp",
+      "boss_sting"
+    ]
+  },
+  {
+    "category": "Enemies",
+    "sounds": [
+      "spot_human",
+      "spot_machine",
+      "camera_alert",
+      "alarm_klaxon",
+      "elevator_arrival",
+      "dog_bark",
+      "taser_zap",
+      "drone_arm",
+      "turret_lock",
+      "warden_spinup",
+      "stealth_reveal",
+      "minigun_spinup"
+    ]
+  },
+  {
+    "category": "Items & blasts",
+    "sounds": [
+      "grenade_throw",
+      "frag_blast",
+      "flashbang_blast",
+      "emp_blast",
+      "heal_small",
+      "heal_big",
+      "stim_use",
+      "schematics"
+    ]
+  },
+  {
+    "category": "UI & economy",
+    "sounds": [
+      "pickup_ammo",
+      "pickup_weapon",
+      "pickup_cash",
+      "pickup_item",
+      "buy_ok",
+      "buy_denied",
+      "promote",
+      "perk_pick",
+      "ascend_elevator",
+      "ui_blip",
+      "death",
+      "win",
+      "game_start"
+    ]
+  }
+]

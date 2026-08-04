@@ -29,6 +29,16 @@ if (!ctx) throw new Error("no 2d context");
 const atlas = buildAtlas();
 buildSidebar(sidebar);
 
+// Dev-tools corner (ux-design.md §2): DEV is a build-time constant, so this
+// block — and the dynamically imported modules behind it — is dead-code-
+// eliminated from every build output. The debug panel mounts here too.
+if (import.meta.env.DEV) {
+  const corner = document.createElement("div");
+  corner.id = "dev-corner";
+  document.body.append(corner);
+  void import("./render/dom/soundboard").then(({ mountSoundboard }) => mountSoundboard(corner));
+}
+
 let seed = seedFromUrl() ?? randomSeed();
 writeSeedToUrl(seed);
 let state = newGame(seed);
