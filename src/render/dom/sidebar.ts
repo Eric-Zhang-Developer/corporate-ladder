@@ -6,6 +6,7 @@ import { CALIBERS, LAST_FLOOR } from "../../data/floors";
 import { HOTBAR_SLOTS, itemDef } from "../../data/items";
 import { distance, idx, type GameState } from "../../sim/state";
 import type { UIState } from "../tiles";
+import { apLine, stripHtml } from "../weaponinfo";
 
 /**
  * §9 sidebar, top to bottom: vitals / ammo / minimap / equipped cards /
@@ -34,6 +35,8 @@ export function buildSidebar(root: HTMLElement): void {
       <div class="card gun-card">
         <div class="card-name"></div>
         <div class="card-mag"></div>
+        <div class="card-ap"></div>
+        <div class="card-strip"></div>
         <div class="card-dpa"></div>
         <div class="card-state"></div>
       </div>
@@ -135,8 +138,14 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
     state.enemies
       .filter((e) => !e.hidden && state.visible[idx(state.map, e.x, e.y)])
       .sort((a, b) => distance(player, a) - distance(player, b))[0];
+  q(".gun-card .card-ap").textContent = gun ? apLine(gun) : "";
+  // The band strip: this gun's dmg/AP across the distance axis, caret on the
+  // target — "should I close two tiles first" answered without the overlay.
+  q(".gun-card .card-strip").innerHTML = gun ? stripHtml(gun, target ? distance(player, target) : null) : "";
   q(".gun-card .card-dpa").textContent =
-    gun && target ? `${dmgPerAp(gun, distance(player, target)).toFixed(2)} dmg/AP @ target` : "— dmg/AP";
+    gun && target
+      ? `${dmgPerAp(gun, distance(player, target)).toFixed(2)} dmg/AP @ ${distance(player, target).toFixed(1)}`
+      : "— dmg/AP";
 
   // Weapon states the player cannot otherwise see: an open bolt costs an extra
   // AP on the next shot, and braced is live only until they move.

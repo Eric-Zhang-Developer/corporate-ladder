@@ -53,6 +53,8 @@ let throwAim: { slot: number; x: number; y: number; radius: number; range: numbe
 let tradeIn: { index: number; slot?: 0 | 1 | 2 } | null = null;
 /** The controls panel. Reference only — it never reaches the sim or costs AP. */
 let controlsOpen = false;
+/** The ARSENAL overlay — same contract as the controls panel. */
+let arsenalOpen = false;
 
 const AIM_KEYS: Record<string, [number, number]> = {
   arrowup: [0, -1],
@@ -107,7 +109,7 @@ function render(): void {
   }
   renderViewport(ctx!, atlas, state, ui);
   updateSidebar(sidebar, state, ui);
-  updateScreens(overlay, state, { tradeIn, controlsOpen });
+  updateScreens(overlay, state, { tradeIn, controlsOpen, arsenalOpen });
   header.innerHTML = `<b>${floorDef(state.floor).name}</b>: ${state.floor}/${LAST_FLOOR}`;
   const recent = state.log.slice(-3);
   // Escaped, not interpolated raw: log text is internal today, but it is about
@@ -170,6 +172,23 @@ window.addEventListener("keydown", (e) => {
   if (OPEN_KEYS.has(e.key)) {
     e.preventDefault(); // F1 would otherwise open the browser's own help
     controlsOpen = true;
+    render();
+    return;
+  }
+  // The ARSENAL overlay follows the controls panel's rules exactly: above the
+  // phase branches so it opens at the shop (where comparing guns matters most),
+  // and while open every key but its closers is swallowed.
+  if (arsenalOpen) {
+    e.preventDefault();
+    if (e.key === "Escape" || e.key.toLowerCase() === "i") {
+      arsenalOpen = false;
+      render();
+    }
+    return;
+  }
+  if (e.key.toLowerCase() === "i") {
+    e.preventDefault();
+    arsenalOpen = true;
     render();
     return;
   }

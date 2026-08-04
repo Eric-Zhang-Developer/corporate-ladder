@@ -50,6 +50,15 @@
       .card-name { font-weight: bold; }
       .card-mag { color: var(--muted); font-size: 12px; }
       .card-dpa { color: var(--accent); font-size: 11px; margin-top: 3px; }
+      /* AP costs + the range-band strip: the gun's shape, always on screen. */
+      .card-ap { color: var(--muted); font-size: 10px; margin-top: 2px; }
+      .card-strip { font-size: 11px; letter-spacing: 1px; line-height: 1; margin-top: 3px; }
+      .rs-hi { color: var(--accent); }
+      .rs-mid { color: #b9a24a; }
+      .rs-lo { color: #6d6340; }
+      .rs-out { color: #34343c; }
+      /* The cell under the current target — white so it reads at any level. */
+      .rs-tgt { color: #ffffff; }
       .end-box.review h1 { color: var(--accent); }
       .end-box.shop h1 { color: #66bb88; }
       .end-box .cash { color: var(--accent); }
@@ -106,6 +115,22 @@
       .end-box.won h1 { color: #66dd66; }
       .end-box .hint { color: var(--muted); }
       .controls-box { min-width: 380px; text-align: left; }
+      .arsenal-box { text-align: left; min-width: min(680px, 92vw); }
+      .arsenal-box h1 { text-align: center; }
+      .arsenal-box .hint { margin-bottom: 0; text-align: center; }
+      .ars-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0; }
+      .ars-col { background: #16161c; border: 1px solid var(--line); padding: 8px 10px; font-size: 12px; }
+      .ars-col.active { border-color: var(--accent); }
+      .ars-col.empty { color: var(--muted); }
+      .ars-name { font-weight: bold; margin-bottom: 4px; }
+      .ars-name .perk-key { margin-right: 4px; }
+      .ars-sub { color: var(--muted); font-size: 11px; }
+      .ars-flags { color: #66ccee; font-size: 10px; letter-spacing: 1px; margin-top: 3px; }
+      .ars-strip { font-size: 11px; letter-spacing: 1px; line-height: 1; margin-top: 6px; }
+      .ars-bands { border-top: 1px solid var(--line); font-size: 11px; margin-top: 6px; padding-top: 5px; }
+      .ars-band { display: flex; justify-content: space-between; }
+      .ars-band .dpa { color: var(--accent); }
+      .ars-band.out .dpa { color: var(--muted); }
       .controls-box h1 { text-align: center; }
       .controls-box .hint { margin-bottom: 0; text-align: center; }
       .ctrl-group { margin-bottom: 14px; }

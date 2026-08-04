@@ -5,11 +5,13 @@ import { perkDef } from "../../data/perks";
 import type { ShopEntry } from "../../data/shop";
 import { weaponDef } from "../../data/weapons";
 import type { GameState } from "../../sim/state";
+import { apLine, bandRows, stripHtml, traitLine } from "../weaponinfo";
 
 /** Overlay modes that live in the UI, never in GameState. */
 export interface ScreenUI {
   tradeIn?: { index: number; slot?: 0 | 1 | 2 } | null;
   controlsOpen?: boolean;
+  arsenalOpen?: boolean;
 }
 
 /**
@@ -39,6 +41,56 @@ export function controlsBox(): string {
   `;
 }
 
+/**
+ * The ARSENAL overlay: full stats for all three carried guns, side by side.
+ * Same recipe as the controls panel — pure string, opened by a UI-mode key,
+ * never reaches the sim. It renders above the phase checks so it works at the
+ * shop, which is exactly where comparing guns matters most.
+ */
+export function arsenalBox(state: GameState): string {
+  const player = state.player;
+  const cols = [0, 1, 2]
+    .map((i) => {
+      const stored = player.slots?.[i] ?? null;
+      // The active slot's stored copy is stale while a gun is in hand — mirror
+      // the live fields, same rule the sidebar slot row uses.
+      const shown =
+        i === player.activeSlot && player.weaponId
+          ? { weaponId: player.weaponId, ammoInMag: player.ammoInMag }
+          : stored;
+      const active = i === player.activeSlot ? " active" : "";
+      if (!shown) {
+        return `<div class="ars-col empty"><div class="ars-name"><span class="perk-key">${i + 1}</span> empty</div></div>`;
+      }
+      const def = weaponDef(shown.weaponId);
+      const bands = bandRows(def)
+        .map(
+          (row) =>
+            `<div class="ars-band${row.dpa === null ? " out" : ""}"><span>${row.span}</span>` +
+            `<span class="dpa">${row.dpa === null ? "out of range" : `${row.dpa.toFixed(2)} dmg/AP`}</span></div>`,
+        )
+        .join("");
+      const traits = traitLine(def);
+      return `
+        <div class="ars-col${active}">
+          <div class="ars-name"><span class="perk-key">${i + 1}</span> ${escapeHtml(def.name)}</div>
+          <div class="ars-sub">${def.caliber} · ${shown.ammoInMag}/${def.magSize} mag · acc ${Math.round(def.baseAccuracy * 100)}%</div>
+          <div class="ars-sub">${escapeHtml(apLine(def))}</div>
+          ${traits ? `<div class="ars-flags">${escapeHtml(traits)}</div>` : ""}
+          <div class="ars-strip">${stripHtml(def, null)}</div>
+          <div class="ars-bands">${bands}</div>
+        </div>`;
+    })
+    .join("");
+  return `
+    <div class="end-box arsenal-box">
+      <h1>ARSENAL</h1>
+      <div class="ars-grid">${cols}</div>
+      <p class="hint">[ESC] or [I] to close</p>
+    </div>
+  `;
+}
+
 /** Death / win / promotion overlays. Input stays on the keyboard. */
 export function updateScreens(overlay: HTMLElement, state: GameState, ui: ScreenUI = {}): void {
   const { tradeIn } = ui;
@@ -48,6 +100,11 @@ export function updateScreens(overlay: HTMLElement, state: GameState, ui: Screen
   if (ui.controlsOpen) {
     overlay.hidden = false;
     overlay.innerHTML = controlsBox();
+    return;
+  }
+  if (ui.arsenalOpen) {
+    overlay.hidden = false;
+    overlay.innerHTML = arsenalBox(state);
     return;
   }
   if (state.phase === "playing") {

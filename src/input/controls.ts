@@ -60,6 +60,23 @@ export const CONTROL_GROUPS: ControlGroup[] = [
       { keys: "X", label: "drop, then a slot key", covers: ["x"], mode: "two-key mode: X selects, the next key names the slot" },
     ],
   },
+  {
+    title: "INFO",
+    rows: [
+      {
+        keys: "I",
+        label: "inspect your arsenal — full stats for every carried gun",
+        covers: ["i"],
+        mode: "reference overlay; never reaches the sim or costs AP",
+      },
+      {
+        keys: "M",
+        label: "mute / unmute sound",
+        covers: ["m"],
+        mode: "UI-side volume knob; the sim never hears it",
+      },
+    ],
+  },
 ];
 
 /** Keys that dismiss the panel — printed in its footer, so keep the two in step. */
