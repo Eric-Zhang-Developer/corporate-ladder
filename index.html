@@ -74,11 +74,22 @@
       .hotbar-cell .hot-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .hotbar-cell.filled { border-color: #4a6a4a; }
       .hotbar-cell .hot-count { color: var(--accent); }
-      .target-card { font-size: 11px; min-height: 30px; }
+      /* Target card colors are semantic channels, not decoration: yellow =
+         action economy (matches the player's AP pips), blue = armor (the layer
+         blades ignore, both sides), cyan = machine, orange = incoming threat,
+         green = opportunity. Each is redundantly encoded in text. */
+      .target-card { font-size: 11px; min-height: 44px; }
       .tgt-row { display: flex; gap: 6px; justify-content: space-between; }
       .tgt-name { color: var(--text); }
+      .tgt-chips { display: flex; gap: 6px; }
       .tgt-machine { color: #66ccee; letter-spacing: 1px; }
-      .tgt-armor { color: #ccbb66; }
+      .tgt-alert { color: #ff9955; letter-spacing: 1px; }
+      .tgt-unaware { color: #66dd66; letter-spacing: 1px; }
+      .tgt-armor { color: #5599dd; }
+      .tgt-ap { color: var(--accent); }
+      .tgt-threat { color: #ff9955; }
+      .tgt-open { color: #66dd66; }
+      .tgt-line3 { color: var(--muted); display: block; }
       .tgt-dist, .tgt-none { color: var(--muted); }
       .shield-row { align-items: center; display: flex; gap: 6px; margin-bottom: 3px; }
       .shield-bar { display: flex; flex: 1; gap: 2px; height: 7px; }

@@ -1,11 +1,11 @@
 import { dmgPerAp, weaponDef } from "../../data/weapons";
 import { KNIFE } from "../../data/costs";
 import { carrierCapacity, carrierDef } from "../../data/carriers";
-import { enemyDef } from "../../data/enemies";
 import { CALIBERS, LAST_FLOOR } from "../../data/floors";
 import { HOTBAR_SLOTS, itemDef } from "../../data/items";
 import { distance, idx, type GameState } from "../../sim/state";
 import type { UIState } from "../tiles";
+import { targetCardHtml } from "../enemyinfo";
 import { apLine, stripHtml } from "../weaponinfo";
 
 /**
@@ -163,19 +163,11 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
 
   // Target card: the readability half of the armor system. A player must be
   // able to see that the riot guard has plate and the K9 is a machine BEFORE
-  // wasting a magazine learning it.
+  // wasting a magazine learning it. Built in render/enemyinfo.ts, pure.
   const card = q<HTMLDivElement>(".target-card");
-  if (target) {
-    const def = enemyDef(target.defId);
-    const pips = target.armor ? `<span class="tgt-armor">${"\u25c6".repeat(target.armor)}</span>` : "";
-    const tag = def.machine ? `<span class="tgt-machine">MACHINE</span>` : "";
-    card.innerHTML =
-      `<div class="tgt-row"><span class="tgt-name">${target.name}</span>${tag}</div>` +
-      `<div class="tgt-row"><span class="tgt-hp">${target.hp}/${target.maxHp} HP</span>${pips}` +
-      `<span class="tgt-dist">${distance(player, target).toFixed(1)} tiles</span></div>`;
-  } else {
-    card.innerHTML = `<div class="tgt-none">no target</div>`;
-  }
+  card.innerHTML = target
+    ? targetCardHtml(target, distance(player, target))
+    : `<div class="tgt-none">no target</div>`;
 
   // Weapon slots
   for (let i = 0; i < 3; i++) {
