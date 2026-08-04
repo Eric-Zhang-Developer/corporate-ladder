@@ -51,7 +51,9 @@ export function unlockAudio(): void {
 function bufferFor(name: string): Promise<AudioBuffer | null> {
   let pending = buffers.get(name);
   if (!pending) {
-    pending = fetch(`/sounds/${name}.wav`)
+    // Document-relative, not root-absolute: the Pages deploy lives under a
+    // project subpath (vite `base: "./"`), where "/sounds/…" 404s silently.
+    pending = fetch(`sounds/${name}.wav`)
       .then((res) => (res.ok ? res.arrayBuffer() : Promise.reject(new Error(res.statusText))))
       .then((bytes) => ctx!.decodeAudioData(bytes))
       .catch(() => null); // missing file: silent, not fatal — the log still tells the story

@@ -103,7 +103,7 @@ export function initSoundboard(button: HTMLElement, root: HTMLElement): void {
   async function openBoard(): Promise<void> {
     if (manifest.length === 0) {
       try {
-        const res = await fetch("/sounds/manifest.json");
+        const res = await fetch("sounds/manifest.json");
         manifest = (await res.json()) as ManifestCategory[];
         flat = flatten(manifest);
       } catch {
