@@ -3,9 +3,11 @@ import { itemDef } from "./data/items";
 import { CLOSE_KEYS, OPEN_KEYS } from "./input/controls";
 import { actionForKey } from "./input/keyboard";
 import { buildAtlas, TILE } from "./render/atlas";
+import { playEvents, playSound, toggleMute, unlockAudio } from "./render/audio";
 import { buildSidebar, updateSidebar } from "./render/dom/sidebar";
 import { updateScreens } from "./render/dom/screens";
 import { renderViewport, type UIState } from "./render/tiles";
+import type { Action } from "./sim/actions";
 import { newGame } from "./sim/floor";
 import { hasLos } from "./sim/los";
 import { distance, idx, isFloor } from "./sim/state";
@@ -122,6 +124,12 @@ function escapeHtml(text: string): string {
   );
 }
 
+/** Every sim action goes through here: apply, hand the diary to sound. */
+function dispatch(action: Action): void {
+  const events = applyAction(state, action);
+  playEvents(events, state);
+}
+
 function cycleTarget(): void {
   const p = state.player;
   const candidates = state.enemies
@@ -138,6 +146,16 @@ function cycleTarget(): void {
 render();
 
 window.addEventListener("keydown", (e) => {
+  // Browsers gate audio behind a gesture — any keypress is the unlock.
+  unlockAudio();
+  // Mute is UI-side, works in every phase, and deliberately sits above the
+  // input modes: even mid-drop or mid-aim, M is always the volume knob.
+  if (e.key === "m" || e.key === "M") {
+    const muted = toggleMute();
+    hint = muted ? "SFX muted. (M to unmute)" : "SFX on.";
+    render();
+    return;
+  }
   // Ahead of every phase branch, because they all return early. While the panel
   // is up, keys that do not close it are swallowed rather than passed through:
   // in a permadeath run, reading the controls must not be able to spend AP.
@@ -161,7 +179,7 @@ window.addEventListener("keydown", (e) => {
     const perkId = state.perkOffer?.[pick];
     if (perkId) {
       e.preventDefault();
-      applyAction(state, { type: "choosePerk", perkId });
+      dispatch({ type: "choosePerk", perkId });
       render();
     }
     return;
@@ -177,7 +195,7 @@ window.addEventListener("keydown", (e) => {
         else tradeIn.slot = slot as 0 | 1 | 2;
       } else if (key === "y" || key === "Enter") {
         // Permadeath: never let one keystroke destroy a gun you were carrying.
-        applyAction(state, { type: "buy", index: tradeIn.index, replaceSlot: tradeIn.slot });
+        dispatch({ type: "buy", index: tradeIn.index, replaceSlot: tradeIn.slot });
         tradeIn = null;
       } else {
         tradeIn = null;
@@ -187,12 +205,12 @@ window.addEventListener("keydown", (e) => {
     }
 
     if (key === "Enter") {
-      applyAction(state, { type: "leaveShop" });
+      dispatch({ type: "leaveShop" });
     } else {
       const index = Number(key) - 1;
       if (Number.isInteger(index) && index >= 0) {
         if (needsTradeIn(index)) tradeIn = { index };
-        else applyAction(state, { type: "buy", index });
+        else dispatch({ type: "buy", index });
       }
     }
     render();
@@ -210,6 +228,8 @@ window.addEventListener("keydown", (e) => {
     } else {
       return;
     }
+    // Restarts bypass applyAction, so the badge-scan plays directly.
+    playSound("game_start");
     e.preventDefault();
     render();
     return;
@@ -235,8 +255,7 @@ window.addEventListener("keydown", (e) => {
       render();
       return;
     }
-    applyAction(
-      state,
+    dispatch(
       slot < 3
         ? { type: "drop", kind: "weapon", slot }
         : { type: "drop", kind: "item", slot: slot - 3 },
@@ -271,7 +290,7 @@ window.addEventListener("keydown", (e) => {
       const { slot, x, y } = throwAim;
       throwAim = null;
       hint = "";
-      applyAction(state, { type: "throwItem", slot, x, y });
+      dispatch({ type: "throwItem", slot, x, y });
     } else {
       throwAim = null;
       hint = "";
@@ -310,6 +329,6 @@ window.addEventListener("keydown", (e) => {
     action = { type: "fire", targetId: ui.targetId };
   }
   e.preventDefault();
-  applyAction(state, action);
+  dispatch(action);
   render();
 });

@@ -212,15 +212,28 @@ Total: **88 files** (35 gun voices + 53 across the other categories).
 - **No sound longer than its information.** Guns ≤ 0.6 s, feedback ≤ 0.4 s,
   stingers ≤ 3 s. Turn-based pacing tolerates zero tail-stacking sludge.
 
-## 7. Integration plan (after the audition pass)
+## 7. Integration: the event stream
 
-Playback is renderer-side delta detection — `main.ts` already holds the
-action it just built and the state before/after `applyAction`: action was
-`fire` → the active weapon's voice; `player.hp` dropped → `player_hurt`;
-`enemies.length` dropped → kill sound; `phase` changed → sting; `floor`
-changed → elevator. No sim change, no event system — if per-shot fidelity
-inside a single enemy turn ever matters enough, that is the day an event
-list earns its keep, not before.
+The sim writes a diary: `applyAction(state, action)` mutates state in place
+and returns `SimEvent[]` — plain-data records (actor ids, positions, weapon
+ids, damage) of everything that happened in that call, collected via
+`sim/events.ts` and drained exactly once per action. Emission is additive:
+it never consumes RNG and never changes log text, so the golden snapshot is
+unaffected; events are never stored on GameState, so saves and the
+serialization invariant are untouched.
+
+Renderers are consumers. `render/sfx.ts` is the pure mapper —
+`soundsFor(events, state)` names the cues (gun voices via the enemy-variant
+alias table, reload mechanisms from weapon stats, off-screen events at 0.4×
+gain) and `planPlayback` applies the §6 mix rules as data: 50 ms fan-out in
+sim order, a cap of ~8, dropping texture before information and the
+player's own pain never. `render/audio.ts` is the WebAudio player: one
+context unlocked on first keypress, lazily decoded buffers, per-play gain,
+mute on M persisted in localStorage. Sound is the first consumer; the
+staggered-turn animation is the second, which is why events carry positions
+and from/to movement (`step`) that sound ignores — and per-shot fidelity
+inside a single enemy turn, the thing delta-detection could never see, is
+now simply how it works.
 
 The WAVs are the contract: whatever the playback layer becomes, it plays
 these files by name. A future switch to runtime WebAudio synthesis (to feed

@@ -6,8 +6,11 @@
  *
  * Mounted only under import.meta.env.DEV, from the same dev-corner the debug
  * panel will occupy (ux-design.md §2) — this module is absent from every
- * build output, so nothing here may be imported by shipping code.
+ * build output, so nothing here may be imported by shipping code. (Importing
+ * shipping code the other way — render/audio's player below — is fine.)
  */
+
+import { playSound, unlockAudio } from "../audio";
 
 export interface ManifestCategory {
   category: string;
@@ -55,18 +58,12 @@ export function initSoundboard(button: HTMLElement, root: HTMLElement): void {
   let flat: FlatSound[] = [];
   let open = false;
   let index = 0;
-  const players = new Map<string, HTMLAudioElement>();
 
   function play(name: string): void {
-    let audio = players.get(name);
-    if (!audio) {
-      audio = new Audio(`/sounds/${name}.wav`);
-      players.set(name, audio);
-    }
-    audio.currentTime = 0;
-    void audio.play().catch(() => {
-      /* file missing or autoplay refused — the button press showed which */
-    });
+    // The shipping WebAudio player — the board auditions exactly what the
+    // game plays, mute toggle included.
+    unlockAudio();
+    playSound(name, 1);
   }
 
   function renderBoard(): void {
