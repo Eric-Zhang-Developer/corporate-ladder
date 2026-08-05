@@ -1,3 +1,5 @@
+import type { DebugOp } from "./debug";
+
 export type Action =
   | { type: "move"; dx: -1 | 0 | 1; dy: -1 | 0 | 1 }
   /** Fire at a specific enemy, or the nearest visible one when omitted. */
@@ -20,4 +22,11 @@ export type Action =
    */
   | { type: "buy"; index: number; replaceSlot?: 0 | 1 | 2 }
   | { type: "leaveShop" }
+  /**
+   * Dev-only cheats (sim/debug.ts). Keyless by design: no binding in
+   * input/keyboard.ts and no CONTROL_GROUPS row, so this is the one action the
+   * "add an action" recipe's keymap step does not apply to. Only the DEV debug
+   * panel dispatches it; the sim handles it without knowing that.
+   */
+  | { type: "debug"; op: DebugOp }
   | { type: "wait" };

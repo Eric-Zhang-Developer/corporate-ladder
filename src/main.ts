@@ -31,16 +31,6 @@ if (!ctx) throw new Error("no 2d context");
 const atlas = buildAtlas();
 buildSidebar(sidebar);
 
-// Dev-tools corner (ux-design.md §2): DEV is a build-time constant, so this
-// block — and the dynamically imported modules behind it — is dead-code-
-// eliminated from every build output. The debug panel mounts here too.
-if (import.meta.env.DEV) {
-  const corner = document.createElement("div");
-  corner.id = "dev-corner";
-  document.body.append(corner);
-  void import("./render/dom/soundboard").then(({ mountSoundboard }) => mountSoundboard(corner));
-}
-
 let seed = seedFromUrl() ?? randomSeed();
 writeSeedToUrl(seed);
 let state = newGame(seed);
@@ -55,6 +45,8 @@ let tradeIn: { index: number; slot?: 0 | 1 | 2 } | null = null;
 let controlsOpen = false;
 /** The ARSENAL overlay — same contract as the controls panel. */
 let arsenalOpen = false;
+/** DEV debug panel's readout hook; always null in a build (see the mount below). */
+let devRefresh: (() => void) | null = null;
 
 const AIM_KEYS: Record<string, [number, number]> = {
   arrowup: [0, -1],
@@ -118,6 +110,8 @@ function render(): void {
     recent
       .map((line, i) => `<div class="${i === recent.length - 1 ? "new" : "old"}">${escapeHtml(line)}</div>`)
       .join("") + (hint ? `<div class="hint">${escapeHtml(hint)}</div>` : "");
+  // Folded away entirely in a build: DEV is a build-time constant.
+  if (import.meta.env.DEV) devRefresh?.();
 }
 
 function escapeHtml(text: string): string {
@@ -146,6 +140,21 @@ function cycleTarget(): void {
 }
 
 render();
+
+// Dev-tools corner (ux-design.md §2): DEV is a build-time constant, so this
+// block — and the dynamically imported modules behind it — is dead-code-
+// eliminated from every build output. It sits below the first render because
+// the debug panel closes over dispatch, render, and the live `state` binding.
+if (import.meta.env.DEV) {
+  const corner = document.createElement("div");
+  corner.id = "dev-corner";
+  document.body.append(corner);
+  void import("./render/dom/soundboard").then(({ mountSoundboard }) => mountSoundboard(corner));
+  void import("./render/dom/debugpanel").then(({ mountDebugPanel }) => {
+    // getState is a getter, not the value: restarts reassign `state`.
+    devRefresh = mountDebugPanel(corner, { getState: () => state, dispatch, render, ui });
+  });
+}
 
 window.addEventListener("keydown", (e) => {
   // Browsers gate audio behind a gesture — any keypress is the unlock.

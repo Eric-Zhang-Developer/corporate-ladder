@@ -21,6 +21,7 @@ import type { Action } from "./actions";
 import { runEnemyTurns } from "./ai";
 import { detonate } from "./aoe";
 import { apToFire, fireWeapon, meleeAttack } from "./combat";
+import { applyDebug } from "./debug";
 import { beginEvents, drainEvents, emit, type SimEvent } from "./events";
 import { applyFloor, carriedCalibers, hashSeed, LAST_FLOOR } from "./floor";
 import { recomputeFov } from "./fov";
@@ -63,6 +64,17 @@ export function applyAction(state: GameState, action: Action): SimEvent[] {
 }
 
 function applyActionImpl(state: GameState, action: Action): void {
+  // Debug sits above every phase gate — the same place mute sits above the
+  // input modes in main.ts — because a dev cheat has to work while dead,
+  // shopping or promoting. It spends no AP and returns before the enemy phase,
+  // so no panel click can advance the world as a side effect.
+  if (action.type === "debug") {
+    const rng = simRngFromState(state.rngState);
+    applyDebug(state, rng, action.op);
+    recomputeFov(state);
+    state.rngState = rng.getState();
+    return;
+  }
   // A promotion pauses the game between turns: the only legal move is picking
   // a certification, and the choice is a sim action so replays stay exact.
   if (state.phase === "promoting") {

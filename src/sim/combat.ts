@@ -255,7 +255,10 @@ export function dealDamage(
     );
   }
   if (remaining <= 0) return;
-  defender.hp -= remaining;
+  // Debug god mode is one field checked at the one hp write: plates still
+  // absorb, the log and the hurt event still fire, so what you are observing
+  // is the real fight minus the dying.
+  if (!(state.god && defender.id === state.player.id)) defender.hp -= remaining;
   emit({
     kind: "hurt",
     target: defender.id,

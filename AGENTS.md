@@ -27,6 +27,7 @@ src/
 │   ├── actions.ts       # Action union — the sim's entire input surface
 │   ├── step.ts          # applyAction: THE single entry point; player action handlers; turn loop
 │   ├── events.ts        # SimEvent union + collector — the action's diary (see event stream below)
+│   ├── debug.ts         # DEV-only cheat ops, as sim actions — keyless, never environment-aware
 │   ├── ai.ts            # behavior registry keyed by EnemyDef.behavior
 │   ├── combat.ts        # fireWeapon/meleeAttack/dealDamage/kill + drops — one path for both sides
 │   ├── floor.ts         # newGame, buildFloor(seed, floor), applyFloor — floor generation
@@ -42,7 +43,8 @@ src/
 │   ├── audio.ts         # WebAudio player: lazy decode, stagger scheduler, M-mute (untested by convention)
 │   ├── weaponinfo.ts    # PURE gun formatters: band strip, AP line, band rows, formula (tested)
 │   ├── enemyinfo.ts     # PURE target card: stat row, alert chips, threat line (tested)
-│   └── dom/             # sidebar.ts, screens.ts (overlays incl. ARSENAL), soundboard.ts (DEV-only)
+│   └── dom/             # sidebar.ts, screens.ts (overlays incl. ARSENAL); DEV-only:
+│                        # soundboard.ts (modal), debugpanel.ts (docked, click-driven)
 ├── input/
 │   ├── keyboard.ts      # key → Action mapping; never touches state
 │   └── controls.ts      # CONTROL_GROUPS — the printed keymap the controls panel renders from;
@@ -92,7 +94,7 @@ Enemy behaviors are `while (enemy.ap > 0)` loops where every iteration either sp
 
 **Add a floor:** entry in `data/floors.ts`; bump `LAST_FLOOR`. Floor content derives from `hash(seed, floor)` — it must never depend on sim history, so a shared seed reproduces the whole tower.
 
-**Add an action:** extend the union in `sim/actions.ts`, handle it in `step.ts` (emit its events next to the `pushLog` calls), map a key in `input/keyboard.ts` **and** add a row to `CONTROL_GROUPS` in `input/controls.ts` — `controls.test.ts` walks the printed keymap against the real bindings in both directions, so an undocumented key (or an advertised dead one) fails tests. AP costs go in `data/costs.ts`.
+**Add an action:** extend the union in `sim/actions.ts`, handle it in `step.ts` (emit its events next to the `pushLog` calls), map a key in `input/keyboard.ts` **and** add a row to `CONTROL_GROUPS` in `input/controls.ts` — `controls.test.ts` walks the printed keymap against the real bindings in both directions, so an undocumented key (or an advertised dead one) fails tests. AP costs go in `data/costs.ts`. The one exception is `{type: "debug"}` (`sim/debug.ts`), which is deliberately **keyless**: it has no binding and no `CONTROL_GROUPS` row because only the DEV panel dispatches it. Debug ops are actions rather than direct mutation on purpose — the renderer must never write state, `applyAction` owns the RNG round-trip, and cheats you can test are cheats that still work after a refactor.
 
 **Add an event:** extend the `SimEvent` union in `sim/events.ts` (no `undefined`-valued fields — use the `...(cond ? { flag: true as const } : {})` spread), `emit()` at the site adjacent to its `pushLog`, map it in `render/sfx.ts` (or deliberately ignore it there, like `step`), cover it in `test/sim/events.test.ts`. Never let emission touch RNG or log text.
 

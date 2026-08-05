@@ -185,6 +185,30 @@
       .sb-sound:hover { border-color: var(--accent); }
       .sb-sound.active { border-color: var(--accent); color: var(--accent); }
       .sb-hint { color: var(--muted); font-size: 11px; text-align: center; }
+      /* Debug panel: docked rather than modal, because the tool's whole point is
+         spawning something and then watching it act. Floats over the page so it
+         never reflows the game it is meant to be observed against. */
+      #debug-panel { position: fixed; top: 36px; left: 12px; z-index: 15;
+        width: 320px; max-height: calc(100vh - 52px); overflow-y: auto;
+        background: var(--panel); border: 1px solid var(--line); padding: 8px 10px;
+        display: flex; flex-direction: column; gap: 5px; font-size: 11px; }
+      #debug-panel[hidden] { display: none; }
+      .dbg-head { display: flex; justify-content: space-between; align-items: center;
+        letter-spacing: 3px; color: var(--accent); }
+      .dbg-read { color: var(--muted); font-size: 10px; line-height: 1.5;
+        border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+      .dbg-row { display: flex; align-items: flex-start; gap: 6px; }
+      .dbg-key { color: var(--muted); font-size: 10px; width: 44px; flex: none;
+        padding-top: 3px; }
+      .dbg-set { display: flex; flex-wrap: wrap; gap: 3px; flex: 1; }
+      .dbg-btn { background: #1c1c22; border: 1px solid var(--line); color: var(--text);
+        font: inherit; font-size: 11px; padding: 2px 6px; cursor: pointer; }
+      .dbg-btn:hover { border-color: var(--accent); color: var(--accent); }
+      /* Lit toggles read as state, not as a hover. */
+      .dbg-btn.on, .dev-btn.on { border-color: var(--accent); color: var(--accent); }
+      .dbg-sel { background: #1c1c22; border: 1px solid var(--line); color: var(--text);
+        font: inherit; font-size: 11px; padding: 2px; flex: 1; min-width: 0; }
+      .dbg-hint { color: var(--muted); font-size: 10px; }
     </style>
   </head>
   <body>

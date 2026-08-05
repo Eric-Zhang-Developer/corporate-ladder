@@ -156,7 +156,7 @@ playtest ships, in priority order:
 (replacing raw `?seed=` editing as the shared-run entry point), controls link, build
 stamp.
 
-### M14 — Dev panel *(~1 day, dev-only)* — ○ open; its `#dev-corner` mount exists (occupied by the SFX soundboard) — scheduled in v0.2
+### M14 — Dev panel *(~1 day, dev-only)* — ✅ shipped in v0.2 (docked panel, `{type: "debug"}` actions — see the v0.2 section below)
 Gated by **`import.meta.env.DEV`** — dev-server only, dead-code-eliminated from every
 build output (Pages and zip never contain it; no hostname sniffing). Spawn by id,
 grant cash/XP/plates, floor jump, reveal, god mode, re-seed — all as `{type: "debug"}`
@@ -195,13 +195,21 @@ Scope: immediate bugs + the remaining UI work + the dev panel. Nothing else ride
 - [ ] **Log** — 5 visible lines (~7.5em), `overflow-y: auto` over the last ~100
       entries, sticky autoscroll (pin to bottom only when already at bottom), and
       the mode `hint` line moved outside the scroll region so it can't scroll away.
-- [ ] **Debug panel (M14)** — `DBG` button in the existing `#dev-corner`, dynamic
-      import, dev-only. First four features are the ones the balance pass needs:
-      floor warp (through the real `applyFloor` path), give cash/ammo/weapon/item
-      (dropdowns fed from the data tables), god mode, reveal map. Mutations live in
-      one `debugActions.ts` module that leaves state consistent (recomputeFov etc.);
-      needs a state getter/setter + render callback passed at mount since `main.ts`
-      reassigns `state` on restart.
+- [x] **Debug panel (M14)** — `DBG` button in the existing `#dev-corner`, dynamic
+      import, dev-only, and **docked rather than modal**: the tool's whole point is
+      spawning something and then watching it act. Ops are `{type: "debug"}` actions
+      through `applyAction` (`sim/debug.ts`) — *not* the mutation module an earlier
+      draft of this line called for. The renderer must never write state, and
+      `applyAction` owns the RNG round-trip, so a second write site would desync
+      determinism silently. Spawn-by-id, floor warp (through the real `applyFloor`),
+      give (reusing `GroundItemPayload` + `spawnItemNear`, so there is no second
+      inventory path to keep legal), cash/xp/heal, god mode, kill all, copy state as
+      JSON. Reveal is the one feature that stays a **render flag**
+      (`ui.revealAll`): writing `explored` would show terrain but not enemies, and
+      could not be toggled back. Click-driven and swallows keydown inside itself, so
+      it can never spend AP; `getState` is a getter because `main.ts` reassigns
+      `state` on restart. Covered by `test/sim/debug.test.ts` and the option-list
+      drift guards in `test/render/debugpanel.test.ts`.
 
 ## v0.3 — camera & balance
 
