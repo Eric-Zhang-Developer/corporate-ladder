@@ -258,8 +258,11 @@ export function newGame(seed: number): GameState {
     level: 1,
     perks: [],
     nextId: 1,
-    log: ["Find whoever signs the checks."],
+    log: [],
+    logSeq: 0,
   };
+  // Through pushLog, not the literal, so logSeq can never disagree with log.
+  pushLog(state, "Find whoever signs the checks.");
   applyFloor(state, 1);
   return state;
 }

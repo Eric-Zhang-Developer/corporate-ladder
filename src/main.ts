@@ -4,6 +4,7 @@ import { CLOSE_KEYS, OPEN_KEYS } from "./input/controls";
 import { actionForKey } from "./input/keyboard";
 import { buildAtlas, TILE } from "./render/atlas";
 import { playEvents, playSound, toggleMute, unlockAudio } from "./render/audio";
+import { buildLog } from "./render/dom/log";
 import { buildSidebar, updateSidebar } from "./render/dom/sidebar";
 import { updateScreens } from "./render/dom/screens";
 import { renderViewport, type UIState } from "./render/tiles";
@@ -30,6 +31,7 @@ const ctx = viewport.getContext("2d");
 if (!ctx) throw new Error("no 2d context");
 const atlas = buildAtlas();
 buildSidebar(sidebar);
+const updateLog = buildLog(logPanel);
 
 let seed = seedFromUrl() ?? randomSeed();
 writeSeedToUrl(seed);
@@ -103,21 +105,9 @@ function render(): void {
   updateSidebar(sidebar, state, ui);
   updateScreens(overlay, state, { tradeIn, controlsOpen, arsenalOpen });
   header.innerHTML = `<b>${floorDef(state.floor).name}</b>: ${state.floor}/${LAST_FLOOR}`;
-  const recent = state.log.slice(-3);
-  // Escaped, not interpolated raw: log text is internal today, but it is about
-  // to carry a lot more content and this is the statement that would leak.
-  logPanel.innerHTML =
-    recent
-      .map((line, i) => `<div class="${i === recent.length - 1 ? "new" : "old"}">${escapeHtml(line)}</div>`)
-      .join("") + (hint ? `<div class="hint">${escapeHtml(hint)}</div>` : "");
+  updateLog(state, hint);
   // Folded away entirely in a build: DEV is a build-time constant.
   if (import.meta.env.DEV) devRefresh?.();
-}
-
-function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (c) =>
-    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === '"' ? "&quot;" : "&#39;",
-  );
 }
 
 /** Every sim action goes through here: apply, hand the diary to sound. */

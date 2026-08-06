@@ -41,9 +41,14 @@ Bosses use the same card (no special boss bars in v1).
 
 ## Log
 
-- Bumped to ~14px, **5 visible lines** (from 2).
-- Scrollback is its own commit; that work also pays known debt #4 — escape log text
-  before spot lines, telegraphs, and CEO dialogue make the log a real narrative channel.
+- 14px, **5 visible lines** (7.5em), scrollback over the last 100 entries.
+- **Sticky autoscroll**: pinned to the bottom only when already at the bottom, so
+  reading history mid-fight is never interrupted by the next turn.
+- The mode **hint** is its own ruled row below the scroll region, not a log line. It
+  always reserves its height — a collapsing row would resize and rescale the canvas
+  the instant you press `x`.
+- Log text is written with `textContent`, so spot lines, telegraphs and CEO dialogue
+  can make this a narrative channel without an escaping discipline to remember.
 
 ## Overlays (same pattern as the death screen)
 

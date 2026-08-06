@@ -192,9 +192,23 @@ Scope: immediate bugs + the remaining UI work + the dev panel. Nothing else ride
       pre-grid design, plus orphaned `.consumable-empty`) collapses the cells to
       shrink-to-fit chips. Delete the stale rules; fixed 3×2 grid speaking the
       weapon-slot visual language (key, name, count; stable size empty or full).
-- [ ] **Log** — 5 visible lines (~7.5em), `overflow-y: auto` over the last ~100
-      entries, sticky autoscroll (pin to bottom only when already at bottom), and
-      the mode `hint` line moved outside the scroll region so it can't scroll away.
+- [x] **Log** — 5 visible lines at 14px (`ui-design.md` §Log), scrollback over the
+      last 100 entries, sticky autoscroll, and the mode `hint` moved into its own
+      ruled row outside the scroll region. The panel **appends rather than
+      rewrites**: rewriting `innerHTML` and restoring `scrollTop` is simpler but
+      slides the text under a scrolled-up reader the moment the buffer trims at the
+      top. Appending needs a stable line identity, which `log` — a rolling window
+      spliced from the front — does not have, so `GameState.logSeq` (total lines
+      ever pushed) is the cursor. The sim's `LOG_LIMIT` stays **30** and the UI caps
+      at **100**: the first bounds serialized state, the second bounds DOM nodes,
+      and growing the sim's window for a presentational reason would grow every
+      save. Eviction is deferred while the reader is scrolled up — trimming under
+      them is the exact shift appending exists to avoid — and catches up on the next
+      pinned frame. Restart is detected by state *identity* (`applyAction` mutates
+      in place; restarts reassign), so no call site has to remember to reset. Pure
+      half in `render/log.ts`, DOM half in `render/dom/log.ts`; `escapeHtml` left
+      `main.ts` with it, since `textContent` closes that injection seam
+      structurally. Covered by `test/render/log.test.ts` + `test/sim/log.test.ts`.
 - [x] **Debug panel (M14)** — `DBG` button in the existing `#dev-corner`, dynamic
       import, dev-only, and **docked rather than modal**: the tool's whole point is
       spawning something and then watching it act. Ops are `{type: "debug"}` actions

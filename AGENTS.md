@@ -43,7 +43,9 @@ src/
 │   ├── audio.ts         # WebAudio player: lazy decode, stagger scheduler, M-mute (untested by convention)
 │   ├── weaponinfo.ts    # PURE gun formatters: band strip, AP line, band rows, formula (tested)
 │   ├── enemyinfo.ts     # PURE target card: stat row, alert chips, threat line (tested)
-│   └── dom/             # sidebar.ts, screens.ts (overlays incl. ARSENAL); DEV-only:
+│   ├── log.ts           # PURE log panel: delta-since-last-frame, stick-to-bottom, eviction (tested)
+│   └── dom/             # sidebar.ts, screens.ts (overlays incl. ARSENAL), log.ts
+│                        # (appends, holds the seq cursor in a closure); DEV-only:
 │                        # soundboard.ts (modal), debugpanel.ts (docked, click-driven)
 ├── input/
 │   ├── keyboard.ts      # key → Action mapping; never touches state
@@ -124,6 +126,9 @@ Enemy behaviors are `while (enemy.ap > 0)` loops where every iteration either sp
 - **Bresenham LOS must stay symmetric.** `hasLos` accepts either directed ray — the naive single-ray version let the player shoot a cop that couldn't shoot back. Don't "simplify" it.
 - **Being attacked alerts the target** (set in `fireWeapon`/`meleeAttack`). The Stage 3 suppressor attachment is the planned counterplay; removing this breaks camera/stealth logic.
 - **`slots[activeSlot]` is stale while a gun is in hand** — `player.weaponId/ammoInMag` mirror the active slot and are written back on swap. The sidebar special-cases this. If Stage 3 attachments make this painful, refactor to slots-as-authority *first*.
+- **`pushLog` is the only legal writer of `state.log`** — it also bumps `logSeq`, the
+  cursor the log panel appends from. Writing `state.log` directly desyncs the counter
+  and the panel silently stops showing new lines (or replays old ones).
 - **Node can't run `src/` directly** (extensionless ESM imports) — run scratch scripts through vitest temp files instead.
 - **Two build modes, don't collapse them.** `npm run build` emits hashed assets for the Pages deploy (immutable caching, so nobody plays a stale build). `npm run build:zip` inlines the JS/CSS into one `index.html` because Chrome blocks external module scripts on `file://` — but the 88 WAVs are runtime-fetched and can't be inlined, so **the zip build plays silent under `file://`** (`playSound` degrades gracefully; serve over http to hear it). Sound paths are document-relative (`sounds/…`, never `/sounds/…`) because the Pages deploy lives under a project subpath.
 - Non-obvious keys: `>` ascends stairs; bumping into an enemy *is* the melee attack (there is no melee action); `s` is both move-down and same-seed-restart (disambiguated by game phase). UI-mode keys that never reach the sim: `?`/`F1` controls panel, `i` ARSENAL overlay, `m` mute, `x`-then-slot drop, Tab targeting. The first keydown of a session also unlocks WebAudio (browser gesture gate).
