@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SEVERANCE PACKAGE</title>
     <style>
+      /* ---- Design tokens ----------------------------------------------------
+         Every colour in the sheet resolves through these, so a reskin is a
+         four-line edit rather than a find-and-replace. */
       :root {
         color-scheme: dark;
         --panel: #101014;
@@ -21,6 +24,8 @@
         color: var(--text);
         font-family: ui-monospace, Menlo, Consolas, monospace;
       }
+      /* ---- App shell --------------------------------------------------------
+         Two columns: the viewport stack and the sidebar. */
       #app {
         display: grid;
         grid-template-columns: minmax(0, 72fr) minmax(240px, 28fr);
@@ -32,6 +37,7 @@
       /* min-height: 0 alongside min-width: 0 — as a grid item this column
          defaults to min-height: auto, so it grows past its row rather than
          letting the canvas shrink, and the log falls off the bottom. */
+      /* ---- Viewport column: floor header, canvas, log -------------------- */
       #viewport-col {
         display: flex;
         flex-direction: column;
@@ -61,6 +67,10 @@
       /* Height comes from the children, never a fixed em on the box: the hint
          row reserves its line whether or not it has text, so entering drop or
          throw mode can't resize (and so rescale) the canvas mid-input. */
+      /* ---- Log panel --------------------------------------------------------
+         Scrollback lives in #log-scroll; the mode hint sits in its own ruled
+         row outside the scroll region, so combat text can never push it out
+         of view. */
       #log {
         flex: 0 0 auto;
         display: flex;
@@ -93,6 +103,8 @@
         border-top: 1px solid var(--line);
         color: var(--accent);
       }
+      /* ---- Sidebar frame ----------------------------------------------------
+         The sections below run in the order they appear on screen. */
       #sidebar {
         border: 1px solid var(--line);
         background: var(--panel);
@@ -112,6 +124,7 @@
         margin-right: 6px;
       }
       .hp-row,
+      /* ---- Sidebar: vitals — HP bar, AP pips, floor ---------------------- */
       .ap-row {
         display: flex;
         align-items: center;
@@ -141,6 +154,7 @@
         margin-left: auto;
         color: var(--muted);
       }
+      /* ---- Sidebar: ammo, one cell per caliber channel ------------------- */
       .ammo {
         display: flex;
         gap: 6px;
@@ -161,6 +175,7 @@
       .ammo-cell .amt {
         font-size: 15px;
       }
+      /* ---- Sidebar: minimap ---------------------------------------------- */
       .minimap-wrap {
         text-align: center;
       }
@@ -175,6 +190,9 @@
         letter-spacing: 2px;
         padding: 14px 0;
       }
+      /* ---- Sidebar: gun card ------------------------------------------------
+         Name, mag, dmg/AP, and the range-band strip. The .rs-* classes
+         colour one cell each of that strip by band quality. */
       .equipped {
         display: flex;
         gap: 6px;
@@ -225,42 +243,18 @@
       .rs-tgt {
         color: #ffffff;
       }
-      .end-box.review h1 {
-        color: var(--accent);
-      }
-      .end-box.shop h1 {
-        color: #66bb88;
-      }
-      .end-box .cash {
-        color: var(--accent);
-      }
-      .perk.sold {
-        opacity: 0.4;
-      }
-      .perk-list {
-        display: grid;
-        gap: 6px;
-        margin: 10px 0;
-        text-align: left;
-      }
-      .perk {
-        border: 1px solid var(--line);
-        display: grid;
-        gap: 2px 8px;
-        grid-template-columns: auto 1fr;
-        padding: 6px 8px;
-      }
-      .perk-key {
-        color: var(--accent);
-        grid-row: span 2;
-      }
-      .perk-name {
-        font-size: 14px;
-      }
-      .perk-blurb {
+      .card-state {
         color: var(--muted);
-        font-size: 11px;
+        font-size: 10px;
+        letter-spacing: 1px;
+        margin-top: 2px;
+        min-height: 12px;
       }
+      .card-state.warn {
+        color: #ff9955;
+      }
+
+      /* ---- Sidebar: consumable hotbar ------------------------------------ */
       .consumables {
         display: grid;
         gap: 3px;
@@ -294,6 +288,7 @@
          action economy (matches the player's AP pips), blue = armor (the layer
          blades ignore, both sides), cyan = machine, orange = incoming threat,
          green = opportunity. Each is redundantly encoded in text. */
+      /* ---- Sidebar: target card (Tab-selected enemy) --------------------- */
       .target-card {
         font-size: 11px;
         min-height: 44px;
@@ -342,6 +337,7 @@
       .tgt-none {
         color: var(--muted);
       }
+      /* ---- Sidebar: shield bar + plate cells ----------------------------- */
       .shield-row {
         align-items: center;
         display: flex;
@@ -371,16 +367,7 @@
         min-width: 46px;
         text-align: right;
       }
-      .card-state {
-        color: var(--muted);
-        font-size: 10px;
-        letter-spacing: 1px;
-        margin-top: 2px;
-        min-height: 12px;
-      }
-      .card-state.warn {
-        color: #ff9955;
-      }
+      /* ---- Sidebar: three weapon slots ----------------------------------- */
       .slots {
         display: flex;
         gap: 6px;
@@ -401,6 +388,60 @@
       .slot .key {
         color: var(--muted);
       }
+
+      /* ---- Run footer ---------------------------------------------------- */
+      .run-meta {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      #sidebar .controls-hint {
+        border-bottom: none;
+        color: #55555f;
+        font-size: 11px;
+        letter-spacing: 1px;
+        padding-bottom: 0;
+        text-align: center;
+      }
+      /* ---- Overlay: scrim + the .end-box shell ------------------------------
+         Every screen is built on this shell — death, victory, promotion,
+         shop, controls, ARSENAL — so the variants below only repaint it. */
+      #overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.78);
+        display: grid;
+        place-items: center;
+      }
+      #overlay[hidden] {
+        display: none;
+      }
+      .end-box {
+        text-align: center;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        padding: 28px 44px;
+      }
+      .end-box h1 {
+        letter-spacing: 4px;
+        font-size: 22px;
+        margin: 0 0 12px;
+      }
+      .end-box.dead h1 {
+        color: #ff5555;
+      }
+      .end-box.won h1 {
+        color: #66dd66;
+      }
+      .end-box .hint {
+        color: var(--muted);
+      }
+
+      /* ---- Overlay: promotion + shop ------------------------------------- */
+      /* Same .end-box shell as death/victory, retitled and repainted: green
+         for the shop, accent for the perk pick. The perk list is the only
+         overlay content that is picked from rather than dismissed. */
       .end-box.review h1 {
         color: var(--accent);
       }
@@ -437,54 +478,13 @@
         color: var(--muted);
         font-size: 11px;
       }
-      .run-meta {
-        display: flex;
-        justify-content: space-between;
-        color: var(--muted);
-        font-size: 12px;
-      }
-      #sidebar .controls-hint {
-        border-bottom: none;
-        color: #55555f;
-        font-size: 11px;
-        letter-spacing: 1px;
-        padding-bottom: 0;
-        text-align: center;
-      }
-      #overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.78);
-        display: grid;
-        place-items: center;
-      }
-      #overlay[hidden] {
-        display: none;
-      }
-      .end-box {
-        text-align: center;
-        border: 1px solid var(--line);
-        background: var(--panel);
-        padding: 28px 44px;
-      }
-      .end-box h1 {
-        letter-spacing: 4px;
-        font-size: 22px;
-        margin: 0 0 12px;
-      }
-      .end-box.dead h1 {
-        color: #ff5555;
-      }
-      .end-box.won h1 {
-        color: #66dd66;
-      }
-      .end-box .hint {
-        color: var(--muted);
-      }
+
+      /* ---- Overlay: controls panel --------------------------------------- */
       .controls-box {
         min-width: 380px;
         text-align: left;
       }
+      /* ---- Overlay: ARSENAL — the full band-math table ------------------- */
       .arsenal-box {
         text-align: left;
         min-width: min(680px, 92vw);
@@ -641,6 +641,7 @@
         color: var(--accent);
         border-color: var(--accent);
       }
+      /* ---- DEV: sound board (modal) -------------------------------------- */
       #soundboard {
         position: fixed;
         inset: 0;
