@@ -13,212 +13,794 @@
         --muted: #7d7d8a;
         --accent: #ffee66;
       }
-      html, body { margin: 0; height: 100%; background: #000; color: var(--text);
-        font-family: ui-monospace, Menlo, Consolas, monospace; }
-      #app { display: grid; grid-template-columns: minmax(0, 72fr) minmax(240px, 28fr);
-        gap: 8px; height: 100vh; padding: 8px; box-sizing: border-box; }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+        color: var(--text);
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+      }
+      #app {
+        display: grid;
+        grid-template-columns: minmax(0, 72fr) minmax(240px, 28fr);
+        gap: 8px;
+        height: 100vh;
+        padding: 8px;
+        box-sizing: border-box;
+      }
       /* min-height: 0 alongside min-width: 0 — as a grid item this column
          defaults to min-height: auto, so it grows past its row rather than
          letting the canvas shrink, and the log falls off the bottom. */
-      #viewport-col { display: flex; flex-direction: column; gap: 6px;
-        min-width: 0; min-height: 0; }
-      #floor-header { text-align: center; font-size: 14px; letter-spacing: 2px; color: var(--muted); }
-      #floor-header b { color: var(--text); }
-      #viewport { flex: 1 1 auto; min-height: 0; width: 100%; height: 100%;
-        image-rendering: pixelated; background: #000;
-        border: 1px solid var(--line); object-fit: contain; }
+      #viewport-col {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+        min-height: 0;
+      }
+      #floor-header {
+        text-align: center;
+        font-size: 14px;
+        letter-spacing: 2px;
+        color: var(--muted);
+      }
+      #floor-header b {
+        color: var(--text);
+      }
+      #viewport {
+        flex: 1 1 auto;
+        min-height: 0;
+        width: 100%;
+        height: 100%;
+        image-rendering: pixelated;
+        background: #000;
+        border: 1px solid var(--line);
+        object-fit: contain;
+      }
       /* Height comes from the children, never a fixed em on the box: the hint
          row reserves its line whether or not it has text, so entering drop or
          throw mode can't resize (and so rescale) the canvas mid-input. */
-      #log { flex: 0 0 auto; display: flex; flex-direction: column;
-        border: 1px solid var(--line); background: var(--panel);
-        font-size: 14px; line-height: 1.5; }
-      #log-scroll { height: 7.5em; overflow-y: auto; padding: 6px 8px; }
-      #log-scroll .old { color: var(--muted); }
-      #log-scroll::-webkit-scrollbar { width: 8px; }
-      #log-scroll::-webkit-scrollbar-track { background: transparent; }
-      #log-scroll::-webkit-scrollbar-thumb { background: #33333d; }
-      #log-hint { min-height: 1.5em; padding: 3px 8px;
-        border-top: 1px solid var(--line); color: var(--accent); }
-      #sidebar { border: 1px solid var(--line); background: var(--panel); padding: 10px;
-        display: flex; flex-direction: column; gap: 10px; font-size: 13px; overflow-y: auto; }
-      #sidebar section { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
-      #sidebar .label { color: var(--muted); margin-right: 6px; }
-      .hp-row, .ap-row { display: flex; align-items: center; gap: 6px; }
-      .hp-bar { flex: 1; height: 10px; background: #1c1c22; border: 1px solid var(--line); }
-      .hp-fill { height: 100%; background: #cc4444; transition: width 80ms linear; }
-      .ap-pips { color: var(--accent); letter-spacing: 3px; }
+      #log {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      #log-scroll {
+        height: 7.5em;
+        overflow-y: auto;
+        padding: 6px 8px;
+      }
+      #log-scroll .old {
+        color: var(--muted);
+      }
+      #log-scroll::-webkit-scrollbar {
+        width: 8px;
+      }
+      #log-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      #log-scroll::-webkit-scrollbar-thumb {
+        background: #33333d;
+      }
+      #log-hint {
+        min-height: 1.5em;
+        padding: 3px 8px;
+        border-top: 1px solid var(--line);
+        color: var(--accent);
+      }
+      #sidebar {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        font-size: 13px;
+        overflow-y: auto;
+      }
+      #sidebar section {
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 10px;
+      }
+      #sidebar .label {
+        color: var(--muted);
+        margin-right: 6px;
+      }
+      .hp-row,
+      .ap-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .hp-bar {
+        flex: 1;
+        height: 10px;
+        background: #1c1c22;
+        border: 1px solid var(--line);
+      }
+      .hp-fill {
+        height: 100%;
+        background: #cc4444;
+        transition: width 80ms linear;
+      }
+      .ap-pips {
+        color: var(--accent);
+        letter-spacing: 3px;
+      }
       /* Bonus AP is a different colour so "I have four" reads as temporary. */
-      .ap-bonus { color: #66ddaa; margin-left: 3px; }
-      .floor-cell { margin-left: auto; color: var(--muted); }
-      .ammo { display: flex; gap: 6px; }
-      .ammo-cell { flex: 1; text-align: center; background: #1c1c22; border: 1px solid var(--line); padding: 4px 0; }
-      .ammo-cell .cal { display: block; font-size: 9px; color: var(--muted); letter-spacing: 1px; }
-      .ammo-cell .amt { font-size: 15px; }
-      .minimap-wrap { text-align: center; }
-      .minimap { width: 100%; image-rendering: pixelated; border: 1px solid var(--line); }
-      .minimap-placeholder { color: var(--muted); font-size: 11px; letter-spacing: 2px; padding: 14px 0; }
-      .equipped { display: flex; gap: 6px; }
-      .card { flex: 1; background: #1c1c22; border: 1px solid var(--line); padding: 6px; }
-      .card-name { font-weight: bold; }
-      .card-mag { color: var(--muted); font-size: 12px; }
-      .card-dpa { color: var(--accent); font-size: 11px; margin-top: 3px; }
+      .ap-bonus {
+        color: #66ddaa;
+        margin-left: 3px;
+      }
+      .floor-cell {
+        margin-left: auto;
+        color: var(--muted);
+      }
+      .ammo {
+        display: flex;
+        gap: 6px;
+      }
+      .ammo-cell {
+        flex: 1;
+        text-align: center;
+        background: #1c1c22;
+        border: 1px solid var(--line);
+        padding: 4px 0;
+      }
+      .ammo-cell .cal {
+        display: block;
+        font-size: 9px;
+        color: var(--muted);
+        letter-spacing: 1px;
+      }
+      .ammo-cell .amt {
+        font-size: 15px;
+      }
+      .minimap-wrap {
+        text-align: center;
+      }
+      .minimap {
+        width: 100%;
+        image-rendering: pixelated;
+        border: 1px solid var(--line);
+      }
+      .minimap-placeholder {
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 2px;
+        padding: 14px 0;
+      }
+      .equipped {
+        display: flex;
+        gap: 6px;
+      }
+      .card {
+        flex: 1;
+        background: #1c1c22;
+        border: 1px solid var(--line);
+        padding: 6px;
+      }
+      .card-name {
+        font-weight: bold;
+      }
+      .card-mag {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .card-dpa {
+        color: var(--accent);
+        font-size: 11px;
+        margin-top: 3px;
+      }
       /* AP costs + the range-band strip: the gun's shape, always on screen. */
-      .card-ap { color: var(--muted); font-size: 10px; margin-top: 2px; }
-      .card-strip { font-size: 11px; letter-spacing: 1px; line-height: 1; margin-top: 3px; }
-      .rs-hi { color: var(--accent); }
-      .rs-mid { color: #b9a24a; }
-      .rs-lo { color: #6d6340; }
-      .rs-out { color: #34343c; }
+      .card-ap {
+        color: var(--muted);
+        font-size: 10px;
+        margin-top: 2px;
+      }
+      .card-strip {
+        font-size: 11px;
+        letter-spacing: 1px;
+        line-height: 1;
+        margin-top: 3px;
+      }
+      .rs-hi {
+        color: var(--accent);
+      }
+      .rs-mid {
+        color: #b9a24a;
+      }
+      .rs-lo {
+        color: #6d6340;
+      }
+      .rs-out {
+        color: #34343c;
+      }
       /* The cell under the current target — white so it reads at any level. */
-      .rs-tgt { color: #ffffff; }
-      .end-box.review h1 { color: var(--accent); }
-      .end-box.shop h1 { color: #66bb88; }
-      .end-box .cash { color: var(--accent); }
-      .perk.sold { opacity: 0.4; }
-      .perk-list { display: grid; gap: 6px; margin: 10px 0; text-align: left; }
-      .perk { border: 1px solid var(--line); display: grid; gap: 2px 8px; grid-template-columns: auto 1fr; padding: 6px 8px; }
-      .perk-key { color: var(--accent); grid-row: span 2; }
-      .perk-name { font-size: 14px; }
-      .perk-blurb { color: var(--muted); font-size: 11px; }
-      .consumables { display: grid; gap: 3px; grid-template-columns: repeat(3, 1fr); }
-      .hotbar-cell { align-items: baseline; background: #16161c; border: 1px solid var(--line); display: flex; font-size: 10px; gap: 3px; padding: 3px 4px; }
-      .hotbar-cell .key { color: var(--muted); }
-      .hotbar-cell .hot-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .hotbar-cell.filled { border-color: #4a6a4a; }
-      .hotbar-cell .hot-count { color: var(--accent); }
+      .rs-tgt {
+        color: #ffffff;
+      }
+      .end-box.review h1 {
+        color: var(--accent);
+      }
+      .end-box.shop h1 {
+        color: #66bb88;
+      }
+      .end-box .cash {
+        color: var(--accent);
+      }
+      .perk.sold {
+        opacity: 0.4;
+      }
+      .perk-list {
+        display: grid;
+        gap: 6px;
+        margin: 10px 0;
+        text-align: left;
+      }
+      .perk {
+        border: 1px solid var(--line);
+        display: grid;
+        gap: 2px 8px;
+        grid-template-columns: auto 1fr;
+        padding: 6px 8px;
+      }
+      .perk-key {
+        color: var(--accent);
+        grid-row: span 2;
+      }
+      .perk-name {
+        font-size: 14px;
+      }
+      .perk-blurb {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .consumables {
+        display: grid;
+        gap: 3px;
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .hotbar-cell {
+        align-items: baseline;
+        background: #16161c;
+        border: 1px solid var(--line);
+        display: flex;
+        font-size: 10px;
+        gap: 3px;
+        padding: 3px 4px;
+      }
+      .hotbar-cell .key {
+        color: var(--muted);
+      }
+      .hotbar-cell .hot-name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .hotbar-cell.filled {
+        border-color: #4a6a4a;
+      }
+      .hotbar-cell .hot-count {
+        color: var(--accent);
+      }
       /* Target card colors are semantic channels, not decoration: yellow =
          action economy (matches the player's AP pips), blue = armor (the layer
          blades ignore, both sides), cyan = machine, orange = incoming threat,
          green = opportunity. Each is redundantly encoded in text. */
-      .target-card { font-size: 11px; min-height: 44px; }
-      .tgt-row { display: flex; gap: 6px; justify-content: space-between; }
-      .tgt-name { color: var(--text); }
-      .tgt-chips { display: flex; gap: 6px; }
-      .tgt-machine { color: #66ccee; letter-spacing: 1px; }
-      .tgt-alert { color: #ff9955; letter-spacing: 1px; }
-      .tgt-unaware { color: #66dd66; letter-spacing: 1px; }
-      .tgt-armor { color: #5599dd; }
-      .tgt-ap { color: var(--accent); }
-      .tgt-threat { color: #ff9955; }
-      .tgt-open { color: #66dd66; }
-      .tgt-line3 { color: var(--muted); display: block; }
-      .tgt-dist, .tgt-none { color: var(--muted); }
-      .shield-row { align-items: center; display: flex; gap: 6px; margin-bottom: 3px; }
-      .shield-bar { display: flex; flex: 1; gap: 2px; height: 7px; }
-      .plate-cell { background: #16161c; border: 1px solid var(--line); flex: 1; overflow: hidden; }
-      .plate-fill { background: #5599dd; display: block; height: 100%; }
-      .shield-num { color: #5599dd; font-size: 11px; min-width: 46px; text-align: right; }
-      .card-state { color: var(--muted); font-size: 10px; letter-spacing: 1px; margin-top: 2px; min-height: 12px; }
-      .card-state.warn { color: #ff9955; }
-      .slots { display: flex; gap: 6px; }
-      .slot { flex: 1; background: #1c1c22; border: 1px solid var(--line); padding: 5px 6px; font-size: 11px;
-        display: flex; flex-direction: column; gap: 2px; }
-      .slot.active { border-color: var(--accent); }
-      .slot .key { color: var(--muted); }
-      .end-box.review h1 { color: var(--accent); }
-      .end-box.shop h1 { color: #66bb88; }
-      .end-box .cash { color: var(--accent); }
-      .perk.sold { opacity: 0.4; }
-      .perk-list { display: grid; gap: 6px; margin: 10px 0; text-align: left; }
-      .perk { border: 1px solid var(--line); display: grid; gap: 2px 8px; grid-template-columns: auto 1fr; padding: 6px 8px; }
-      .perk-key { color: var(--accent); grid-row: span 2; }
-      .perk-name { font-size: 14px; }
-      .perk-blurb { color: var(--muted); font-size: 11px; }
-      .run-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
-      #sidebar .controls-hint { border-bottom: none; color: #55555f; font-size: 11px; letter-spacing: 1px;
-        padding-bottom: 0; text-align: center; }
-      #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); display: grid; place-items: center; }
-      #overlay[hidden] { display: none; }
-      .end-box { text-align: center; border: 1px solid var(--line); background: var(--panel); padding: 28px 44px; }
-      .end-box h1 { letter-spacing: 4px; font-size: 22px; margin: 0 0 12px; }
-      .end-box.dead h1 { color: #ff5555; }
-      .end-box.won h1 { color: #66dd66; }
-      .end-box .hint { color: var(--muted); }
-      .controls-box { min-width: 380px; text-align: left; }
-      .arsenal-box { text-align: left; min-width: min(680px, 92vw); }
-      .arsenal-box h1 { text-align: center; }
-      .arsenal-box .hint { margin-bottom: 0; text-align: center; }
-      .ars-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0; }
-      .ars-col { background: #16161c; border: 1px solid var(--line); padding: 8px 10px; font-size: 12px; }
-      .ars-col.active { border-color: var(--accent); }
-      .ars-col.empty { color: var(--muted); }
-      .ars-name { font-weight: bold; margin-bottom: 4px; }
-      .ars-name .perk-key { margin-right: 4px; }
-      .ars-sub { color: var(--muted); font-size: 11px; }
-      .ars-flags { color: #66ccee; font-size: 10px; letter-spacing: 1px; margin-top: 3px; }
-      .ars-stat { font-size: 11px; margin-top: 2px; }
-      .ars-stat:first-of-type { margin-top: 6px; }
-      .ars-stat .lbl { color: var(--muted); letter-spacing: 1px; margin-right: 4px; }
-      .ars-strip { font-size: 11px; letter-spacing: 1px; line-height: 1; margin-top: 6px; }
-      .ars-table { border-top: 1px solid var(--line); font-size: 11px; margin-top: 6px; padding-top: 5px; }
-      .ars-th, .ars-band { display: grid; grid-template-columns: 2fr 1fr 1fr 1.6fr; }
-      .ars-th { color: var(--muted); font-size: 9px; letter-spacing: 1px; margin-bottom: 2px; }
-      .ars-th span:not(.rng), .ars-band span:not(.rng) { text-align: right; }
-      .ars-band .dpa { color: var(--accent); }
+      .target-card {
+        font-size: 11px;
+        min-height: 44px;
+      }
+      .tgt-row {
+        display: flex;
+        gap: 6px;
+        justify-content: space-between;
+      }
+      .tgt-name {
+        color: var(--text);
+      }
+      .tgt-chips {
+        display: flex;
+        gap: 6px;
+      }
+      .tgt-machine {
+        color: #66ccee;
+        letter-spacing: 1px;
+      }
+      .tgt-alert {
+        color: #ff9955;
+        letter-spacing: 1px;
+      }
+      .tgt-unaware {
+        color: #66dd66;
+        letter-spacing: 1px;
+      }
+      .tgt-armor {
+        color: #5599dd;
+      }
+      .tgt-ap {
+        color: var(--accent);
+      }
+      .tgt-threat {
+        color: #ff9955;
+      }
+      .tgt-open {
+        color: #66dd66;
+      }
+      .tgt-line3 {
+        color: var(--muted);
+        display: block;
+      }
+      .tgt-dist,
+      .tgt-none {
+        color: var(--muted);
+      }
+      .shield-row {
+        align-items: center;
+        display: flex;
+        gap: 6px;
+        margin-bottom: 3px;
+      }
+      .shield-bar {
+        display: flex;
+        flex: 1;
+        gap: 2px;
+        height: 7px;
+      }
+      .plate-cell {
+        background: #16161c;
+        border: 1px solid var(--line);
+        flex: 1;
+        overflow: hidden;
+      }
+      .plate-fill {
+        background: #5599dd;
+        display: block;
+        height: 100%;
+      }
+      .shield-num {
+        color: #5599dd;
+        font-size: 11px;
+        min-width: 46px;
+        text-align: right;
+      }
+      .card-state {
+        color: var(--muted);
+        font-size: 10px;
+        letter-spacing: 1px;
+        margin-top: 2px;
+        min-height: 12px;
+      }
+      .card-state.warn {
+        color: #ff9955;
+      }
+      .slots {
+        display: flex;
+        gap: 6px;
+      }
+      .slot {
+        flex: 1;
+        background: #1c1c22;
+        border: 1px solid var(--line);
+        padding: 5px 6px;
+        font-size: 11px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .slot.active {
+        border-color: var(--accent);
+      }
+      .slot .key {
+        color: var(--muted);
+      }
+      .end-box.review h1 {
+        color: var(--accent);
+      }
+      .end-box.shop h1 {
+        color: #66bb88;
+      }
+      .end-box .cash {
+        color: var(--accent);
+      }
+      .perk.sold {
+        opacity: 0.4;
+      }
+      .perk-list {
+        display: grid;
+        gap: 6px;
+        margin: 10px 0;
+        text-align: left;
+      }
+      .perk {
+        border: 1px solid var(--line);
+        display: grid;
+        gap: 2px 8px;
+        grid-template-columns: auto 1fr;
+        padding: 6px 8px;
+      }
+      .perk-key {
+        color: var(--accent);
+        grid-row: span 2;
+      }
+      .perk-name {
+        font-size: 14px;
+      }
+      .perk-blurb {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .run-meta {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      #sidebar .controls-hint {
+        border-bottom: none;
+        color: #55555f;
+        font-size: 11px;
+        letter-spacing: 1px;
+        padding-bottom: 0;
+        text-align: center;
+      }
+      #overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.78);
+        display: grid;
+        place-items: center;
+      }
+      #overlay[hidden] {
+        display: none;
+      }
+      .end-box {
+        text-align: center;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        padding: 28px 44px;
+      }
+      .end-box h1 {
+        letter-spacing: 4px;
+        font-size: 22px;
+        margin: 0 0 12px;
+      }
+      .end-box.dead h1 {
+        color: #ff5555;
+      }
+      .end-box.won h1 {
+        color: #66dd66;
+      }
+      .end-box .hint {
+        color: var(--muted);
+      }
+      .controls-box {
+        min-width: 380px;
+        text-align: left;
+      }
+      .arsenal-box {
+        text-align: left;
+        min-width: min(680px, 92vw);
+      }
+      .arsenal-box h1 {
+        text-align: center;
+      }
+      .arsenal-box .hint {
+        margin-bottom: 0;
+        text-align: center;
+      }
+      .ars-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin: 12px 0;
+      }
+      .ars-col {
+        background: #16161c;
+        border: 1px solid var(--line);
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+      .ars-col.active {
+        border-color: var(--accent);
+      }
+      .ars-col.empty {
+        color: var(--muted);
+      }
+      .ars-name {
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+      .ars-name .perk-key {
+        margin-right: 4px;
+      }
+      .ars-sub {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .ars-flags {
+        color: #66ccee;
+        font-size: 10px;
+        letter-spacing: 1px;
+        margin-top: 3px;
+      }
+      .ars-stat {
+        font-size: 11px;
+        margin-top: 2px;
+      }
+      .ars-stat:first-of-type {
+        margin-top: 6px;
+      }
+      .ars-stat .lbl {
+        color: var(--muted);
+        letter-spacing: 1px;
+        margin-right: 4px;
+      }
+      .ars-strip {
+        font-size: 11px;
+        letter-spacing: 1px;
+        line-height: 1;
+        margin-top: 6px;
+      }
+      .ars-table {
+        border-top: 1px solid var(--line);
+        font-size: 11px;
+        margin-top: 6px;
+        padding-top: 5px;
+      }
+      .ars-th,
+      .ars-band {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1.6fr;
+      }
+      .ars-th {
+        color: var(--muted);
+        font-size: 9px;
+        letter-spacing: 1px;
+        margin-bottom: 2px;
+      }
+      .ars-th span:not(.rng),
+      .ars-band span:not(.rng) {
+        text-align: right;
+      }
+      .ars-band .dpa {
+        color: var(--accent);
+      }
       /* The gun's home band, straight from intendedBand in the data. */
-      .ars-band.intended .rng { color: var(--accent); }
-      .ars-band.out, .ars-band.out .dpa { color: var(--muted); }
-      .ars-formula { border-top: 1px solid var(--line); color: var(--muted); font-size: 10px;
-        margin-top: 6px; padding-top: 5px; }
-      .controls-box h1 { text-align: center; }
-      .controls-box .hint { margin-bottom: 0; text-align: center; }
-      .ctrl-group { margin-bottom: 14px; }
-      .ctrl-group h2 { color: var(--muted); font-size: 10px; font-weight: normal; letter-spacing: 3px;
-        margin: 0 0 5px; }
-      .ctrl-row { display: grid; gap: 12px; grid-template-columns: 116px 1fr; padding: 2px 0; }
-      .ctrl-keys { color: var(--accent); }
-      .ctrl-label { color: var(--text); }
+      .ars-band.intended .rng {
+        color: var(--accent);
+      }
+      .ars-band.out,
+      .ars-band.out .dpa {
+        color: var(--muted);
+      }
+      .ars-formula {
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 10px;
+        margin-top: 6px;
+        padding-top: 5px;
+      }
+      .controls-box h1 {
+        text-align: center;
+      }
+      .controls-box .hint {
+        margin-bottom: 0;
+        text-align: center;
+      }
+      .ctrl-group {
+        margin-bottom: 14px;
+      }
+      .ctrl-group h2 {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: normal;
+        letter-spacing: 3px;
+        margin: 0 0 5px;
+      }
+      .ctrl-row {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 116px 1fr;
+        padding: 2px 0;
+      }
+      .ctrl-keys {
+        color: var(--accent);
+      }
+      .ctrl-label {
+        color: var(--text);
+      }
       /* Dev-tools corner: DEV-only mounts (soundboard now, debug panel later —
          ux-design.md §2). The container is created by main.ts; these styles are
          inert in builds because the elements never exist there. */
-      #dev-corner { position: fixed; top: 8px; left: 12px; z-index: 10;
-        display: flex; gap: 6px; }
-      .dev-btn { background: var(--panel); border: 1px solid var(--line); color: var(--muted);
-        font: inherit; font-size: 13px; padding: 2px 8px; cursor: pointer; }
-      .dev-btn:hover { color: var(--accent); border-color: var(--accent); }
-      #soundboard { position: fixed; inset: 0; background: rgba(0,0,0,0.82);
-        display: grid; place-items: center; z-index: 20; }
-      #soundboard[hidden] { display: none; }
-      .sb-box { background: var(--panel); border: 1px solid var(--line);
-        padding: 18px 22px; width: min(640px, 90vw); max-height: 84vh;
-        display: flex; flex-direction: column; gap: 12px; }
-      .sb-box h1 { letter-spacing: 4px; font-size: 16px; margin: 0; text-align: center; }
-      .sb-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
-      .sb-tab { background: #16161c; border: 1px solid var(--line); color: var(--muted);
-        font: inherit; font-size: 11px; padding: 3px 8px; cursor: pointer; }
-      .sb-tab.active { color: var(--accent); border-color: var(--accent); }
-      .sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-        gap: 4px; overflow-y: auto; }
-      .sb-sound { background: #1c1c22; border: 1px solid var(--line); color: var(--text);
-        font: inherit; font-size: 12px; padding: 6px 8px; cursor: pointer; text-align: left; }
-      .sb-sound:hover { border-color: var(--accent); }
-      .sb-sound.active { border-color: var(--accent); color: var(--accent); }
-      .sb-hint { color: var(--muted); font-size: 11px; text-align: center; }
+      #dev-corner {
+        position: fixed;
+        top: 8px;
+        left: 12px;
+        z-index: 10;
+        display: flex;
+        gap: 6px;
+      }
+      .dev-btn {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font: inherit;
+        font-size: 13px;
+        padding: 2px 8px;
+        cursor: pointer;
+      }
+      .dev-btn:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+      #soundboard {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.82);
+        display: grid;
+        place-items: center;
+        z-index: 20;
+      }
+      #soundboard[hidden] {
+        display: none;
+      }
+      .sb-box {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 18px 22px;
+        width: min(640px, 90vw);
+        max-height: 84vh;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .sb-box h1 {
+        letter-spacing: 4px;
+        font-size: 16px;
+        margin: 0;
+        text-align: center;
+      }
+      .sb-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .sb-tab {
+        background: #16161c;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font: inherit;
+        font-size: 11px;
+        padding: 3px 8px;
+        cursor: pointer;
+      }
+      .sb-tab.active {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+      .sb-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 4px;
+        overflow-y: auto;
+      }
+      .sb-sound {
+        background: #1c1c22;
+        border: 1px solid var(--line);
+        color: var(--text);
+        font: inherit;
+        font-size: 12px;
+        padding: 6px 8px;
+        cursor: pointer;
+        text-align: left;
+      }
+      .sb-sound:hover {
+        border-color: var(--accent);
+      }
+      .sb-sound.active {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .sb-hint {
+        color: var(--muted);
+        font-size: 11px;
+        text-align: center;
+      }
       /* Debug panel: docked rather than modal, because the tool's whole point is
          spawning something and then watching it act. Floats over the page so it
          never reflows the game it is meant to be observed against. */
-      #debug-panel { position: fixed; top: 36px; left: 12px; z-index: 15;
-        width: 320px; max-height: calc(100vh - 52px); overflow-y: auto;
-        background: var(--panel); border: 1px solid var(--line); padding: 8px 10px;
-        display: flex; flex-direction: column; gap: 5px; font-size: 11px; }
-      #debug-panel[hidden] { display: none; }
-      .dbg-head { display: flex; justify-content: space-between; align-items: center;
-        letter-spacing: 3px; color: var(--accent); }
-      .dbg-read { color: var(--muted); font-size: 10px; line-height: 1.5;
-        border-bottom: 1px solid var(--line); padding-bottom: 5px; }
-      .dbg-row { display: flex; align-items: flex-start; gap: 6px; }
-      .dbg-key { color: var(--muted); font-size: 10px; width: 44px; flex: none;
-        padding-top: 3px; }
-      .dbg-set { display: flex; flex-wrap: wrap; gap: 3px; flex: 1; }
-      .dbg-btn { background: #1c1c22; border: 1px solid var(--line); color: var(--text);
-        font: inherit; font-size: 11px; padding: 2px 6px; cursor: pointer; }
-      .dbg-btn:hover { border-color: var(--accent); color: var(--accent); }
+      #debug-panel {
+        position: fixed;
+        top: 36px;
+        left: 12px;
+        z-index: 15;
+        width: 320px;
+        max-height: calc(100vh - 52px);
+        overflow-y: auto;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 8px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        font-size: 11px;
+      }
+      #debug-panel[hidden] {
+        display: none;
+      }
+      .dbg-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        letter-spacing: 3px;
+        color: var(--accent);
+      }
+      .dbg-read {
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.5;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 5px;
+      }
+      .dbg-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .dbg-key {
+        color: var(--muted);
+        font-size: 10px;
+        width: 44px;
+        flex: none;
+        padding-top: 3px;
+      }
+      .dbg-set {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        flex: 1;
+      }
+      .dbg-btn {
+        background: #1c1c22;
+        border: 1px solid var(--line);
+        color: var(--text);
+        font: inherit;
+        font-size: 11px;
+        padding: 2px 6px;
+        cursor: pointer;
+      }
+      .dbg-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
       /* Lit toggles read as state, not as a hover. */
-      .dbg-btn.on, .dev-btn.on { border-color: var(--accent); color: var(--accent); }
-      .dbg-sel { background: #1c1c22; border: 1px solid var(--line); color: var(--text);
-        font: inherit; font-size: 11px; padding: 2px; flex: 1; min-width: 0; }
-      .dbg-hint { color: var(--muted); font-size: 10px; }
+      .dbg-btn.on,
+      .dev-btn.on {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .dbg-sel {
+        background: #1c1c22;
+        border: 1px solid var(--line);
+        color: var(--text);
+        font: inherit;
+        font-size: 11px;
+        padding: 2px;
+        flex: 1;
+        min-width: 0;
+      }
+      .dbg-hint {
+        color: var(--muted);
+        font-size: 10px;
+      }
     </style>
   </head>
   <body>
