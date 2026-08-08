@@ -137,6 +137,7 @@ Enemy behaviors are `while (enemy.ap > 0)` loops where every iteration either sp
 
 - **Sim first, renderer second.** Land and test sim changes against data/tests before touching presentation. This ordering saved the Stage 2 renderer rewrite from churn.
 - **Milestone commits**: each commit is one runnable, tested milestone with a message explaining *design intent*, not just mechanics. Look at `git log` for the register.
+- **No co-author trailers.** Commits carry no `Co-Authored-By:` or `Claude-Session:` lines regardless of who or what wrote the code — the message argues for the change, and authorship is the git author field's job. Strip them if your tooling adds them by default.
 - **Scope is a contract.** §5's cut list (merchant, meta-progression, chrono anything…) is not a suggestion. Sequel ideas go in a note, not the build. Stage N+1 features do not sneak into Stage N.
 - **Comments state constraints the code can't show** (why the RNG is saved/restored, why a field is stale) — never narrate what the next line does.
 - **The drift rule.** A commit that changes a data table updates or deletes the matching stat line in the design docs — a doc line that can drift silently is worse than no line. (The §10 ammo repricing left `arsenal-design.md` citing pre-repricing Uzi/Mosin/AWP numbers for weeks; that class of rot is the target.)
