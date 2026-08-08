@@ -109,6 +109,7 @@ export function makeState(
     perks: opts.perks ?? [],
     nextId: 1000,
     log: [],
+    logSeq: 0,
   };
   recomputeFov(state);
   return state;

@@ -2,6 +2,7 @@ import { enemyDef } from "../data/enemies";
 import { perkDef } from "../data/perks";
 import { bandFor, weaponDef, type WeaponDef } from "../data/weapons";
 import { AP_COSTS, KNIFE } from "../data/costs";
+import { emit } from "./events";
 import type { SimRNG } from "./rng";
 import { distance, hasPerk, pushLog, spawnItemNear, type Entity, type GameState } from "./state";
 
@@ -31,6 +32,7 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
   if (weapon.boltAction) {
     if (attacker.chambered === false) {
       attacker.ap -= AP_COSTS.cycle;
+      emit({ kind: "boltCycle", by: attacker.id, x: attacker.x, y: attacker.y });
       pushLog(state, isPlayer ? "You work the bolt." : `The ${attacker.name} works the bolt.`);
     }
     attacker.chambered = false;
@@ -41,9 +43,25 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
   // (Stage 3's suppressor attachment is the counterplay to this rule.)
   defender.alerted = true;
 
+  // The shot event is built up across the resolution below and emitted once,
+  // so consumers see one record per trigger pull with its full outcome.
+  const shotBase = {
+    kind: "shot" as const,
+    by: attacker.id,
+    weaponId: weapon.id,
+    x: attacker.x,
+    y: attacker.y,
+    target: defender.id,
+    tx: defender.x,
+    ty: defender.y,
+    pellets,
+    ...(enemyIsMachine(state, defender) ? { machine: true as const } : {}),
+  };
+
   const dist = distance(attacker, defender);
   const band = bandFor(weapon, dist);
   if (!band) {
+    emit({ ...shotBase, hits: 0, dmg: 0, wide: true });
     pushLog(state, isPlayer ? "You fire wide." : `The ${attacker.name} fires wide.`);
     return;
   }
@@ -109,6 +127,15 @@ export function fireWeapon(state: GameState, rng: SimRNG, attacker: Entity, defe
     );
   }
 
+  // Emitted before dealDamage so the diary reads shot → hurt → kill; the
+  // kill event is the record of lethality, not a flag here.
+  emit({
+    ...shotBase,
+    hits,
+    dmg: totalDmg,
+    ...(hits > 0 && totalDmg === 0 ? { clatter: true as const } : {}),
+  });
+
   const wasAlive = defender.hp > 0;
   if (totalDmg > 0) dealDamage(state, rng, attacker, defender, totalDmg, killVerbFor(attacker));
   const killed = wasAlive && defender.hp <= 0;
@@ -152,6 +179,18 @@ export function meleeAttack(state: GameState, rng: SimRNG, attacker: Entity, def
       (enemyIsMachine(state, defender) && hasPerk(state, "it_cert") ? (perkDef("it_cert").value ?? 0) : 0)
     : 0;
   const dmg = (isPlayer ? (blade ?? KNIFE.damage) : (def?.meleeDamage ?? 1)) + bonus;
+
+  emit({
+    kind: "melee",
+    by: attacker.id,
+    target: defender.id,
+    x: defender.x,
+    y: defender.y,
+    dmg,
+    ...(blade !== undefined ? { blade: true as const } : {}),
+    ...(def?.apDrainOnHit ? { zap: true as const } : {}),
+    ...(enemyIsMachine(state, defender) ? { machine: true as const } : {}),
+  });
 
   pushLog(
     state,
@@ -198,6 +237,14 @@ export function dealDamage(
     const left = shield - absorbed;
     if (left > 0) defender.shield = left;
     else delete defender.shield;
+    emit({
+      kind: "plateHit",
+      target: defender.id,
+      x: defender.x,
+      y: defender.y,
+      absorbed,
+      ...(left <= 0 ? { broken: true as const } : {}),
+    });
     pushLog(
       state,
       defender.id === state.player.id
@@ -208,7 +255,21 @@ export function dealDamage(
     );
   }
   if (remaining <= 0) return;
-  defender.hp -= remaining;
+  // Debug god mode is one field checked at the one hp write: plates still
+  // absorb, the log and the hurt event still fire, so what you are observing
+  // is the real fight minus the dying.
+  if (!(state.god && defender.id === state.player.id)) defender.hp -= remaining;
+  emit({
+    kind: "hurt",
+    target: defender.id,
+    dmg: remaining,
+    x: defender.x,
+    y: defender.y,
+    ...(enemyIsMachine(state, defender) ? { machine: true as const } : {}),
+    // bypassShield is set exactly by melee — the flag that means "your
+    // plates did not matter", which is its own sound.
+    ...(options.bypassShield ? { melee: true as const } : {}),
+  });
   if (defender.hp <= 0 && defender.id === state.player.id && hasPerk(state, "golden_parachute") && !state.parachuteUsed) {
     state.parachuteUsed = true;
     defender.hp = 1;
@@ -222,14 +283,25 @@ function kill(state: GameState, rng: SimRNG, attacker: Entity, defender: Entity,
   if (defender.id === state.player.id) {
     state.phase = "dead";
     state.killedBy = `${killVerb} ${attacker.name} — Floor ${state.floor} — Seed ${state.seed}`;
+    emit({ kind: "death" });
     pushLog(state, "You die. HR has been notified.");
     return;
   }
 
+  const def = enemyDef(defender.defId);
   state.enemies = state.enemies.filter((e) => e.id !== defender.id);
+  emit({
+    kind: "kill",
+    target: defender.id,
+    defId: defender.defId,
+    x: defender.x,
+    y: defender.y,
+    xp: def.xp,
+    ...(def.machine ? { machine: true as const } : {}),
+  });
   pushLog(state, `The ${defender.name} collapses.`);
   // XP for every kill including quiet ones, so a stealth build never starves.
-  state.xp += enemyDef(defender.defId).xp;
+  state.xp += def.xp;
   rollDrops(state, rng, defender);
 }
 
@@ -242,15 +314,18 @@ function rollDrops(state: GameState, rng: SimRNG, corpse: Entity): void {
       const rolled = min + Math.floor(rng.next() * (max - min + 1));
       const amount = hasPerk(state, "asset_recovery") ? Math.ceil(rolled * 1.5) : rolled;
       spawnItemNear(state, { kind: "ammo", caliber, amount }, corpse.x, corpse.y);
+      emit({ kind: "drop", x: corpse.x, y: corpse.y, what: "ammo" });
     }
     if (drop.cash) {
       const { min, max } = drop.cash;
       const amount = min + Math.floor(rng.next() * (max - min + 1));
       state.cash += amount;
+      emit({ kind: "drop", x: corpse.x, y: corpse.y, what: "cash" });
       pushLog(state, `You pocket ${amount} credits.`);
     }
     if (drop.itemId) {
       spawnItemNear(state, { kind: "consumable", itemId: drop.itemId }, corpse.x, corpse.y);
+      emit({ kind: "drop", x: corpse.x, y: corpse.y, what: "consumable" });
     }
     if (drop.weaponId) {
       const weapon = weaponDef(drop.weaponId);
@@ -260,6 +335,7 @@ function rollDrops(state: GameState, rng: SimRNG, corpse: Entity): void {
         corpse.x,
         corpse.y,
       );
+      emit({ kind: "drop", x: corpse.x, y: corpse.y, what: "weapon" });
     }
   }
 }

@@ -17,6 +17,12 @@ export interface UIState {
   targetId: number | null;
   /** Live grenade cursor: the tile under aim and the blast it would make. */
   throwAim?: { x: number; y: number; radius: number; valid: boolean } | null;
+  /**
+   * DEV debug panel: draw the whole map lit, camo included. Render-side rather
+   * than a sim action on purpose — writing `explored` would reveal terrain but
+   * not enemies (they draw off `visible`), and it could not be toggled back.
+   */
+  revealAll?: boolean;
 }
 
 const DIM = "rgba(0, 0, 0, 0.62)";
@@ -31,6 +37,11 @@ export function renderViewport(
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
+  // One reveal gate for the whole pass; the sim's own arrays stay untouched.
+  const reveal = ui.revealAll === true;
+  const seen = (i: number): boolean => reveal || state.explored[i] === true;
+  const lit = (i: number): boolean => reveal || state.visible[i] === true;
+
   const blit = (key: string, x: number, y: number): void => {
     const i = atlas.index.get(key);
     if (i === undefined) return;
@@ -40,24 +51,24 @@ export function renderViewport(
   for (let y = 0; y < map.height; y++) {
     for (let x = 0; x < map.width; x++) {
       const i = idx(map, x, y);
-      if (!state.explored[i]) continue;
+      if (!seen(i)) continue;
       blit(map.tiles[i] === 0 ? "wall" : "floor", x, y);
     }
   }
 
   // Stairs are architecture: remembered once explored.
-  if (state.explored[idx(map, state.stairs.x, state.stairs.y)]) {
+  if (seen(idx(map, state.stairs.x, state.stairs.y))) {
     blit("stairs", state.stairs.x, state.stairs.y);
   }
 
   for (const item of state.items) {
-    if (!state.visible[idx(map, item.x, item.y)]) continue;
+    if (!lit(idx(map, item.x, item.y))) continue;
     blit(ITEM_TILE[item.kind], item.x, item.y);
   }
 
   for (const e of state.enemies) {
-    if (e.hidden) continue; // active camo: nothing to draw
-    if (!state.visible[idx(map, e.x, e.y)]) continue;
+    if (e.hidden && !reveal) continue; // active camo: nothing to draw
+    if (!lit(idx(map, e.x, e.y))) continue;
     blit(e.defId, e.x, e.y);
     // §9 telegraph: an armed camera shows its countdown one turn ahead.
     if (e.alarmTimer !== undefined) {
@@ -83,8 +94,8 @@ export function renderViewport(
   // A charging overwatch shooter shows the tiles he covers. The player must be
   // able to see the line they are about to die in, not infer it.
   for (const e of state.enemies) {
-    if (e.chargeTimer === undefined || e.hidden) continue;
-    if (!state.visible[idx(state.map, e.x, e.y)]) continue;
+    if (e.chargeTimer === undefined || (e.hidden && !reveal)) continue;
+    if (!lit(idx(state.map, e.x, e.y))) continue;
     ctx.fillStyle = "rgba(255, 70, 70, 0.22)";
     for (const tile of lineTiles(e.x, e.y, state.player.x, state.player.y)) {
       ctx.fillRect(tile.x * TILE, tile.y * TILE, TILE, TILE);
@@ -98,7 +109,7 @@ export function renderViewport(
     for (let y = aim.y - aim.radius; y <= aim.y + aim.radius; y++) {
       for (let x = aim.x - aim.radius; x <= aim.x + aim.radius; x++) {
         if (Math.hypot(x - aim.x, y - aim.y) > aim.radius) continue;
-        if (!state.explored[idx(state.map, x, y)]) continue;
+        if (!seen(idx(state.map, x, y))) continue;
         ctx.fillStyle = tint;
         ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
       }
@@ -112,7 +123,7 @@ export function renderViewport(
   for (let y = 0; y < map.height; y++) {
     for (let x = 0; x < map.width; x++) {
       const i = idx(map, x, y);
-      if (state.explored[i] && !state.visible[i]) {
+      if (seen(i) && !lit(i)) {
         ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
       }
     }

@@ -1,11 +1,12 @@
 import { dmgPerAp, weaponDef } from "../../data/weapons";
 import { KNIFE } from "../../data/costs";
 import { carrierCapacity, carrierDef } from "../../data/carriers";
-import { enemyDef } from "../../data/enemies";
 import { CALIBERS, LAST_FLOOR } from "../../data/floors";
 import { HOTBAR_SLOTS, itemDef } from "../../data/items";
 import { distance, idx, type GameState } from "../../sim/state";
 import type { UIState } from "../tiles";
+import { targetCardHtml } from "../enemyinfo";
+import { apLine, stripHtml } from "../weaponinfo";
 
 /**
  * §9 sidebar, top to bottom: vitals / ammo / minimap / equipped cards /
@@ -34,6 +35,8 @@ export function buildSidebar(root: HTMLElement): void {
       <div class="card gun-card">
         <div class="card-name"></div>
         <div class="card-mag"></div>
+        <div class="card-ap"></div>
+        <div class="card-strip"></div>
         <div class="card-dpa"></div>
         <div class="card-state"></div>
       </div>
@@ -56,6 +59,10 @@ export function buildSidebar(root: HTMLElement): void {
       ).join("")}
     </section>
     <footer class="run-meta"><span class="seed"></span><span class="turn"></span></footer>
+    <!-- The game has no buttons, so the only way anyone finds the panel is if
+         the key is printed somewhere. Static: it never changes, so it stays out
+         of updateSidebar. -->
+    <div class="controls-hint">[?] controls</div>
   `;
 }
 
@@ -131,8 +138,14 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
     state.enemies
       .filter((e) => !e.hidden && state.visible[idx(state.map, e.x, e.y)])
       .sort((a, b) => distance(player, a) - distance(player, b))[0];
+  q(".gun-card .card-ap").textContent = gun ? apLine(gun) : "";
+  // The band strip: this gun's dmg/AP across the distance axis, caret on the
+  // target — "should I close two tiles first" answered without the overlay.
+  q(".gun-card .card-strip").innerHTML = gun ? stripHtml(gun, target ? distance(player, target) : null) : "";
   q(".gun-card .card-dpa").textContent =
-    gun && target ? `${dmgPerAp(gun, distance(player, target)).toFixed(2)} dmg/AP @ target` : "— dmg/AP";
+    gun && target
+      ? `${dmgPerAp(gun, distance(player, target)).toFixed(2)} dmg/AP @ ${distance(player, target).toFixed(1)}`
+      : "— dmg/AP";
 
   // Weapon states the player cannot otherwise see: an open bolt costs an extra
   // AP on the next shot, and braced is live only until they move.
@@ -150,19 +163,11 @@ export function updateSidebar(root: HTMLElement, state: GameState, ui: UIState):
 
   // Target card: the readability half of the armor system. A player must be
   // able to see that the riot guard has plate and the K9 is a machine BEFORE
-  // wasting a magazine learning it.
+  // wasting a magazine learning it. Built in render/enemyinfo.ts, pure.
   const card = q<HTMLDivElement>(".target-card");
-  if (target) {
-    const def = enemyDef(target.defId);
-    const pips = target.armor ? `<span class="tgt-armor">${"\u25c6".repeat(target.armor)}</span>` : "";
-    const tag = def.machine ? `<span class="tgt-machine">MACHINE</span>` : "";
-    card.innerHTML =
-      `<div class="tgt-row"><span class="tgt-name">${target.name}</span>${tag}</div>` +
-      `<div class="tgt-row"><span class="tgt-hp">${target.hp}/${target.maxHp} HP</span>${pips}` +
-      `<span class="tgt-dist">${distance(player, target).toFixed(1)} tiles</span></div>`;
-  } else {
-    card.innerHTML = `<div class="tgt-none">no target</div>`;
-  }
+  card.innerHTML = target
+    ? targetCardHtml(target, distance(player, target))
+    : `<div class="tgt-none">no target</div>`;
 
   // Weapon slots
   for (let i = 0; i < 3; i++) {

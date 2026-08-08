@@ -145,9 +145,21 @@ export interface GameState {
   parachuteUsed?: boolean;
   /** OSHA Compliance: cleared each turn so only the first plate is free. */
   platedThisTurn?: boolean;
+  /**
+   * Debug invulnerability (sim/debug.ts). Lives here rather than on the player
+   * Entity, which already carries three role-specific clusters too many (debt
+   * #4). Absent when off — invariant 2 forbids undefined-valued keys.
+   */
+  god?: true;
   /** Monotonic id source for spawned entities and items. */
   nextId: number;
   log: string[];
+  /**
+   * Total lines ever pushed. `log` is a rolling window spliced from the front,
+   * so its indices are not stable identities — the renderer appends rather
+   * than rewrites, and this is how it knows what arrived since its last frame.
+   */
+  logSeq: number;
   /** Shareable death line, set when phase becomes "dead". */
   killedBy?: string;
 }
@@ -253,6 +265,7 @@ export function spawnItemNear(
 
 export function pushLog(state: GameState, message: string): void {
   state.log.push(message);
+  state.logSeq++;
   if (state.log.length > LOG_LIMIT) state.log.splice(0, state.log.length - LOG_LIMIT);
 }
 

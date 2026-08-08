@@ -1,10 +1,14 @@
 import { floorDef, LAST_FLOOR } from "./data/floors";
 import { itemDef } from "./data/items";
+import { CLOSE_KEYS, OPEN_KEYS } from "./input/controls";
 import { actionForKey } from "./input/keyboard";
 import { buildAtlas, TILE } from "./render/atlas";
+import { playEvents, playSound, toggleMute, unlockAudio } from "./render/audio";
+import { buildLog } from "./render/dom/log";
 import { buildSidebar, updateSidebar } from "./render/dom/sidebar";
 import { updateScreens } from "./render/dom/screens";
 import { renderViewport, type UIState } from "./render/tiles";
+import type { Action } from "./sim/actions";
 import { newGame } from "./sim/floor";
 import { hasLos } from "./sim/los";
 import { distance, idx, isFloor } from "./sim/state";
@@ -27,6 +31,7 @@ const ctx = viewport.getContext("2d");
 if (!ctx) throw new Error("no 2d context");
 const atlas = buildAtlas();
 buildSidebar(sidebar);
+const updateLog = buildLog(logPanel);
 
 let seed = seedFromUrl() ?? randomSeed();
 writeSeedToUrl(seed);
@@ -38,6 +43,12 @@ let hint = "";
 let throwAim: { slot: number; x: number; y: number; radius: number; range: number } | null = null;
 /** Trading a gun in at the merchant: pick a slot, then confirm. */
 let tradeIn: { index: number; slot?: 0 | 1 | 2 } | null = null;
+/** The controls panel. Reference only — it never reaches the sim or costs AP. */
+let controlsOpen = false;
+/** The ARSENAL overlay — same contract as the controls panel. */
+let arsenalOpen = false;
+/** DEV debug panel's readout hook; always null in a build (see the mount below). */
+let devRefresh: (() => void) | null = null;
 
 const AIM_KEYS: Record<string, [number, number]> = {
   arrowup: [0, -1],
@@ -92,21 +103,17 @@ function render(): void {
   }
   renderViewport(ctx!, atlas, state, ui);
   updateSidebar(sidebar, state, ui);
-  updateScreens(overlay, state, tradeIn);
+  updateScreens(overlay, state, { tradeIn, controlsOpen, arsenalOpen });
   header.innerHTML = `<b>${floorDef(state.floor).name}</b>: ${state.floor}/${LAST_FLOOR}`;
-  const recent = state.log.slice(-3);
-  // Escaped, not interpolated raw: log text is internal today, but it is about
-  // to carry a lot more content and this is the statement that would leak.
-  logPanel.innerHTML =
-    recent
-      .map((line, i) => `<div class="${i === recent.length - 1 ? "new" : "old"}">${escapeHtml(line)}</div>`)
-      .join("") + (hint ? `<div class="hint">${escapeHtml(hint)}</div>` : "");
+  updateLog(state, hint);
+  // Folded away entirely in a build: DEV is a build-time constant.
+  if (import.meta.env.DEV) devRefresh?.();
 }
 
-function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (c) =>
-    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === '"' ? "&quot;" : "&#39;",
-  );
+/** Every sim action goes through here: apply, hand the diary to sound. */
+function dispatch(action: Action): void {
+  const events = applyAction(state, action);
+  playEvents(events, state);
 }
 
 function cycleTarget(): void {
@@ -124,13 +131,73 @@ function cycleTarget(): void {
 
 render();
 
+// Dev-tools corner (ux-design.md §2): DEV is a build-time constant, so this
+// block — and the dynamically imported modules behind it — is dead-code-
+// eliminated from every build output. It sits below the first render because
+// the debug panel closes over dispatch, render, and the live `state` binding.
+if (import.meta.env.DEV) {
+  const corner = document.createElement("div");
+  corner.id = "dev-corner";
+  document.body.append(corner);
+  void import("./render/dom/soundboard").then(({ mountSoundboard }) => mountSoundboard(corner));
+  void import("./render/dom/debugpanel").then(({ mountDebugPanel }) => {
+    // getState is a getter, not the value: restarts reassign `state`.
+    devRefresh = mountDebugPanel(corner, { getState: () => state, dispatch, render, ui });
+  });
+}
+
 window.addEventListener("keydown", (e) => {
+  // Browsers gate audio behind a gesture — any keypress is the unlock.
+  unlockAudio();
+  // Mute is UI-side, works in every phase, and deliberately sits above the
+  // input modes: even mid-drop or mid-aim, M is always the volume knob.
+  if (e.key === "m" || e.key === "M") {
+    const muted = toggleMute();
+    hint = muted ? "SFX muted. (M to unmute)" : "SFX on.";
+    render();
+    return;
+  }
+  // Ahead of every phase branch, because they all return early. While the panel
+  // is up, keys that do not close it are swallowed rather than passed through:
+  // in a permadeath run, reading the controls must not be able to spend AP.
+  if (controlsOpen) {
+    e.preventDefault();
+    if (CLOSE_KEYS.has(e.key)) {
+      controlsOpen = false;
+      render();
+    }
+    return;
+  }
+  if (OPEN_KEYS.has(e.key)) {
+    e.preventDefault(); // F1 would otherwise open the browser's own help
+    controlsOpen = true;
+    render();
+    return;
+  }
+  // The ARSENAL overlay follows the controls panel's rules exactly: above the
+  // phase branches so it opens at the shop (where comparing guns matters most),
+  // and while open every key but its closers is swallowed.
+  if (arsenalOpen) {
+    e.preventDefault();
+    if (e.key === "Escape" || e.key.toLowerCase() === "i") {
+      arsenalOpen = false;
+      render();
+    }
+    return;
+  }
+  if (e.key.toLowerCase() === "i") {
+    e.preventDefault();
+    arsenalOpen = true;
+    render();
+    return;
+  }
+
   if (state.phase === "promoting") {
     const pick = Number(e.key) - 1;
     const perkId = state.perkOffer?.[pick];
     if (perkId) {
       e.preventDefault();
-      state = applyAction(state, { type: "choosePerk", perkId });
+      dispatch({ type: "choosePerk", perkId });
       render();
     }
     return;
@@ -146,7 +213,7 @@ window.addEventListener("keydown", (e) => {
         else tradeIn.slot = slot as 0 | 1 | 2;
       } else if (key === "y" || key === "Enter") {
         // Permadeath: never let one keystroke destroy a gun you were carrying.
-        state = applyAction(state, { type: "buy", index: tradeIn.index, replaceSlot: tradeIn.slot });
+        dispatch({ type: "buy", index: tradeIn.index, replaceSlot: tradeIn.slot });
         tradeIn = null;
       } else {
         tradeIn = null;
@@ -156,12 +223,12 @@ window.addEventListener("keydown", (e) => {
     }
 
     if (key === "Enter") {
-      state = applyAction(state, { type: "leaveShop" });
+      dispatch({ type: "leaveShop" });
     } else {
       const index = Number(key) - 1;
       if (Number.isInteger(index) && index >= 0) {
         if (needsTradeIn(index)) tradeIn = { index };
-        else state = applyAction(state, { type: "buy", index });
+        else dispatch({ type: "buy", index });
       }
     }
     render();
@@ -179,6 +246,8 @@ window.addEventListener("keydown", (e) => {
     } else {
       return;
     }
+    // Restarts bypass applyAction, so the badge-scan plays directly.
+    playSound("game_start");
     e.preventDefault();
     render();
     return;
@@ -204,8 +273,7 @@ window.addEventListener("keydown", (e) => {
       render();
       return;
     }
-    state = applyAction(
-      state,
+    dispatch(
       slot < 3
         ? { type: "drop", kind: "weapon", slot }
         : { type: "drop", kind: "item", slot: slot - 3 },
@@ -240,7 +308,7 @@ window.addEventListener("keydown", (e) => {
       const { slot, x, y } = throwAim;
       throwAim = null;
       hint = "";
-      state = applyAction(state, { type: "throwItem", slot, x, y });
+      dispatch({ type: "throwItem", slot, x, y });
     } else {
       throwAim = null;
       hint = "";
@@ -279,6 +347,6 @@ window.addEventListener("keydown", (e) => {
     action = { type: "fire", targetId: ui.targetId };
   }
   e.preventDefault();
-  state = applyAction(state, action);
+  dispatch(action);
   render();
 });
