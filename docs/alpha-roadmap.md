@@ -80,7 +80,7 @@ different and the dog fight identical.
 `useItem` action; heals/stim/schematics per `consumables-design.md`; **drop action**
 (`X`-then-slot, 1 AP) with nearest-free-tile scatter — merging the duplicated BFS
 helpers (debt #1) in the same commit. Hotbar UI rides.
-**Tests:** stack caps, heal maths, stim refill-bonus-then-comedown, schematics reveal,
+**Tests:** typed stacking, heal maths, stim refill-bonus-then-comedown, schematics reveal,
 drop/scatter, one-item-per-tile law. **Exit:** a run can be played around items;
 bot smoke-run confirms pickup/use/drop loops.
 
@@ -240,7 +240,8 @@ Two arcs, camera first (it's renderer-only and independent of tuning):
       `xm7_exo` burst cap (`apFire: 2`) + mag cut so the punish window exists;
       same audit for `m4_merc`/`m249_gunner`; shotgun accuracy → 100% throughout
       listed range is the first deliberately hot playtest, with harsher damage
-      falloff deferred until that result; consumable drop-rate cut + stacking;
+      falloff deferred until that result; consumable stacks are uncapped so supply can
+      be tuned directly, with the drop-rate cut following as its own balance change;
       CEO plates rendered (target card reads `shield`) and phase acts on plate breaks;
       supervisor flees while calling (same `cameraAlarm` code — the camera's
       `ap: 0` keeps it bolted down); corridor-mouth spawn guard; snipers

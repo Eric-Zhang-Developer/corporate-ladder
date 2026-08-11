@@ -37,8 +37,6 @@ export interface ItemDef {
   glyph: string;
   color: string;
   apUse: number;
-  /** Hotbar stack cap. */
-  stack: number;
   effect: ItemEffect;
 }
 
@@ -49,7 +47,6 @@ export const ITEMS = {
     glyph: "%",
     color: "#dd8844",
     apUse: 1,
-    stack: 5,
     effect: { kind: "heal", amount: 3 },
   },
   bandage: {
@@ -58,7 +55,6 @@ export const ITEMS = {
     glyph: "+",
     color: "#dddddd",
     apUse: 2,
-    stack: 5,
     effect: { kind: "heal", amount: 5 },
   },
   medshot: {
@@ -67,7 +63,6 @@ export const ITEMS = {
     glyph: "!",
     color: "#dd4466",
     apUse: 1,
-    stack: 3,
     effect: { kind: "heal", amount: 7 },
   },
   medkit: {
@@ -76,7 +71,6 @@ export const ITEMS = {
     glyph: "&",
     color: "#ff5577",
     apUse: 3,
-    stack: 1,
     effect: { kind: "healFull" },
   },
   stim: {
@@ -85,7 +79,6 @@ export const ITEMS = {
     glyph: "^",
     color: "#66ddaa",
     apUse: 1,
-    stack: 3,
     // Immediate rather than next-turn: you jab it and act. Net +2 AP this
     // turn after paying for the jab, then a 1-AP hangover.
     effect: { kind: "stim", bonus: 3, comedown: 1 },
@@ -96,7 +89,6 @@ export const ITEMS = {
     glyph: "?",
     color: "#88bbdd",
     apUse: 1,
-    stack: 3,
     effect: { kind: "reveal" },
   },
   frag: {
@@ -105,7 +97,6 @@ export const ITEMS = {
     glyph: "o",
     color: "#cc7744",
     apUse: 1,
-    stack: 3,
     // Hits everyone, including you. Throwing it at your own feet is a mistake
     // the game will let you make.
     effect: { kind: "throw", range: 5, radius: 1, damage: 9 },
@@ -116,7 +107,6 @@ export const ITEMS = {
     glyph: "o",
     color: "#eeeecc",
     apUse: 1,
-    stack: 3,
     // No damage at all: the whole item is one stolen turn. Organics only —
     // machines have no eyes to take away.
     effect: {
@@ -134,7 +124,6 @@ export const ITEMS = {
     glyph: "o",
     color: "#66ccee",
     apUse: 1,
-    stack: 3,
     // The other half of the bestiary, and the anti-chassis panic button.
     effect: { kind: "throw", range: 5, radius: 1, damage: 12, stun: true, targets: "machines" },
   },

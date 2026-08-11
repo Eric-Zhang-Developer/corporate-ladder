@@ -20,16 +20,18 @@ describe("the hotbar", () => {
     expect(state.hotbar[1]).toBeNull();
   });
 
-  it("opens a new slot once the stack cap is reached", () => {
-    const full = EMPTY();
-    full[0] = { itemId: "bandage", count: ITEMS.bandage.stack };
+  it("keeps stacking an existing type with no quantity cap", () => {
+    const full = ["bandage", "snack", "medshot", "medkit", "stim", "frag"].map((itemId) => ({
+      itemId,
+      count: itemId === "bandage" ? 99 : 1,
+    }));
     const state = makeState({
       hotbar: full,
       items: [{ id: 1, x: 2, y: 2, kind: "consumable", itemId: "bandage" }],
     });
     applyAction(state, { type: "pickup" });
-    expect(state.hotbar[0]!.count).toBe(ITEMS.bandage.stack);
-    expect(state.hotbar[1]).toEqual({ itemId: "bandage", count: 1 });
+    expect(state.hotbar[0]).toEqual({ itemId: "bandage", count: 100 });
+    expect(state.items).toHaveLength(0);
   });
 
   it("refuses for free when every slot is spoken for", () => {

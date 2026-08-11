@@ -48,8 +48,7 @@ function wantsItem(state: GameState, item: GroundItem): boolean {
     return !state.carrierId || carrierCapacity(state.carrierId) < carrierCapacity(item.carrierId);
   }
   if (item.kind === "consumable") {
-    const cap = itemDef(item.itemId).stack;
-    return state.hotbar.some((s) => s === null || (s.itemId === item.itemId && s.count < cap));
+    return state.hotbar.some((s) => s === null || s.itemId === item.itemId);
   }
   if (item.kind === "weapon") {
     // Only take a gun into a genuinely empty slot. Picking one up with all

@@ -78,7 +78,8 @@ Notes:
   trades your entire turn — using it mid-combat is a positioning decision, not a menu
   click.
 - **Snacks are a vending-machine economy, not a drop.** Machines never run out — the
-  limit is cash, carry cap (5), and the walk back through a hostile floor to restock.
+  limit is cash, dedicating one of six hotbar type slots, and the walk back through a
+  hostile floor to restock.
   That makes vending an explicit cash→HP conversion valve: income caps total healing,
   and the tempo cost is real. Elsewhere snacks appear only as occasional desk/drawer
   cache finds, never on bodies.
@@ -169,14 +170,16 @@ VSS build wants company.
 ## 6. Carrying and UI
 
 - **Hotbar: 6 slots**, keys 4–9 (1–3 are weapons — the keyboard settles the count). One
-  item *type* per slot, stacking: snacks/bandages to 5, med shots/grenades to 3,
-  medkit/claymore to 1. Caps are data (`data/items.ts`); the sidebar's planned
-  consumable row renders count badges. Six slots against a ~10-type catalog still forces
-  loadout choices; it just kills "can't take the medkit, carrying snacks."
+  item *type* per slot, with no quantity cap. The sidebar renders the count, but another
+  copy of a represented type always joins its existing stack—even when all six slots are
+  spoken for. Six slots against a ~10-type catalog still forces loadout choices while
+  removing duplicate-stack inventory management. Abundance is balanced at the supply
+  side (drops, floor piles and prices), not by making identical items occupy more slots.
 - Using is an action through `applyAction` (`{type: "useItem", slot}` or throw); invalid
   use (empty slot, full HP snack) costs 0 AP per the typo rule.
-- Pickup with G like weapons; a full hotbar prompts a swap-drop, same as slots. Items on
-  the ground are `GroundItem` entries — the type union grows `kind: "consumable"`.
+- Pickup with G like weapons; a full hotbar still refuses a seventh item type for free,
+  after which the player can explicitly drop a stack to make room. Items on the ground
+  are `GroundItem` entries — the type union grows `kind: "consumable"`.
 - **Dropping is a first-class action**: `{type: "drop", slot}`, 1 AP (0 AP if the slot
   is empty, per the typo rule). Input is a small mode: `X`, then the slot key (1–3
   weapons, 4–9 items). Swap-drop covers upgrades-in-place; explicit drop covers

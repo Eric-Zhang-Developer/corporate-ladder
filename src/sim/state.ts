@@ -93,7 +93,7 @@ export type GroundItemPayload =
 
 export type GroundItem = { id: number; x: number; y: number } & GroundItemPayload;
 
-/** One item type per hotbar slot, stacked to the type's cap. */
+/** One item type per hotbar slot; quantity is deliberately uncapped. */
 export interface ItemStack {
   itemId: string;
   count: number;
@@ -298,4 +298,3 @@ export function spawnEnemy(id: number, defId: string, x: number, y: number): Ent
   if (def.revealRange) entity.hidden = true;
   return entity;
 }
-

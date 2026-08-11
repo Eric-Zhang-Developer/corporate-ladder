@@ -390,8 +390,8 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         const stack = state.hotbar[slot];
         if (stack) stack.count += 1;
         else state.hotbar[slot] = { itemId: "snack", count: 1 };
-        // Machines never run out: the limit is cash, the carry cap, and the
-        // walk back through a hostile floor.
+        // Machines never run out: the limit is cash, dedicating a hotbar type
+        // slot, and the walk back through a hostile floor.
         emit({ kind: "purchase", ok: true, source: "vending" });
         pushLog(state, `The machine clunks. (-${price} credits)`);
         return;
@@ -729,8 +729,7 @@ function handlePurchase(state: GameState, index: number, replaceSlot?: 0 | 1 | 2
 
 /** An existing stack of this type, else the first empty slot, else -1. */
 function hotbarSlotFor(state: GameState, itemId: string): number {
-  const cap = itemDef(itemId).stack;
-  const existing = state.hotbar.findIndex((s) => s?.itemId === itemId && s.count < cap);
+  const existing = state.hotbar.findIndex((s) => s?.itemId === itemId);
   if (existing !== -1) return existing;
   return state.hotbar.findIndex((s) => s === null);
 }
