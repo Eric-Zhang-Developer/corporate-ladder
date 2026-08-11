@@ -238,9 +238,10 @@ Two arcs, camera first (it's renderer-only and independent of tuning):
       balance pass so only one variable moves at a time.
 - [ ] **Balance patch set** — work order is `play-test-08-04-26.md`. Headliners:
       `xm7_exo` burst cap (`apFire: 2`) + mag cut so the punish window exists;
-      same audit for `m4_merc`/`m249_gunner`; shotgun band-0 accuracy → ~100% paid
-      with harsher falloff; consumable drop-rate cut + stacking; CEO plates
-      rendered (target card reads `shield`) and phase acts on plate breaks;
+      same audit for `m4_merc`/`m249_gunner`; shotgun accuracy → 100% throughout
+      listed range is the first deliberately hot playtest, with harsher damage
+      falloff deferred until that result; consumable drop-rate cut + stacking;
+      CEO plates rendered (target card reads `shield`) and phase acts on plate breaks;
       supervisor flees while calling (same `cameraAlarm` code — the camera's
       `ap: 0` keeps it bolted down); corridor-mouth spawn guard; snipers
       re-examined only after the burst cap lands.

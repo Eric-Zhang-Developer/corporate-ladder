@@ -32,7 +32,12 @@ const PLAYER_GUNS: WeaponDef[] = Object.keys(WEAPONS)
 
 const TIERS = [1, 2, 3, 4] as const;
 const WINDOW = 0.2;
-const SHOTGUN_HEAT_CAP = 0.25;
+/**
+ * Provisional v0.3 playtest target. Shotguns trade reach for certainty: every
+ * listed band connects, so their output sits deliberately above a flexible
+ * same-tier gun. Harsher falloff is the next lever if certainty overpays.
+ */
+const SHOTGUN_TARGET_MULT = 1.5;
 
 /** Midpoint of the band a gun was designed to fight in. */
 function intendedMidpoint(def: WeaponDef): number {
@@ -71,7 +76,7 @@ function tierBaseline(tier: number): number {
 
 /** Where this gun should sit: baseline, scaled for ammo burn and shotgun heat. */
 function targetFor(gun: WeaponDef): number {
-  const heat = gun.cls === "shotgun" ? 1 + SHOTGUN_HEAT_CAP * 0.6 : 1;
+  const heat = gun.cls === "shotgun" ? SHOTGUN_TARGET_MULT : 1;
   return tierBaseline(gun.tier!) * (1 + ammoPremium(gun)) * heat;
 }
 
@@ -132,6 +137,15 @@ describe("the pistol contract", () => {
 });
 
 describe("range-band cliffs (patterns, not numbers — §2 pillar 2)", () => {
+  it("every shotgun connects throughout its listed range", () => {
+    for (const gun of PLAYER_GUNS.filter((w) => w.cls === "shotgun")) {
+      expect(gun.baseAccuracy, gun.name).toBe(1);
+      for (const band of gun.bands) {
+        expect(gun.baseAccuracy * band.accMult, `${gun.name} through ${band.maxDist}`).toBe(1);
+      }
+    }
+  });
+
   it("every shotgun becomes a paperweight past its band", () => {
     for (const gun of PLAYER_GUNS.filter((w) => w.cls === "shotgun")) {
       const past = dmgPerAp(gun, gun.bands[gun.bands.length - 1]!.maxDist);
@@ -146,8 +160,9 @@ describe("range-band cliffs (patterns, not numbers — §2 pillar 2)", () => {
   });
 
   it("Serbu is devastating at 1 and a paperweight at 3", () => {
-    expect(dmgPerAp(WEAPONS.serbu, 1)).toBeGreaterThan(4);
-    expect(dmgPerAp(WEAPONS.serbu, 3)).toBeLessThan(1);
+    const touch = dmgPerAp(WEAPONS.serbu, 1);
+    expect(touch).toBe(6);
+    expect(dmgPerAp(WEAPONS.serbu, 3)).toBeLessThan(touch * 0.36);
   });
 
   it("Uzi sprays to nothing at range", () => {

@@ -44,8 +44,10 @@ not tankier*).
 
 Two sanctioned exceptions to the window:
 
-- **Shotguns run ~+20% hot** at their intended band. Their band is 1–2 tiles; the cliff is
-  the payment. (Precedent: Serbu at 4.2 in a 3.5 tier.)
+- **Shotguns provisionally target 1.5× their ammo-adjusted tier baseline** in the v0.3
+  playtest. Every listed band connects; their tiny range and damage cliff are the payment.
+  The 1.5 target is deliberately hot and owns the next human balance pass, not a settled
+  entitlement.
 - **Pistols are exempt from the tier curve entirely** — see the pistol contract.
 
 ### The pistol contract
@@ -238,15 +240,16 @@ column to see it. Feel: sci-fi adjacent, eager, faintly illegal.
 ### Shotguns — the cliff family
 
 **Serbu Shorty — T1** *(implemented)*
-`1 AP fire / 2 reload · dmg 6 · acc .70 · mag 3 · shell · bands 1/1.0 → 2/0.9×0.9 → 3/0.5×0.35 · ~4.2 hot`
-The thesis gun for the whole class: devastating at arm's length, a paperweight past it. 4.2
-dmg/AP at adjacency — hottest thing in T1 — bought with a band so short you must *build*
+`1 AP fire / 2 reload · dmg 6 · acc 1.0 · mag 3 · shell · bands 1/1.0 → 2/1.0×0.9 → 3/1.0×0.35 · 6.0 dmg/AP`
+The thesis gun for the whole class: devastating at arm's length, a paperweight past it. A
+listed-range blast always connects — damage falloff, not a point-blank miss, owns the cliff.
+Six dmg/AP at adjacency is bought with a band so short you must *build*
 your fights around doorways and corners to collect it. Three shells and a 2-AP reload mean
 every trigger pull is a third of your wallet. The shotgun class never abandons this shape;
 it just extends the ledge before the drop. Feel: a legal technicality with a trigger.
 
 **Remington 870 — T2**
-`1 AP fire / 2 reload · dmg 8 · acc .70 · mag 5 · shell · bands 1/1.0 → 3/0.85×0.8 → 4/0.4×0.35 · ~5.6 hot`
+`1 AP fire / 2 reload · dmg 8 · acc 1.0 · mag 5 · shell · bands 1/1.0 → 3/1.0×0.8 → 4/1.0×0.35 · 8.0 dmg/AP`
 The Serbu's pattern with room to breathe: the cliff moves from 2 tiles to 3, the tube holds
 five, and 8 damage per shell deletes most of the mid-game bestiary in one or two. The pump
 gun is the *reliable* cliff — no gimmick, no trick, just the knowledge that anything inside
@@ -255,7 +258,7 @@ Candidate future mechanic: per-shell tube loading (top up 1 AP at a time, fire a
 the class gimmick — deferred until the reload UI can carry it.
 
 **SPAS-12 — T3**
-`1 AP fire / 2 reload · dmg 10 · acc .75 · mag 8 · shell · bands 1/1.0 → 3/0.9×0.85 → 4/0.5×0.4 · ~7.5 hot`
+`1 AP fire / 2 reload · dmg 10 · acc 1.0 · mag 8 · shell · bands 1/1.0 → 3/1.0×0.85 → 4/1.0×0.4 · 10.0 dmg/AP`
 The room-clearer. Semi-auto — no pump rhythm — so with 3 AP you can put *three* shells into
 a doorway in one turn, which is the highest burst damage in the game until T4 and feels
 like an event every time. Eight in the tube makes it the first shotgun that can fight a
@@ -264,7 +267,7 @@ whole room without touching the reload button, and the movie-icon silhouette doe
 expensive club.
 
 **AA-12 — T4**
-`1 AP fire / 2 reload · dmg 6 ×2 shells · acc .80 · mag 20 · shell · bands 1/1.0 → 3/0.9×0.85 → 4/0.5×0.4 · ~9.6 hot`
+`1 AP fire / 2 reload · dmg 7 ×2 shells · acc 1.0 · mag 20 · shell · bands 1/1.0 → 3/1.0×0.85 → 4/1.0×0.4 · 14.0 dmg/AP`
 Two shells per trigger pull off a 20-round drum: the cliff turned into a wall of meat. The
 deepest ammo furnace in the roster — one greedy turn is six shells — balanced by shell
 scarcity on floors 7–8 and by armor taxing each shell separately, which keeps it honest
@@ -458,8 +461,9 @@ The roster above needs four more assertions:
    P90/XM7 earn their under-target nominal numbers.)
 2. **Pistol contract**: every pistol 2-hit-kills the chaff HP profile at its intended band;
    no pistol beats any same-floor rifle-class gun vs the elite profile.
-3. **Shotgun heat cap**: hot shotguns stay ≤ +25% over tier mean at intended band, and
-   their band-2 (or past-cliff) dmg/AP drops below the *previous* tier's mean.
+3. **Shotgun certainty contract**: every listed band connects; the provisional v0.3
+   target is 1.5× the ammo-adjusted tier baseline, and past-cliff dmg/AP stays below 45%
+   of point-blank output. Human playtesting decides whether harsher falloff pays for it.
 4. **Bolt amortization**: bolt guns' tier math always uses (apFire + 1); the deferred-cycle
    tempo advantage is bought with the unchambered state, not free dmg/AP.
 
@@ -522,7 +526,10 @@ premium(R) = R < 1 ? -0.12 : min(0.40, 0.12 * (R - 1))
 
 The flat ±20% tier window becomes a **sloped** one: each gun is still checked to
 ±20%, but around its own ammo-adjusted target rather than a single tier mean.
-Shotguns keep their separate +15% heat allowance on top.
+For the v0.3 shotgun experiment, that target is multiplied by 1.5: listed-range
+blasts always connect, and the range cliff rather than a miss is the price. This
+is deliberately provisional; harsher damage falloff is the first response if the
+human playtest says certainty overpays.
 
 **Why the ceiling.** At +100% the Uzi reliably one-pulls a 6 HP rent-a-cop,
 which breaks the §8 guardrail downward and makes the revolver pointless in any
