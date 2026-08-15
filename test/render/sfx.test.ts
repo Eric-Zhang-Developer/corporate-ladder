@@ -102,13 +102,13 @@ describe("soundsFor", () => {
 });
 
 describe("planPlayback", () => {
-  it("staggers cues 50ms apart in order", () => {
+  it("staggers cues 100ms apart in order", () => {
     const plan = planPlayback([
       { name: "a", gain: 1, priority: 0 },
       { name: "b", gain: 1, priority: 0 },
       { name: "c", gain: 1, priority: 0 },
     ]);
-    expect(plan.map((p) => p.at)).toEqual([0, 50, 100]);
+    expect(plan.map((p) => p.at)).toEqual([0, 100, 200]);
     expect(plan.map((p) => p.name)).toEqual(["a", "b", "c"]);
   });
 

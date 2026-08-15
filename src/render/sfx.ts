@@ -200,11 +200,13 @@ export function soundsFor(events: SimEvent[], state: GameState): SoundCue[] {
 }
 
 /**
- * The §6 mix rules as data: fan cues out ~50 ms apart in sim order (which
- * also makes the enemy turn FEEL sequential), cap the pile-up, and when
- * dropping, drop texture before information and your own pain never.
+ * The §6 mix rules as data: fan cues out ~100 ms apart in sim order (the
+ * same grid as render/anim.ts's BEAT_MS, which keeps gunshots roughly on
+ * their muzzle flashes and makes the enemy turn FEEL sequential), cap the
+ * pile-up, and when dropping, drop texture before information and your own
+ * pain never.
  */
-export function planPlayback(cues: SoundCue[], spacingMs = 50, cap = 8): PlannedSound[] {
+export function planPlayback(cues: SoundCue[], spacingMs = 100, cap = 8): PlannedSound[] {
   const kept = [...cues];
   for (const priority of [0, 1] as const) {
     for (let i = kept.length - 1; i >= 0 && kept.length > cap; i--) {

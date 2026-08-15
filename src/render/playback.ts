@@ -9,7 +9,7 @@
 import type { AnimFrame } from "./anim";
 
 /** Lets the final beat linger before the settle-to-state repaint. */
-const SETTLE_MS = 120;
+const SETTLE_MS = 240;
 
 let timers: Array<ReturnType<typeof setTimeout>> = [];
 let settle: (() => void) | null = null;

@@ -13,12 +13,12 @@
 import type { SimEvent } from "../sim/events";
 import { idx, type GameState } from "../sim/state";
 
-/** ms per micro-event beat — sfx fans cues ~50 ms apart in the same sim order, so shots land on their muzzle flashes. */
-export const BEAT_MS = 50;
+/** ms per micro-event beat — sfx fans cues ~100 ms apart in the same sim order, so shots land on their muzzle flashes. */
+export const BEAT_MS = 100;
 /** Extra gap between one enemy's move and the next, so authorship reads. */
-export const SEAM_MS = 100;
+export const SEAM_MS = 200;
 /** Ceiling on a whole round's playback; busy floors compress to fit. */
-export const CAP_MS = 600;
+export const CAP_MS = 1200;
 
 export interface AnimFlash {
   style: "muzzle" | "impact";
