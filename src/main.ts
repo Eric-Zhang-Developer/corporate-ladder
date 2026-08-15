@@ -2,9 +2,11 @@ import { floorDef, LAST_FLOOR } from "./data/floors";
 import { itemDef } from "./data/items";
 import { CLOSE_KEYS, OPEN_KEYS } from "./input/controls";
 import { actionForKey } from "./input/keyboard";
+import { buildAnimPlan } from "./render/anim";
 import { buildAtlas, TILE } from "./render/atlas";
 import { playEvents, playSound, toggleMute, unlockAudio } from "./render/audio";
 import { cameraRect } from "./render/camera";
+import { cancelPlayback, startPlayback } from "./render/playback";
 import { buildLog } from "./render/dom/log";
 import { buildSidebar, updateSidebar } from "./render/dom/sidebar";
 import { updateScreens } from "./render/dom/screens";
@@ -117,10 +119,20 @@ function render(): void {
   if (import.meta.env.DEV) devRefresh?.();
 }
 
-/** Every sim action goes through here: apply, hand the diary to sound. */
+/** Every sim action goes through here: apply, hand the diary to sound and playback. */
 function dispatch(action: Action): void {
   const events = applyAction(state, action);
   playEvents(events, state);
+  // Stagger only free play: promotion/shop/death pop their screens at once,
+  // and a replay running underneath an overlay would be noise nobody sees.
+  if (state.phase === "playing") {
+    startPlayback(buildAnimPlan(events, state), (frame) => {
+      ui.anim = frame;
+      render();
+    });
+  } else {
+    cancelPlayback();
+  }
 }
 
 function cycleTarget(): void {
@@ -156,6 +168,9 @@ if (import.meta.env.DEV) {
 window.addEventListener("keydown", (e) => {
   // Browsers gate audio behind a gesture — any keypress is the unlock.
   unlockAudio();
+  // A key during turn playback fast-forwards to true state; the key still
+  // lands below. Animation is a replay, so skipping it can never be wrong.
+  cancelPlayback();
   // Mute is UI-side, works in every phase, and deliberately sits above the
   // input modes: even mid-drop or mid-aim, M is always the volume knob.
   if (e.key === "m" || e.key === "M") {

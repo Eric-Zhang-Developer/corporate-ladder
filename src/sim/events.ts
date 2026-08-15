@@ -1,7 +1,7 @@
 /**
  * The sim's event stream: an ordered record of everything that happened
- * during one applyAction — "the diary". Renderers consume it (sound today;
- * staggered turn playback, death recaps and replay viewers are future
+ * during one applyAction — "the diary". Renderers consume it (sound and
+ * staggered turn playback today; death recaps and replay viewers are future
  * readers), which is why events carry actor ids, positions, damage numbers
  * and weaponIds even where sound alone would not need them.
  *

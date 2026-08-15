@@ -41,6 +41,8 @@ src/
 │   ├── atlas.ts         # programmatic sprites; tiles.ts — canvas viewport
 │   ├── sfx.ts           # PURE event→sound-cue mapper + §6 mix plan (tested)
 │   ├── audio.ts         # WebAudio player: lazy decode, stagger scheduler, M-mute (untested by convention)
+│   ├── anim.ts          # PURE event→frame-plan mapper — staggered enemy-round playback (tested)
+│   ├── playback.ts      # frame scheduler: timers only, zero decisions; skip settles to state (untested by convention)
 │   ├── weaponinfo.ts    # PURE gun formatters: band strip, AP line, band rows, formula (tested)
 │   ├── enemyinfo.ts     # PURE target card: stat row, alert chips, threat line (tested)
 │   ├── log.ts           # PURE log panel: delta-since-last-frame, stick-to-bottom, eviction (tested)
@@ -68,12 +70,12 @@ Everything goes through `applyAction(state, action): SimEvent[]` in `sim/step.ts
 4. Check for a promotion — **between** turns, never mid-action.
 5. Recompute FOV, snapshot `rng.getState()` back into `state.rngState`.
 
-**The event stream.** `applyAction` returns the action's ordered `SimEvent[]` — the sim's diary of what just happened (shots, hurt, kills, spots, steps, telegraphs, …), consumed by renderers: sound today (`render/sfx.ts` → `render/audio.ts`), staggered turn animation / death recap later. Its contract, enforced by `test/sim/events.test.ts` and tripwired by the golden test:
+**The event stream.** `applyAction` returns the action's ordered `SimEvent[]` — the sim's diary of what just happened (shots, hurt, kills, spots, steps, telegraphs, …), consumed by renderers: sound (`render/sfx.ts` → `render/audio.ts`) and staggered turn playback (`render/anim.ts` → `render/playback.ts`); death recap later. Its contract, enforced by `test/sim/events.test.ts` and tripwired by the golden test:
 
 - **Emission is additive-only.** `emit()` calls never consume RNG and never alter log text — the golden snapshot pins `rngState` + `log`, so a violation goes red immediately.
 - **Events are returned, never stored on `GameState`** — serialization and determinism tests are structurally unaffected.
 - One `beginEvents`/`drainEvents` pair per `applyAction`; `emit()` outside a collection window is a no-op, so direct test calls to `fireWeapon` etc. stay inert.
-- Events carry ids/positions/weaponIds even where sound doesn't need them — the animation consumer is the second reader, and retrofitting union fields is churn.
+- Events carry ids/positions/weaponIds even where sound doesn't need them — turn playback is the second reader (it leans on all of them), the death recap will be the third, and retrofitting union fields is churn.
 
 Three phases pause the loop and accept only their own action: `promoting`
 (`choosePerk`), `shopping` (`buy` / `leaveShop`), and the terminal `dead`/`won`.
@@ -98,7 +100,7 @@ Enemy behaviors are `while (enemy.ap > 0)` loops where every iteration either sp
 
 **Add an action:** extend the union in `sim/actions.ts`, handle it in `step.ts` (emit its events next to the `pushLog` calls), map a key in `input/keyboard.ts` **and** add a row to `CONTROL_GROUPS` in `input/controls.ts` — `controls.test.ts` walks the printed keymap against the real bindings in both directions, so an undocumented key (or an advertised dead one) fails tests. AP costs go in `data/costs.ts`. The one exception is `{type: "debug"}` (`sim/debug.ts`), which is deliberately **keyless**: it has no binding and no `CONTROL_GROUPS` row because only the DEV panel dispatches it. Debug ops are actions rather than direct mutation on purpose — the renderer must never write state, `applyAction` owns the RNG round-trip, and cheats you can test are cheats that still work after a refactor.
 
-**Add an event:** extend the `SimEvent` union in `sim/events.ts` (no `undefined`-valued fields — use the `...(cond ? { flag: true as const } : {})` spread), `emit()` at the site adjacent to its `pushLog`, map it in `render/sfx.ts` (or deliberately ignore it there, like `step`), cover it in `test/sim/events.test.ts`. Never let emission touch RNG or log text.
+**Add an event:** extend the `SimEvent` union in `sim/events.ts` (no `undefined`-valued fields — use the `...(cond ? { flag: true as const } : {})` spread), `emit()` at the site adjacent to its `pushLog`, map it in `render/sfx.ts` (or deliberately ignore it there, like `step`), classify it in `render/anim.ts`'s `BEAT_ROLE` (typecheck fails until you do — advance a beat, attach to the current one, or ignore), cover it in `test/sim/events.test.ts`. Never let emission touch RNG or log text.
 
 **Add a sound:** a voice function in the matching `tools/soundgen/*.py` module, register it in that module's dict, run `python3 tools/soundgen/generate.py <name-filter>` (byte-stable output; peak levels live in `PEAK_OVERRIDES` in `generate.py`), then map it in `render/sfx.ts` and assert it in `test/render/sfx.test.ts`. WAV regeneration is golden-snapshot discipline: deliberate, in its own commit, never reflexively. Audition via the ♪ SFX soundboard (`npm run dev`).
 

@@ -1,6 +1,7 @@
 import { enemyDef } from "../data/enemies";
 import { lineTiles } from "../sim/los";
 import { idx, type GameState, type GroundItem } from "../sim/state";
+import type { AnimFrame } from "./anim";
 import { TILE, type Atlas } from "./atlas";
 import { chargeLineIsVisible, type CameraRect } from "./camera";
 
@@ -25,6 +26,12 @@ export interface UIState {
    * not enemies (they draw off `visible`), and it could not be toggled back.
    */
   revealAll?: boolean;
+  /**
+   * Turn playback: the current replay frame from render/anim.ts, or null for
+   * true state. Never authoritative — it only repositions sprites and adds
+   * transient markers, so clearing it is always a correct render.
+   */
+  anim?: AnimFrame | null;
 }
 
 const DIM = "rgba(0, 0, 0, 0.62)";
@@ -71,26 +78,42 @@ export function renderViewport(
     blit(ITEM_TILE[item.kind], item.x, item.y);
   }
 
+  // Mid-playback, enemies draw where the replay frame says, not where the
+  // (already final) state says; lighting follows the drawn tile so an enemy
+  // still approaching through the dark stays unseen.
+  const anim = ui.anim ?? null;
+  const animPos = new Map(anim?.positions.map((p) => [p.id, p]) ?? []);
+  const animHidden = new Set(anim?.hidden ?? []);
+
   for (const e of state.enemies) {
     if (e.hidden && !reveal) continue; // active camo: nothing to draw
-    if (!lit(idx(map, e.x, e.y))) continue;
-    blit(e.defId, e.x, e.y);
+    if (animHidden.has(e.id) && !reveal) continue; // replay: not revealed yet
+    const at = animPos.get(e.id) ?? e;
+    if (!lit(idx(map, at.x, at.y))) continue;
+    blit(e.defId, at.x, at.y);
     // §9 telegraph: an armed camera shows its countdown one turn ahead.
     if (e.alarmTimer !== undefined) {
       ctx.fillStyle = "#ff5555";
       ctx.font = `bold ${TILE - 6}px ui-monospace, Menlo, monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(String(e.alarmTimer), e.x * TILE + TILE / 2, e.y * TILE + TILE / 2);
+      ctx.fillText(String(e.alarmTimer), at.x * TILE + TILE / 2, at.y * TILE + TILE / 2);
       ctx.strokeStyle = "#ff5555";
       ctx.lineWidth = 2;
-      ctx.strokeRect(e.x * TILE + 1, e.y * TILE + 1, TILE - 2, TILE - 2);
+      ctx.strokeRect(at.x * TILE + 1, at.y * TILE + 1, TILE - 2, TILE - 2);
     }
     if (ui.targetId === e.id) {
       ctx.strokeStyle = "#ffee66";
       ctx.lineWidth = 2;
-      ctx.strokeRect(e.x * TILE + 1, e.y * TILE + 1, TILE - 2, TILE - 2);
+      ctx.strokeRect(at.x * TILE + 1, at.y * TILE + 1, TILE - 2, TILE - 2);
     }
+  }
+
+  // Replay ghosts: entities the sim already removed, still on stage for the
+  // beats before their death lands.
+  for (const g of anim?.ghosts ?? []) {
+    if (!lit(idx(map, g.x, g.y))) continue;
+    blit(g.defId, g.x, g.y);
   }
 
   blit("player", state.player.x, state.player.y);
@@ -143,6 +166,34 @@ export function renderViewport(
     ctx.fillStyle = "rgba(255, 70, 70, 0.22)";
     for (const tile of lineTiles(e.x, e.y, state.player.x, state.player.y)) {
       ctx.fillRect(tile.x * TILE, tile.y * TILE, TILE, TILE);
+    }
+  }
+
+  // Playback markers sit above the shroud: they only exist on lit tiles (the
+  // mapper gates on visibility) and their entire job is to say who did what.
+  for (const b of anim?.blasts ?? []) {
+    ctx.fillStyle = "rgba(255, 150, 60, 0.35)";
+    for (let y = b.y - b.radius; y <= b.y + b.radius; y++) {
+      for (let x = b.x - b.radius; x <= b.x + b.radius; x++) {
+        if (Math.hypot(x - b.x, y - b.y) > b.radius) continue;
+        if (!seen(idx(map, x, y))) continue;
+        ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+      }
+    }
+    ctx.fillStyle = "rgba(255, 230, 150, 0.85)";
+    ctx.beginPath();
+    ctx.arc(b.x * TILE + TILE / 2, b.y * TILE + TILE / 2, TILE * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (const f of anim?.flashes ?? []) {
+    if (f.style === "muzzle") {
+      ctx.fillStyle = "rgba(255, 235, 140, 0.9)";
+      ctx.beginPath();
+      ctx.arc(f.x * TILE + TILE / 2, f.y * TILE + TILE / 2, TILE * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = "rgba(255, 70, 70, 0.5)";
+      ctx.fillRect(f.x * TILE, f.y * TILE, TILE, TILE);
     }
   }
 

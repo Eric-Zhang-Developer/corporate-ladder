@@ -3,6 +3,7 @@ import { SPARE_PLATE_CAP, carrierCapacity, carrierDef } from "../../src/data/car
 import { HOTBAR_SLOTS, itemDef } from "../../src/data/items";
 import { maxRange, weaponDef } from "../../src/data/weapons";
 import type { Action } from "../../src/sim/actions";
+import type { SimEvent } from "../../src/sim/events";
 import { newGame } from "../../src/sim/floor";
 import { hasLos } from "../../src/sim/los";
 import { applyAction } from "../../src/sim/step";
@@ -35,7 +36,7 @@ export interface BotOptions {
   maxActions?: number;
   /** Runs after every action — invariant checking is on by default. */
   check?: boolean;
-  onAction?: (state: GameState, action: Action) => void;
+  onAction?: (state: GameState, action: Action, events: SimEvent[]) => void;
 }
 
 /** Item kinds the bot will detour for, given its current inventory. */
@@ -211,10 +212,10 @@ export function runBot(seed: number, options: BotOptions = {}): BotResult {
           : decide(state, memory);
     if (state.phase !== "shopping") shopStep = 0;
     const floorBefore = state.floor;
-    applyAction(state, action);
+    const events = applyAction(state, action);
     if (state.floor !== floorBefore) memory.goal = null; // new floor, new map
     actions += 1;
-    options.onAction?.(state, action);
+    options.onAction?.(state, action, events);
     if (check) assertStateInvariants(state, `seed ${seed}, action ${actions} (${action.type})`);
 
     deepestFloor = Math.max(deepestFloor, state.floor);
