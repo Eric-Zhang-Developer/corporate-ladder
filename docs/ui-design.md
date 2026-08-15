@@ -65,13 +65,29 @@ Bosses use the same card (no special boss bars in v1).
   system.
 - **Drop mode** — `X`, then a slot key (1–3 weapons, 4–9 items) → `{type: "drop", slot}`.
 
+## Follow camera
+
+The world renders through a fixed **34×21-tile logical viewport**. That span is part of
+combat readability, not a monitor bonus: CSS scales the same view into the available
+map column, so a larger display makes the tiles larger rather than revealing more of the
+floor. Thirty-four by twenty-one stays close to the existing canvas/UI aspect while
+leaving ten rows above and below a centered player.
+
+The camera center-locks to the player and clamps at floor edges; it never shows void or
+enters `GameState`. Twenty-one rows contain the complete maximum player FOV (base radius
+8 plus Field Awareness), so every ordinarily visible target stays on-screen. Overwatch
+is the deliberate exception: its range reaches beyond the camera, paid for by drawing
+the clipped charge lane into the viewport even when the shooter itself is beyond FOV.
+Other off-screen charge styles remain hidden.
+
 ## Viewport telegraphs
 
 The bestiary runs on visible warnings; the renderer owes it:
 
 - Camera countdown digits *(exists)* — reused by the supervisor.
 - **Marksman lane highlight** — the covered tiles drawn as a red line during his
-  telegraph turn. The novel renderer feature of the batch.
+  telegraph turn. The lane renders above the shroud and may enter from off-screen; the
+  player is warned without being handed the shooter's position.
 - Dozer / Server Warden spin-up state (glyph or color change during charge turns).
 - Stealth-unit shimmer is a log line, not a render effect — the *absence* on screen is
   the design.

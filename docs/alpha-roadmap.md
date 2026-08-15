@@ -229,13 +229,14 @@ Scope: immediate bugs + the remaining UI work + the dev panel. Nothing else ride
 
 Two arcs, camera first (it's renderer-only and independent of tuning):
 
-- [ ] **Follow camera + responsive viewport** — `ctx.translate` camera with
-      center-lock + edge clamping as a pure, tested helper; fixed tile size with
-      the view derived from the element (ResizeObserver), clamped to a ~25-tile
-      fairness floor (nothing untelegraphed hurts you from off-screen; overwatch
-      charge lines render their on-screen portion). Frees floor dimensions to
-      become per-floor data later — but exotic floor sizes wait until after the
-      balance pass so only one variable moves at a time.
+- [x] **Follow camera + fixed logical viewport** — a pure, tested `ctx.translate`
+      camera center-locks and edge-clamps a 34×21-tile view. CSS scales that same
+      world span into the available map column, keeping combat distances stable
+      across displays instead of rewarding larger monitors with more information.
+      Twenty-one rows contain the maximum player FOV; longer overwatch lanes render
+      their clipped on-screen portion above the shroud while other off-screen charge
+      sources stay hidden. Floor dimensions can now vary later, but exotic sizes wait
+      until after the balance pass so only one variable moves at a time.
 - [ ] **Balance patch set** — work order is `play-test-08-04-26.md`. Headliners:
       `xm7_exo` burst cap (`apFire: 2`) + mag cut so the punish window exists;
       same audit for `m4_merc`/`m249_gunner`; shotgun accuracy → 100% throughout

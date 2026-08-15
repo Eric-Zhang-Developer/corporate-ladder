@@ -4,6 +4,7 @@ import { CLOSE_KEYS, OPEN_KEYS } from "./input/controls";
 import { actionForKey } from "./input/keyboard";
 import { buildAtlas, TILE } from "./render/atlas";
 import { playEvents, playSound, toggleMute, unlockAudio } from "./render/audio";
+import { cameraRect } from "./render/camera";
 import { buildLog } from "./render/dom/log";
 import { buildSidebar, updateSidebar } from "./render/dom/sidebar";
 import { updateScreens } from "./render/dom/screens";
@@ -92,16 +93,22 @@ function needsTradeIn(index: number): boolean {
 }
 
 function render(): void {
-  if (viewport.width !== state.map.width * TILE || viewport.height !== state.map.height * TILE) {
-    viewport.width = state.map.width * TILE;
-    viewport.height = state.map.height * TILE;
+  const camera = cameraRect(
+    state.map.width,
+    state.map.height,
+    state.player.x,
+    state.player.y,
+  );
+  if (viewport.width !== camera.width * TILE || viewport.height !== camera.height * TILE) {
+    viewport.width = camera.width * TILE;
+    viewport.height = camera.height * TILE;
   }
   // Drop the target if it died or left sight.
   if (ui.targetId !== null) {
     const t = state.enemies.find((e) => e.id === ui.targetId);
     if (!t || !state.visible[idx(state.map, t.x, t.y)]) ui.targetId = null;
   }
-  renderViewport(ctx!, atlas, state, ui);
+  renderViewport(ctx!, atlas, state, ui, camera);
   updateSidebar(sidebar, state, ui);
   updateScreens(overlay, state, { tradeIn, controlsOpen, arsenalOpen });
   header.innerHTML = `<b>${floorDef(state.floor).name}</b>: ${state.floor}/${LAST_FLOOR}`;

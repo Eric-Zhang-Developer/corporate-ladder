@@ -1,6 +1,8 @@
+import { enemyDef } from "../data/enemies";
 import { lineTiles } from "../sim/los";
 import { idx, type GameState, type GroundItem } from "../sim/state";
 import { TILE, type Atlas } from "./atlas";
+import { chargeLineIsVisible, type CameraRect } from "./camera";
 
 /** Ground items are drawn by kind. */
 const ITEM_TILE: Record<GroundItem["kind"], string> = {
@@ -32,10 +34,13 @@ export function renderViewport(
   atlas: Atlas,
   state: GameState,
   ui: UIState,
+  camera: CameraRect,
 ): void {
   const { map } = state;
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.save();
+  ctx.translate(-camera.x * TILE, -camera.y * TILE);
 
   // One reveal gate for the whole pass; the sim's own arrays stay untouched.
   const reveal = ui.revealAll === true;
@@ -48,8 +53,8 @@ export function renderViewport(
     ctx.drawImage(atlas.canvas, i * TILE, 0, TILE, TILE, x * TILE, y * TILE, TILE, TILE);
   };
 
-  for (let y = 0; y < map.height; y++) {
-    for (let x = 0; x < map.width; x++) {
+  for (let y = camera.y; y < camera.y + camera.height; y++) {
+    for (let x = camera.x; x < camera.x + camera.width; x++) {
       const i = idx(map, x, y);
       if (!seen(i)) continue;
       blit(map.tiles[i] === 0 ? "wall" : "floor", x, y);
@@ -90,18 +95,6 @@ export function renderViewport(
 
   blit("player", state.player.x, state.player.y);
 
-  // FOV shroud: explored-but-unseen dims, unseen stays black.
-  // A charging overwatch shooter shows the tiles he covers. The player must be
-  // able to see the line they are about to die in, not infer it.
-  for (const e of state.enemies) {
-    if (e.chargeTimer === undefined || (e.hidden && !reveal)) continue;
-    if (!lit(idx(state.map, e.x, e.y))) continue;
-    ctx.fillStyle = "rgba(255, 70, 70, 0.22)";
-    for (const tile of lineTiles(e.x, e.y, state.player.x, state.player.y)) {
-      ctx.fillRect(tile.x * TILE, tile.y * TILE, TILE, TILE);
-    }
-  }
-
   // Throw preview, drawn under the shroud pass so unseen tiles stay unseen.
   const aim = ui.throwAim;
   if (aim) {
@@ -120,12 +113,38 @@ export function renderViewport(
   }
 
   ctx.fillStyle = DIM;
-  for (let y = 0; y < map.height; y++) {
-    for (let x = 0; x < map.width; x++) {
+  for (let y = camera.y; y < camera.y + camera.height; y++) {
+    for (let x = camera.x; x < camera.x + camera.width; x++) {
       const i = idx(map, x, y);
       if (seen(i) && !lit(i)) {
         ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
       }
     }
   }
+
+  // Charge warnings sit above the shroud: their entire job is to communicate
+  // danger before damage. Overwatch is allowed to originate beyond FOV — the
+  // clipped lane entering the viewport is the counterplay information. Other
+  // charge styles still require their source to be visible, so the camera does
+  // not leak a hidden Dozer or Warden.
+  for (const e of state.enemies) {
+    const sourceIsVisible = lit(idx(state.map, e.x, e.y));
+    if (
+      !chargeLineIsVisible(
+        e.chargeTimer,
+        e.hidden === true,
+        sourceIsVisible,
+        enemyDef(e.defId).behavior,
+        reveal,
+      )
+    ) {
+      continue;
+    }
+    ctx.fillStyle = "rgba(255, 70, 70, 0.22)";
+    for (const tile of lineTiles(e.x, e.y, state.player.x, state.player.y)) {
+      ctx.fillRect(tile.x * TILE, tile.y * TILE, TILE, TILE);
+    }
+  }
+
+  ctx.restore();
 }
