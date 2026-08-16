@@ -225,9 +225,9 @@ Scope: immediate bugs + the remaining UI work + the dev panel. Nothing else ride
       `state` on restart. Covered by `test/sim/debug.test.ts` and the option-list
       drift guards in `test/render/debugpanel.test.ts`.
 
-## v0.3 — camera & balance
+## v0.3 — camera, feel & balance
 
-Two arcs, camera first (it's renderer-only and independent of tuning):
+Three arcs; the renderer-only ones land first, being independent of tuning:
 
 - [x] **Follow camera + fixed logical viewport** — a pure, tested `ctx.translate`
       camera center-locks and edge-clamps a 34×21-tile view. CSS scales that same
@@ -237,6 +237,25 @@ Two arcs, camera first (it's renderer-only and independent of tuning):
       their clipped on-screen portion above the shroud while other off-screen charge
       sources stay hidden. Floor dimensions can now vary later, but exotic sizes wait
       until after the balance pass so only one variable moves at a time.
+- [x] **Staggered turn playback** — the enemy round no longer teleports. `applyAction`'s
+      event stream feeds a pure, tested mapper (`render/anim.ts`: events → timed frame
+      plan) and a decision-free scheduler (`render/playback.ts`), the same split the
+      sound layer uses. 100 ms beats, 200 ms seams between enemies so each one reads as
+      making its own move, a 1200 ms round cap that compresses busy floors, and any
+      keypress skips to true state. Playback is a replay, never authority: the sim has
+      already resolved before frame one, so no animation bug can corrupt a run. Known
+      gap: camera response teams appear at frame 0 rather than on the elevator-chime
+      beat — telling this round's spawns apart needs a `spawn` event.
+- [x] **Auto-explore (`E`)** — answers the playtest's loudest tedium complaint
+      (`play-test-08-04-26.md:52,141`). A UI-side mode that dispatches ordinary `move`
+      actions on a 100 ms timer; **zero sim changes**. Routing is a BFS over *explored*
+      tiles only, which makes the anti-oracle rule structural — it cannot path around
+      dangers the player has not seen. Stops for: anything visible, threat-shaped events
+      (`HALT_ON` is total over `SimEvent["kind"]`, so a new event must be classified),
+      arriving on loot found mid-walk, a fully explored floor, and any key. Never loots,
+      never fights, never ascends. Refuses to start while anything is on screen or within
+      3 turns of a threat — a guard that clears the instant everything implicated is
+      dead, so winning a fight hands the controls straight back.
 - [ ] **Balance patch set** — work order is `play-test-08-04-26.md`. Headliners:
       `xm7_exo` burst cap (`apFire: 2`) + mag cut so the punish window exists;
       same audit for `m4_merc`/`m249_gunner`; shotgun accuracy → 100% throughout

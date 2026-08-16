@@ -40,6 +40,12 @@ export const CONTROL_GROUPS: ControlGroup[] = [
       { keys: "WASD / ↑↓←→", label: "move — walk into an enemy to knife it", covers: ["w", "a", "s", "d", ...ARROWS] },
       { keys: "SPACE / .", label: "wait — ends your turn", covers: [" ", "."] },
       { keys: ">", label: "take the stairs", covers: [">"] },
+      {
+        keys: "E",
+        label: "auto-explore — stops at anything; again to head for the stairs",
+        covers: ["e"],
+        mode: "UI-side walk: it dispatches ordinary moves, and any key takes over",
+      },
     ],
   },
   {

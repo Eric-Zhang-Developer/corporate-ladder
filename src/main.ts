@@ -1,6 +1,17 @@
 import { floorDef, LAST_FLOOR } from "./data/floors";
 import { itemDef } from "./data/items";
 import { CLOSE_KEYS, OPEN_KEYS } from "./input/controls";
+import {
+  exploreStep,
+  heatBlocked,
+  initialHeat,
+  knownItemIds,
+  shouldHalt,
+  travelStep,
+  updateHeat,
+  visibleEnemies,
+  type ExploreMemory,
+} from "./input/explore";
 import { actionForKey } from "./input/keyboard";
 import { buildAnimPlan } from "./render/anim";
 import { buildAtlas, TILE } from "./render/atlas";
@@ -12,6 +23,7 @@ import { buildSidebar, updateSidebar } from "./render/dom/sidebar";
 import { updateScreens } from "./render/dom/screens";
 import { renderViewport, type UIState } from "./render/tiles";
 import type { Action } from "./sim/actions";
+import type { SimEvent } from "./sim/events";
 import { newGame } from "./sim/floor";
 import { hasLos } from "./sim/los";
 import { distance, idx, isFloor } from "./sim/state";
@@ -52,6 +64,20 @@ let controlsOpen = false;
 let arsenalOpen = false;
 /** DEV debug panel's readout hook; always null in a build (see the mount below). */
 let devRefresh: (() => void) | null = null;
+/**
+ * Auto-explore (E). A UI mode like drop and throw: it only ever dispatches
+ * ordinary `move` actions, so the sim never learns the feature exists.
+ */
+let exploring: {
+  goal: "explore" | "stairs";
+  memory: ExploreMemory;
+  timer: ReturnType<typeof setTimeout> | null;
+} | null = null;
+/** "Something was just hunting you" — see input/explore.ts. UI-side history. */
+let heat = initialHeat();
+const EXPLORE_STEP_MS = 100;
+/** Keys that must not count as "any key stops the walk" — Shift is not an interruption. */
+const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock"]);
 
 const AIM_KEYS: Record<string, [number, number]> = {
   arrowup: [0, -1],
@@ -120,8 +146,11 @@ function render(): void {
 }
 
 /** Every sim action goes through here: apply, hand the diary to sound and playback. */
-function dispatch(action: Action): void {
+function dispatch(action: Action): SimEvent[] {
   const events = applyAction(state, action);
+  // Heat folds in on every action, manual or automatic: whether E is safe to
+  // press is a question about the whole fight, not just the steps E took.
+  heat = updateHeat(heat, state, events);
   playEvents(events, state);
   // Stagger only free play: promotion/shop/death pop their screens at once,
   // and a replay running underneath an overlay would be noise nobody sees.
@@ -133,6 +162,85 @@ function dispatch(action: Action): void {
   } else {
     cancelPlayback();
   }
+  return events;
+}
+
+/** Stop the walk and say why. Safe to call when idle. */
+function stopExplore(reason: string): void {
+  if (exploring?.timer) clearTimeout(exploring.timer);
+  exploring = null;
+  hint = reason;
+}
+
+/**
+ * One auto-explore step, then decide whether to take another. A self-scheduling
+ * timeout rather than an interval: the walk re-decides from scratch every tick,
+ * so there is never a queued step to arrive after something has interrupted.
+ */
+function exploreTick(): void {
+  if (!exploring) return;
+  exploring.timer = null;
+  if (state.phase !== "playing") {
+    stopExplore("");
+    render();
+    return;
+  }
+  if (visibleEnemies(state).length > 0) {
+    stopExplore("Contact: auto-explore stopped.");
+    render();
+    return;
+  }
+
+  const run = exploring;
+  const result = run.goal === "stairs" ? travelStep(state) : exploreStep(state, run.memory);
+  if (result.kind === "item") {
+    run.memory.dismissed.push(result.itemId);
+    stopExplore("Something here: G takes it, E walks on.");
+    render();
+    return;
+  }
+  if (result.kind !== "step") {
+    stopExplore(
+      result.kind === "done"
+        ? run.goal === "stairs"
+          ? "At the stairs: press > to ascend."
+          : "Floor explored: press E again to head for the stairs."
+        : run.goal === "stairs"
+          ? "No route: you have not found the stairs."
+          : "No route: the rest of the floor is cut off.",
+    );
+    render();
+    return;
+  }
+
+  const events = dispatch(result.action);
+  if (state.phase !== "playing") stopExplore("");
+  else if (shouldHalt(events) || visibleEnemies(state).length > 0) {
+    stopExplore("Contact: auto-explore stopped.");
+  } else {
+    run.timer = setTimeout(exploreTick, EXPLORE_STEP_MS);
+  }
+  render();
+}
+
+/** E: hand the controls over, if the floor is quiet enough to deserve it. */
+function startExplore(): void {
+  if (visibleEnemies(state).length > 0) {
+    hint = "Not while something is in sight.";
+    return;
+  }
+  if (heatBlocked(heat, state)) {
+    hint = "Too hot: something was just hunting you.";
+    return;
+  }
+  // Loot already on screen is loot you have decided about; only what turns up
+  // along the way is worth stopping for.
+  const memory: ExploreMemory = { dismissed: knownItemIds(state) };
+  // A fully-explored floor turns E into the travel verb instead.
+  const goal = exploreStep(state, memory).kind === "done" ? "stairs" : "explore";
+  exploring = { goal, memory, timer: null };
+  hint = goal === "stairs" ? "Heading for the stairs: any key stops." : "Auto-exploring: any key stops.";
+  exploreTick(); // the first step is immediate — E must feel like a keypress
 }
 
 function cycleTarget(): void {
@@ -171,6 +279,18 @@ window.addEventListener("keydown", (e) => {
   // A key during turn playback fast-forwards to true state; the key still
   // lands below. Animation is a replay, so skipping it can never be wrong.
   cancelPlayback();
+  // Any key takes the controls back from auto-explore. Modifiers do not count:
+  // brushing Shift is not a change of mind. The key itself still lands below,
+  // except for E, which is the toggle and has now done its job.
+  if (exploring && !MODIFIER_KEYS.has(e.key)) {
+    const toggledOff = e.key.toLowerCase() === "e";
+    stopExplore("");
+    if (toggledOff) {
+      e.preventDefault();
+      render();
+      return;
+    }
+  }
   // Mute is UI-side, works in every phase, and deliberately sits above the
   // input modes: even mid-drop or mid-aim, M is always the volume knob.
   if (e.key === "m" || e.key === "M") {
@@ -268,7 +388,9 @@ window.addEventListener("keydown", (e) => {
     } else {
       return;
     }
-    // Restarts bypass applyAction, so the badge-scan plays directly.
+    // Restarts bypass applyAction, so neither the badge-scan nor the heat
+    // reset can ride along on an event — both are done by hand here.
+    heat = initialHeat();
     playSound("game_start");
     e.preventDefault();
     render();
@@ -336,6 +458,16 @@ window.addEventListener("keydown", (e) => {
       hint = "";
     }
     syncAim();
+    render();
+    return;
+  }
+
+  // Auto-explore sits below the two-key modes on purpose: mid-drop or mid-aim,
+  // E should cancel that mode (their contract is "anything else cancels") and
+  // not quietly start walking with a mode still armed.
+  if (e.key.toLowerCase() === "e") {
+    e.preventDefault();
+    startExplore();
     render();
     return;
   }
