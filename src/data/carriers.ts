@@ -17,6 +17,10 @@ export interface CarrierDef {
 }
 
 export const CARRIERS = {
+  // SALARIED baseline: one early gunshot of forgiveness, while melee still
+  // bypasses it. "Vest" keeps the obsolete Level I inspiration distinct from
+  // the progressively heavier plate carriers found higher in the tower.
+  carrier_i: { id: "carrier_i", name: "Level I Vest", slots: 1, plateValue: 3 },
   carrier_ii: { id: "carrier_ii", name: "Level II Carrier", slots: 2, plateValue: 4 },
   carrier_iii: { id: "carrier_iii", name: "Level III Carrier", slots: 3, plateValue: 5 },
   carrier_iv: { id: "carrier_iv", name: "Level IV Carrier", slots: 3, plateValue: 6 },

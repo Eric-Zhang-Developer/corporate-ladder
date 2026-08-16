@@ -28,6 +28,7 @@ function summarize(state: GameState) {
       x: state.player.x,
       y: state.player.y,
       hp: state.player.hp,
+      shield: state.player.shield ?? 0,
       ap: state.player.ap,
       ammoInMag: state.player.ammoInMag,
     },

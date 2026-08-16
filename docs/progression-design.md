@@ -106,10 +106,17 @@ Carriers are the *permanent* progression (found gear, like weapons); plates are 
 
 | Carrier | found | slots | per-plate value | full stack | ≈ extra hits when full |
 | --- | --- | --- | --- | --- | --- |
-| none | start | 0 | — | 0 | 0 |
+| Level I vest | start (one plate inserted) | 1 | 3 | 3 | +1.0 @ T1 |
 | Level II carrier | ~floor 2–3 | 2 | 4 | 8 | +1.8 @ T2 |
 | Level III carrier | ~floor 4–5 | 3 | 5 | 15 | +2.3 @ T3 |
 | Level IV carrier | ~floor 6–7 | 3 | 6 | 18 | +2.1 @ T4 |
+
+The default SALARIED start includes the Level I vest with its single plate already
+inserted. That three-point shield is an onboarding buffer rather than extra max HP:
+it makes the armor bar legible immediately, absorbs about one T1 gunshot, and leaves
+melee lethality unchanged because blades bypass plates. Future difficulty modes may
+vary the starting plate count, but every mode keeps a carrier so a floor-1 plate is
+never unusable loot.
 
 Fully plated at floor 7 ≈ 46 effective HP ≈ 5.4 on-tier hits — deliberately *at* the
 guardrail ceiling, because reaching it costs AP, cash, and drops, and melee ignores all of

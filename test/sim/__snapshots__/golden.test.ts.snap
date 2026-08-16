@@ -8,7 +8,7 @@ exports[`golden run > a scripted combat run reproduces the same fight 1`] = `
     "rifle": 0,
     "shell": 0,
   },
-  "carrierId": null,
+  "carrierId": "carrier_i",
   "enemies": [
     {
       "alerted": false,
@@ -103,8 +103,8 @@ exports[`golden run > a scripted combat run reproduces the same fight 1`] = `
     "You pocket 4 pistol rounds.",
     "You pick up the Bandage.",
     "You pocket 3 pistol rounds.",
-    "You pocket 8 pistol rounds.",
     "You pocket 4 pistol rounds.",
+    "You pocket 8 pistol rounds.",
     "You duck into the stairwell. Someone has set up shop.",
     "Bought. (-12 credits, 36 left)",
     "Bought. (-7 credits, 29 left)",
@@ -136,9 +136,10 @@ exports[`golden run > a scripted combat run reproduces the same fight 1`] = `
   "phase": "playing",
   "player": {
     "ammoInMag": 1,
-    "ap": 3,
+    "ap": 1,
     "hp": 13,
-    "x": 25,
+    "shield": 3,
+    "x": 24,
     "y": 16,
   },
   "rngState": [
@@ -147,7 +148,7 @@ exports[`golden run > a scripted combat run reproduces the same fight 1`] = `
     0.11488855956122279,
     436608,
   ],
-  "spareplates": 2,
+  "spareplates": 1,
   "turn": 47,
   "xp": 53,
 }
@@ -161,7 +162,7 @@ exports[`golden run > seed 1 with a scripted turn sequence reproduces the same s
     "rifle": 0,
     "shell": 0,
   },
-  "carrierId": null,
+  "carrierId": "carrier_i",
   "enemies": [
     {
       "alerted": false,
@@ -230,6 +231,7 @@ exports[`golden run > seed 1 with a scripted turn sequence reproduces the same s
     "ammoInMag": 7,
     "ap": 3,
     "hp": 10,
+    "shield": 3,
     "x": 24,
     "y": 16,
   },

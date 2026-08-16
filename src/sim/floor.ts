@@ -1,3 +1,4 @@
+import { CARRIERS } from "../data/carriers";
 import { enemyDef } from "../data/enemies";
 import { CALIBERS, floorDef, LAST_FLOOR } from "../data/floors";
 import { HOTBAR_SLOTS } from "../data/items";
@@ -231,6 +232,9 @@ export function newGame(seed: number): GameState {
     weaponId: WEAPONS.glock.id,
     ammoInMag: WEAPONS.glock.magSize,
     alerted: true,
+    // The default SALARIED start: three shield is one early gunshot of
+    // forgiveness, not max HP. Melee still bypasses it entirely.
+    shield: CARRIERS.carrier_i.plateValue,
     slots: [{ weaponId: WEAPONS.glock.id, ammoInMag: WEAPONS.glock.magSize }, null, null],
     activeSlot: 0,
   };
@@ -250,7 +254,7 @@ export function newGame(seed: number): GameState {
     enemies: [],
     items: [],
     ammo: { pistol: 24, shell: 0, rifle: 0, heavy: 0 },
-    carrierId: null,
+    carrierId: CARRIERS.carrier_i.id,
     spareplates: 0,
     hotbar: new Array(HOTBAR_SLOTS).fill(null),
     cash: 0,

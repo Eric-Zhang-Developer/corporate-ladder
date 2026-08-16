@@ -3,6 +3,7 @@ import { CARRIERS, SPARE_PLATE_CAP, carrierCapacity } from "../../src/data/carri
 import { AP_COSTS } from "../../src/data/costs";
 import { fireWeapon, meleeAttack } from "../../src/sim/combat";
 import { createSimRng } from "../../src/sim/rng";
+import { newGame } from "../../src/sim/floor";
 import { applyAction } from "../../src/sim/step";
 import { makeEnemy, makeState } from "./helpers";
 
@@ -11,6 +12,14 @@ function alwaysHits() {
 }
 
 describe("slotting plates", () => {
+  it("starts the SALARIED baseline with one Level I plate inserted", () => {
+    const state = newGame(1);
+    expect(state.carrierId).toBe(CARRIERS.carrier_i.id);
+    expect(state.player.shield).toBe(CARRIERS.carrier_i.plateValue);
+    expect(state.player.hp).toBe(state.player.maxHp);
+    expect(state.spareplates).toBe(0);
+  });
+
   it("costs 1 AP and fills by the carrier's plate value", () => {
     const state = makeState({ carrierId: "carrier_ii", spareplates: 2 });
     const before = state.player.ap;
