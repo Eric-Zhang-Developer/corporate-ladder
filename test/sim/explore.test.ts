@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   HEAT_TURNS,
+  describeItem,
   exploreStep,
   heatBlocked,
   initialHeat,
-  knownItemIds,
+  itemInterest,
   shouldHalt,
   travelStep,
+  underfootDecisions,
   updateHeat,
   visibleEnemies,
   type ExploreMemory,
@@ -24,7 +26,7 @@ import { makeEnemy, makeState, openMap, setWall } from "./helpers";
  * knowledge the player has.
  */
 
-const NONE: ExploreMemory = { dismissed: [] };
+const NONE: ExploreMemory = { ignored: new Set() };
 
 /** Mark a rectangle explored, as if the player had walked it. */
 function explore(state: GameState, x0: number, y0: number, x1: number, y1: number): void {
@@ -129,20 +131,28 @@ describe("item targeting", () => {
     expect(result.action.dx).toBe(1); // toward (4,2), east of the player
   });
 
-  it("reports arrival when standing on the target, and never picks it up", () => {
+  it("offers to TAKE a free item underfoot, without the decision touching state", () => {
     const state = makeState({ items: [{ ...ammo, x: 2, y: 2 }] });
     explore(state, 2, 2, 5, 5);
     const before = state.ammo.pistol;
-    expect(exploreStep(state, NONE)).toEqual({ kind: "item", itemId: 77 });
-    expect(state.ammo.pistol).toBe(before); // pure: deciding took nothing
+    expect(exploreStep(state, NONE)).toEqual({ kind: "take", itemId: 77 });
+    // Deciding is pure — the caller dispatches the pickup, not this module.
+    expect(state.ammo.pistol).toBe(before);
     expect(state.items).toHaveLength(1);
   });
 
-  it("skips dismissed items", () => {
+  it("only OFFERS a weapon — the walk never spends a slot for you", () => {
+    const gun = { id: 88, x: 2, y: 2, kind: "weapon" as const, weaponId: "m870", ammoInMag: 4 };
+    const state = makeState({ items: [gun] });
+    explore(state, 2, 2, 5, 5);
+    expect(exploreStep(state, NONE)).toEqual({ kind: "offer", itemId: 88 });
+  });
+
+  it("skips ignored items", () => {
     const state = makeState({ items: [ammo] });
     state.explored.fill(false);
     explore(state, 2, 2, 5, 5);
-    const result = exploreStep(state, { dismissed: [77] });
+    const result = exploreStep(state, { ignored: new Set([77]) });
     expect(result.kind).toBe("step");
     expect(result.kind === "step" ? result.toItem : "no step").toBeUndefined();
   });
@@ -169,21 +179,43 @@ describe("travelStep", () => {
   it("routes to the stairs and reports arrival", () => {
     const state = makeState({ stairs: { x: 6, y: 2 } });
     exploreAll(state);
-    const result = travelStep(state);
+    const result = travelStep(state, NONE);
     expect(result.kind).toBe("step");
     if (result.kind !== "step" || result.action.type !== "move") return;
     expect(result.action.dx).toBe(1);
 
     const there = makeState({ player: { x: 6, y: 2 }, stairs: { x: 6, y: 2 } });
     exploreAll(there);
-    expect(travelStep(there).kind).toBe("done");
+    expect(travelStep(there, NONE).kind).toBe("done");
   });
 
   it("refuses to route to stairs the player has not found", () => {
     const state = makeState({ stairs: { x: 6, y: 2 } });
     state.explored.fill(false);
     explore(state, 2, 2, 4, 4);
-    expect(travelStep(state).kind).toBe("blocked");
+    expect(travelStep(state, NONE).kind).toBe("blocked");
+  });
+
+  it("sweeps up loot on the way instead of walking over it", () => {
+    // The bug this exists for: a cleared floor is fully explored, so E is in
+    // travel mode — exactly when a fight has just littered it with ammo.
+    const state = makeState({
+      stairs: { x: 6, y: 2 },
+      items: [{ id: 91, x: 4, y: 2, kind: "ammo", caliber: "pistol", amount: 12 }],
+    });
+    exploreAll(state);
+    const result = travelStep(state, NONE);
+    expect(result.kind).toBe("step");
+    expect(result.kind === "step" ? result.toItem : null).toBe(91);
+
+    // Standing on it, travel mode still collects rather than marching past.
+    const on = makeState({
+      player: { x: 4, y: 2 },
+      stairs: { x: 6, y: 2 },
+      items: [{ id: 91, x: 4, y: 2, kind: "ammo", caliber: "pistol", amount: 12 }],
+    });
+    exploreAll(on);
+    expect(travelStep(on, NONE)).toEqual({ kind: "take", itemId: 91 });
   });
 });
 
@@ -271,18 +303,92 @@ describe("heat", () => {
   });
 });
 
-describe("knownItemIds", () => {
-  it("returns only items on tiles the player has explored, never vending machines", () => {
+describe("itemInterest", () => {
+  // The whole basis of the autopilot's manners: "free" means taking it decides
+  // nothing, "decision" means it costs a slot, "none" means stay quiet.
+  const at = (over: object) => ({ id: 1, x: 3, y: 2, ...over }) as never;
+
+  it("treats counters as free and furniture as invisible", () => {
+    const state = makeState();
+    expect(itemInterest(state, at({ kind: "ammo", caliber: "pistol", amount: 5 }))).toBe("free");
+    expect(itemInterest(state, at({ kind: "vending" }))).toBe("none");
+  });
+
+  it("stops wanting plates at the carry cap", () => {
+    expect(itemInterest(makeState({ spareplates: 0 }), at({ kind: "plate" }))).toBe("free");
+    expect(itemInterest(makeState({ spareplates: 99 }), at({ kind: "plate" }))).toBe("none");
+  });
+
+  it("splits consumables by whether they cost a slot", () => {
+    const hotbar = new Array(6).fill(null);
+    hotbar[0] = { itemId: "medkit", count: 1 };
+    // Stacks are uncapped, so a second medkit is a number going up.
+    const carrying = makeState({ hotbar });
+    expect(itemInterest(carrying, at({ kind: "consumable", itemId: "medkit" }))).toBe("free");
+    // A type you do not carry spends one of six slots — a real choice.
+    expect(itemInterest(carrying, at({ kind: "consumable", itemId: "stim" }))).toBe("decision");
+    // With every slot committed, the sim would refuse it anyway.
+    const full = makeState({ hotbar: new Array(6).fill({ itemId: "medkit", count: 1 }) });
+    expect(itemInterest(full, at({ kind: "consumable", itemId: "stim" }))).toBe("none");
+  });
+
+  it("calls every weapon a decision, even with slots full", () => {
+    // Full slots do not make a gun un-takeable — pickup would swap out the one
+    // in your hands. That is exactly why the walk must never take it for you.
+    const state = makeState();
+    expect(itemInterest(state, at({ kind: "weapon", weaponId: "m870", ammoInMag: 4 }))).toBe(
+      "decision",
+    );
+    state.player.slots = [
+      { weaponId: "glock", ammoInMag: 7 },
+      { weaponId: "m870", ammoInMag: 4 },
+      { weaponId: "akm", ammoInMag: 30 },
+    ];
+    expect(itemInterest(state, at({ kind: "weapon", weaponId: "awp", ammoInMag: 5 }))).toBe(
+      "decision",
+    );
+  });
+
+  it("wants a carrier only when it is a strict upgrade", () => {
+    const bare = makeState({ carrierId: null });
+    expect(itemInterest(bare, at({ kind: "carrier", carrierId: "carrier_ii" }))).toBe("free");
+    const worn = makeState({ carrierId: "carrier_iii" });
+    // Sideways and downgrade swaps are refused by the sim, so the walk ignores
+    // them — which also stops it re-offering the carrier it just made you drop.
+    expect(itemInterest(worn, at({ kind: "carrier", carrierId: "carrier_iii" }))).toBe("none");
+    expect(itemInterest(worn, at({ kind: "carrier", carrierId: "carrier_ii" }))).toBe("none");
+    expect(itemInterest(worn, at({ kind: "carrier", carrierId: "carrier_iv" }))).toBe("free");
+  });
+});
+
+describe("underfootDecisions", () => {
+  it("ignores a declined gun under your feet but never free loot", () => {
+    // A full-slot swap leaves your old gun on this tile; E must not open by
+    // offering it back. Ammo from a kill can land here too — that is yours.
     const state = makeState({
+      player: { x: 2, y: 2 },
       items: [
-        { id: 1, x: 3, y: 2, kind: "ammo", caliber: "pistol", amount: 5 },
-        { id: 2, x: 8, y: 8, kind: "ammo", caliber: "pistol", amount: 5 },
-        { id: 3, x: 3, y: 3, kind: "vending" },
+        { id: 1, x: 2, y: 2, kind: "weapon", weaponId: "m870", ammoInMag: 4 },
+        { id: 2, x: 2, y: 2, kind: "ammo", caliber: "pistol", amount: 12 },
+        { id: 3, x: 5, y: 5, kind: "weapon", weaponId: "akm", ammoInMag: 30 },
       ],
     });
-    state.explored.fill(false);
-    explore(state, 2, 2, 4, 4);
-    expect(knownItemIds(state)).toEqual([1]);
+    expect(underfootDecisions(state)).toEqual([1]);
+
+    // And with the gun ignored, the walk still collects the ammo it is on.
+    exploreAll(state);
+    expect(exploreStep(state, { ignored: new Set([1]) })).toEqual({ kind: "take", itemId: 2 });
+  });
+});
+
+describe("describeItem", () => {
+  it("names what the hint row is about", () => {
+    expect(describeItem({ id: 1, x: 0, y: 0, kind: "ammo", caliber: "shell", amount: 8 })).toBe(
+      "8 shell rounds",
+    );
+    expect(
+      describeItem({ id: 2, x: 0, y: 0, kind: "weapon", weaponId: "m870", ammoInMag: 4 }),
+    ).toContain("870");
   });
 });
 
@@ -295,21 +401,25 @@ describe("termination sweep (real floors)", () => {
       state.enemies = []; // isolate navigation from combat interrupts
       recomputeFov(state);
       const ceiling = state.map.tiles.length * 4;
-      const memory: ExploreMemory = { dismissed: [] };
+      const ignored = new Set<number>();
       let steps = 0;
       let coverage = state.explored.filter(Boolean).length;
 
       for (;;) {
-        const result = exploreStep(state, memory);
-        if (result.kind === "item") {
-          memory.dismissed.push(result.itemId);
+        const result = exploreStep(state, { ignored });
+        // The offer stands once, taken or not — same rule main.ts applies.
+        if (result.kind === "offer") {
+          ignored.add(result.itemId);
           continue;
         }
-        if (result.kind !== "step") {
+        if (result.kind !== "step" && result.kind !== "take") {
           expect(["done", "blocked"]).toContain(result.kind);
           break;
         }
-        applyAction(state, result.action);
+        const before = state.items.length;
+        applyAction(state, result.kind === "take" ? { type: "pickup" } : result.action);
+        // A refused pickup must never be retried, or the sweep would spin here.
+        if (result.kind === "take" && state.items.length === before) ignored.add(result.itemId);
         steps += 1;
         expect(steps, `seed ${seed} never terminated`).toBeLessThan(ceiling);
         const now = state.explored.filter(Boolean).length;

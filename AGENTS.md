@@ -52,7 +52,8 @@ src/
 ├── input/
 │   ├── keyboard.ts      # key → Action mapping; never touches state
 │   ├── explore.ts       # PURE auto-explore: BFS over EXPLORED tiles only → one move;
-│                        # heat guard + halt predicate (tested in test/sim/explore.test.ts)
+│                        # itemInterest (free/decision/none), heat guard, halt predicate
+│                        # (tested in test/sim/explore.test.ts)
 │   └── controls.ts      # CONTROL_GROUPS — the printed keymap the controls panel renders from;
 │                        # controls.test.ts walks it against actionForKey in BOTH directions
 tools/soundgen/          # Python sound generator (synth.py + per-category voices + generate.py)
@@ -135,7 +136,7 @@ Enemy behaviors are `while (enemy.ap > 0)` loops where every iteration either sp
   and the panel silently stops showing new lines (or replays old ones).
 - **Node can't run `src/` directly** (extensionless ESM imports) — run scratch scripts through vitest temp files instead.
 - **Two build modes, don't collapse them.** `npm run build` emits hashed assets for the Pages deploy (immutable caching, so nobody plays a stale build). `npm run build:zip` inlines the JS/CSS into one `index.html` because Chrome blocks external module scripts on `file://` — but the 88 WAVs are runtime-fetched and can't be inlined, so **the zip build plays silent under `file://`** (`playSound` degrades gracefully; serve over http to hear it). Sound paths are document-relative (`sounds/…`, never `/sounds/…`) because the Pages deploy lives under a project subpath.
-- Non-obvious keys: `>` ascends stairs; bumping into an enemy *is* the melee attack (there is no melee action); `s` is both move-down and same-seed-restart (disambiguated by game phase). UI-mode keys that never reach the sim: `?`/`F1` controls panel, `i` ARSENAL overlay, `m` mute, `x`-then-slot drop, Tab targeting, `e` auto-explore (dispatches ordinary `move` actions on a timer; any non-modifier key takes the controls back). The first keydown of a session also unlocks WebAudio (browser gesture gate).
+- Non-obvious keys: `>` ascends stairs; bumping into an enemy *is* the melee attack (there is no melee action); `s` is both move-down and same-seed-restart (disambiguated by game phase). UI-mode keys that never reach the sim: `?`/`F1` controls panel, `i` ARSENAL overlay, `m` mute, `x`-then-slot drop, Tab targeting, `e` auto-explore (dispatches ordinary `move`/`pickup` actions on a timer; any non-modifier key takes the controls back). The first keydown of a session also unlocks WebAudio (browser gesture gate).
 
 ## Workflow
 

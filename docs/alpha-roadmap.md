@@ -248,14 +248,23 @@ Three arcs; the renderer-only ones land first, being independent of tuning:
       beat — telling this round's spawns apart needs a `spawn` event.
 - [x] **Auto-explore (`E`)** — answers the playtest's loudest tedium complaint
       (`play-test-08-04-26.md:52,141`). A UI-side mode that dispatches ordinary `move`
-      actions on a 100 ms timer; **zero sim changes**. Routing is a BFS over *explored*
-      tiles only, which makes the anti-oracle rule structural — it cannot path around
-      dangers the player has not seen. Stops for: anything visible, threat-shaped events
-      (`HALT_ON` is total over `SimEvent["kind"]`, so a new event must be classified),
-      arriving on loot found mid-walk, a fully explored floor, and any key. Never loots,
-      never fights, never ascends. Refuses to start while anything is on screen or within
-      3 turns of a threat — a guard that clears the instant everything implicated is
-      dead, so winning a fight hands the controls straight back.
+      and `pickup` actions on a 100 ms timer; **zero sim changes**. Routing is a BFS over
+      *explored* tiles only, which makes the anti-oracle rule structural — it cannot path
+      around dangers the player has not seen, nor walk to loot nobody has spotted.
+      Stops for: anything visible, threat-shaped events (`HALT_ON` is total over
+      `SimEvent["kind"]`, so a new event must be classified), a fully explored floor, and
+      any key. Never fights, never ascends.
+      **Loot is split by whether taking it is a decision** (`itemInterest`): ammo, a
+      consumable you already stack, a plate under cap and a strict carrier upgrade are
+      *free* — a counter goes up, nothing is displaced — so they are collected without
+      stopping. A weapon, or a consumable of a type you do not carry, spends a slot or
+      trades the gun in your hands, so it is walked to and *offered once*, never taken.
+      Anything the sim would refuse is invisible, which is what makes the walk go quiet
+      as your slots fill: measured across 5 seeds, 3–4 stops per floor with an empty
+      inventory and **1 with a full one**, while 4–7 items are collected either way.
+      Refuses to start while anything is on screen or within 3 turns of a threat — a
+      guard that clears the instant everything implicated is dead, so winning a fight
+      hands the controls straight back.
 - [ ] **Balance patch set** — work order is `play-test-08-04-26.md`. Headliners:
       `xm7_exo` burst cap (`apFire: 2`) + mag cut so the punish window exists;
       same audit for `m4_merc`/`m249_gunner`; shotgun accuracy → 100% throughout

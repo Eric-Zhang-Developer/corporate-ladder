@@ -2,15 +2,15 @@ import { floorDef, LAST_FLOOR } from "./data/floors";
 import { itemDef } from "./data/items";
 import { CLOSE_KEYS, OPEN_KEYS } from "./input/controls";
 import {
+  describeItem,
   exploreStep,
   heatBlocked,
   initialHeat,
-  knownItemIds,
   shouldHalt,
   travelStep,
+  underfootDecisions,
   updateHeat,
   visibleEnemies,
-  type ExploreMemory,
 } from "./input/explore";
 import { actionForKey } from "./input/keyboard";
 import { buildAnimPlan } from "./render/anim";
@@ -70,9 +70,15 @@ let devRefresh: (() => void) | null = null;
  */
 let exploring: {
   goal: "explore" | "stairs";
-  memory: ExploreMemory;
   timer: ReturnType<typeof setTimeout> | null;
 } | null = null;
+/**
+ * Loot auto-explore will not walk to again: what you were standing on when you
+ * pressed E, plus every decision it has already put to you. Anything taken
+ * leaves the map, so this only ever holds refusals — a couple of guns a floor.
+ * Per-floor, because item ids are only unique within one.
+ */
+let ignoredItems = new Set<number>();
 /** "Something was just hunting you" — see input/explore.ts. UI-side history. */
 let heat = initialHeat();
 const EXPLORE_STEP_MS = 100;
@@ -151,6 +157,9 @@ function dispatch(action: Action): SimEvent[] {
   // Heat folds in on every action, manual or automatic: whether E is safe to
   // press is a question about the whole fight, not just the steps E took.
   heat = updateHeat(heat, state, events);
+  // A new floor is a new set of item ids, so old refusals would alias onto
+  // fresh loot.
+  if (events.some((e) => e.kind === "floorStart")) ignoredItems.clear();
   playEvents(events, state);
   // Stagger only free play: promotion/shop/death pop their screens at once,
   // and a replay running underneath an overlay would be noise nobody sees.
@@ -192,14 +201,20 @@ function exploreTick(): void {
   }
 
   const run = exploring;
-  const result = run.goal === "stairs" ? travelStep(state) : exploreStep(state, run.memory);
-  if (result.kind === "item") {
-    run.memory.dismissed.push(result.itemId);
-    stopExplore("Something here: G takes it, E walks on.");
+  const memory = { ignored: ignoredItems };
+  const result = run.goal === "stairs" ? travelStep(state, memory) : exploreStep(state, memory);
+
+  // Standing on something that costs a slot: put it to the player once and
+  // stop. Marking it here means the offer stands whether they take it or not,
+  // so E never re-walks to a gun they already looked at and left.
+  if (result.kind === "offer") {
+    ignoredItems.add(result.itemId);
+    const item = state.items.find((i) => i.id === result.itemId);
+    stopExplore(`${item ? describeItem(item) : "Something"} here: G takes it, E walks on.`);
     render();
     return;
   }
-  if (result.kind !== "step") {
+  if (result.kind !== "step" && result.kind !== "take") {
     stopExplore(
       result.kind === "done"
         ? run.goal === "stairs"
@@ -213,7 +228,16 @@ function exploreTick(): void {
     return;
   }
 
-  const events = dispatch(result.action);
+  // A "take" is a free item — a counter going up, nothing displaced — so
+  // picking it up decides nothing on the player's behalf and the walk goes on.
+  const before = state.items.length;
+  const events = dispatch(result.kind === "take" ? { type: "pickup" } : result.action);
+  if (result.kind === "take" && state.items.length === before) {
+    // The sim refused for a reason the classifier did not predict. Never ask
+    // again: a retry would freeze the walk on this tile forever.
+    ignoredItems.add(result.itemId);
+  }
+
   if (state.phase !== "playing") stopExplore("");
   else if (shouldHalt(events) || visibleEnemies(state).length > 0) {
     stopExplore("Contact: auto-explore stopped.");
@@ -233,12 +257,11 @@ function startExplore(): void {
     hint = "Too hot: something was just hunting you.";
     return;
   }
-  // Loot already on screen is loot you have decided about; only what turns up
-  // along the way is worth stopping for.
-  const memory: ExploreMemory = { dismissed: knownItemIds(state) };
+  // A choice already under your feet has had its answer — see underfootDecisions.
+  for (const id of underfootDecisions(state)) ignoredItems.add(id);
   // A fully-explored floor turns E into the travel verb instead.
-  const goal = exploreStep(state, memory).kind === "done" ? "stairs" : "explore";
-  exploring = { goal, memory, timer: null };
+  const goal = exploreStep(state, { ignored: ignoredItems }).kind === "done" ? "stairs" : "explore";
+  exploring = { goal, timer: null };
   hint = goal === "stairs" ? "Heading for the stairs: any key stops." : "Auto-exploring: any key stops.";
   exploreTick(); // the first step is immediate — E must feel like a keypress
 }
@@ -388,9 +411,9 @@ window.addEventListener("keydown", (e) => {
     } else {
       return;
     }
-    // Restarts bypass applyAction, so neither the badge-scan nor the heat
-    // reset can ride along on an event — both are done by hand here.
+    // Restarts bypass applyAction, so nothing here can ride along on an event.
     heat = initialHeat();
+    ignoredItems.clear();
     playSound("game_start");
     e.preventDefault();
     render();

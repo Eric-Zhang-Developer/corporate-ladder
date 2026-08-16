@@ -15,9 +15,21 @@
  * to loot nobody has seen, is a map hack wearing a convenience feature's hat.
  */
 
+import { SPARE_PLATE_CAP, carrierCapacity, carrierDef } from "../data/carriers";
+import { itemDef } from "../data/items";
+import { perkDef } from "../data/perks";
+import { weaponDef } from "../data/weapons";
 import type { Action } from "../sim/actions";
 import type { SimEvent } from "../sim/events";
-import { idx, inBounds, isFloor, type Entity, type GameState } from "../sim/state";
+import {
+  hasPerk,
+  idx,
+  inBounds,
+  isFloor,
+  type Entity,
+  type GameState,
+  type GroundItem,
+} from "../sim/state";
 
 /** 4-neighbour order, fixed. Deterministic tie-breaking falls out of it. */
 const DIRS = [
@@ -32,24 +44,112 @@ type Delta = -1 | 0 | 1;
 
 export interface ExploreMemory {
   /**
-   * Item ids never to target again: seeded with everything already visible
-   * when the run starts (you have had your chance to decide about those), then
-   * grown each time the walk delivers you to one.
+   * Items the walk will not target again: whatever the player was standing on
+   * when they pressed E, plus every decision it has already put to them. Small
+   * by construction — anything taken leaves the map, so only refusals persist.
    */
-  dismissed: number[];
+  ignored: ReadonlySet<number>;
 }
 
 export type ExploreResult =
   /** Take this step. `toItem` is set while the walk is heading for loot. */
   | { kind: "step"; action: Action; toItem?: number }
-  /** Standing on a targeted item. Stop; the player decides whether to take it. */
-  | { kind: "item"; itemId: number }
+  /** Standing on something free. Pick it up and keep walking — no choice was made. */
+  | { kind: "take"; itemId: number }
+  /** Standing on something that costs a slot. Stop and let the player decide. */
+  | { kind: "offer"; itemId: number }
   /** Nothing left worth walking to. */
   | { kind: "done" }
   /** Unexplored map remains, but no route reaches it. */
   | { kind: "blocked" }
   /** Something is on screen. Auto-explore never walks with company. */
   | { kind: "halt" };
+
+/**
+ * What picking this up would cost the player — the whole basis of the
+ * autopilot's manners.
+ *
+ * "free" means there is no decision to make: a counter goes up and nothing is
+ * displaced, so taking it automatically cannot be regretted. "decision" means
+ * it spends one of a fixed number of slots, or trades away the gun in your
+ * hands — those get walked to and offered, never taken. "none" means the game
+ * would refuse it (or it is furniture), so the walk stays quiet about it.
+ *
+ * This is the *autopilot's* question and is deliberately not `wantsItem` in
+ * test/sim/bot.ts, which asks "would I take this" — the bot must never target
+ * a weapon it cannot slot, because picking one up with three full slots drops
+ * the gun it is holding and it would loop forever. E is allowed to walk you to
+ * that same weapon precisely because it will not touch it.
+ */
+export type ItemInterest = "free" | "decision" | "none";
+
+export function itemInterest(state: GameState, item: GroundItem): ItemInterest {
+  switch (item.kind) {
+    // A machine, not loot: never picked up, never removed from the map.
+    case "vending":
+      return "none";
+    // Reserves are a per-caliber counter, and ammo is the run's soft clock.
+    case "ammo":
+      return "free";
+    case "plate": {
+      const cap =
+        SPARE_PLATE_CAP + (hasPerk(state, "deep_pockets") ? (perkDef("deep_pockets").value ?? 0) : 0);
+      return state.spareplates < cap ? "free" : "none";
+    }
+    case "carrier": {
+      // The sim refuses sideways swaps outright, so anything it accepts is a
+      // strict upgrade — no judgement call left to make.
+      const worn = state.carrierId;
+      if (worn && carrierCapacity(worn) >= carrierCapacity(item.carrierId)) return "none";
+      return "free";
+    }
+    case "consumable": {
+      // Stacks are uncapped, so a second medkit is a number going up. A type
+      // you do not carry costs one of six slots, which is a real choice.
+      if (state.hotbar.some((s) => s?.itemId === item.itemId)) return "free";
+      return state.hotbar.some((s) => s === null) ? "decision" : "none";
+    }
+    // Always a decision: an empty slot spent, or the gun in your hands traded.
+    case "weapon":
+      return "decision";
+  }
+}
+
+/**
+ * Choices already sitting under the player when a walk begins — the gun a
+ * full-slot swap just dropped there, or one they stopped for and declined.
+ * Ignoring these is what stops E opening by offering back the thing you just
+ * put down.
+ *
+ * Free loot is deliberately absent: a kill can drop ammo onto the very tile
+ * you are standing on (spawnItemNear only avoids tiles that already hold an
+ * item, not yours), and blanket-ignoring your own tile made that ammo
+ * unreachable forever.
+ */
+export function underfootDecisions(state: GameState): number[] {
+  const { x, y } = state.player;
+  return state.items
+    .filter((i) => i.x === x && i.y === y && itemInterest(state, i) === "decision")
+    .map((i) => i.id);
+}
+
+/** What to call this on the hint row. */
+export function describeItem(item: GroundItem): string {
+  switch (item.kind) {
+    case "ammo":
+      return `${item.amount} ${item.caliber} rounds`;
+    case "plate":
+      return "An armor plate";
+    case "carrier":
+      return carrierDef(item.carrierId).name;
+    case "consumable":
+      return itemDef(item.itemId).name;
+    case "weapon":
+      return weaponDef(item.weaponId).name;
+    case "vending":
+      return "A vending machine";
+  }
+}
 
 /**
  * Enemies the player can actually see — deliberately the predicate the
@@ -181,29 +281,22 @@ export function heatBlocked(heat: Heat, state: GameState): boolean {
   return true;
 }
 
-/**
- * Items the player already knows about. Seeding a run's ignore list with these
- * is what makes "only stop for what you find along the way" fall out: loot you
- * had already seen and walked past is loot you have decided about.
- */
-export function knownItemIds(state: GameState): number[] {
-  return state.items
-    .filter((i) => i.kind !== "vending" && state.explored[idx(state.map, i.x, i.y)] === true)
-    .map((i) => i.id);
-}
-
-/** Items the player knows about and might still want to be walked to. */
-function targetableItems(state: GameState, dismissed: Set<number>): Map<number, number> {
-  const byTile = new Map<number, number>();
+/** Loot worth walking to, by tile, carrying what arriving there will mean. */
+function targetableItems(
+  state: GameState,
+  ignored: ReadonlySet<number>,
+): Map<number, { id: number; interest: ItemInterest }> {
+  const byTile = new Map<number, { id: number; interest: ItemInterest }>();
   for (const item of state.items) {
-    // Vending machines are furniture, not loot: never picked up, never removed,
-    // so targeting one would park the walk on it every single run.
-    if (item.kind === "vending") continue;
-    if (dismissed.has(item.id)) continue;
+    if (ignored.has(item.id)) continue;
+    // "none" covers furniture and anything the game would refuse to hand over,
+    // which is what keeps the walk quiet once your slots are full.
+    const interest = itemInterest(state, item);
+    if (interest === "none") continue;
     const i = idx(state.map, item.x, item.y);
     // Knowledge gate: state.items holds loot the player has never laid eyes on.
     if (state.explored[i] !== true) continue;
-    if (!byTile.has(i)) byTile.set(i, item.id);
+    if (!byTile.has(i)) byTile.set(i, { id: item.id, interest });
   }
   return byTile;
 }
@@ -297,22 +390,38 @@ function hasUnexplored(state: GameState): boolean {
 }
 
 /**
+ * Loot first, whatever the walk is otherwise doing. Shared by both modes on
+ * purpose: travelling to the stairs used to be item-blind, which walked the
+ * player straight over the ammo a fight had just dropped — the one moment on a
+ * cleared floor when there is loot worth having and no map left to reveal.
+ *
+ * Returns null when there is nothing to collect, leaving the caller's own goal
+ * to take over.
+ */
+function itemPass(state: GameState, memory: ExploreMemory): ExploreResult | null {
+  const items = targetableItems(state, memory.ignored);
+  if (items.size === 0) return null;
+  // arriveOnStart: the search checks the tile underfoot against EVERY
+  // candidate, not just the one being walked to, so loot crossed on the way to
+  // other loot is noticed rather than trodden over.
+  const found = search(state, (i) => items.has(i));
+  if (!found) return null;
+  const { id, interest } = items.get(found.goal)!;
+  if (found.first.dx === 0 && found.first.dy === 0) {
+    return interest === "free" ? { kind: "take", itemId: id } : { kind: "offer", itemId: id };
+  }
+  return { kind: "step", action: moveTo(found.first), toItem: id };
+}
+
+/**
  * The next auto-explore decision: walk to known loot first, then to the
  * nearest edge of the known map.
  */
 export function exploreStep(state: GameState, memory: ExploreMemory): ExploreResult {
   if (visibleEnemies(state).length > 0) return { kind: "halt" };
 
-  const dismissed = new Set(memory.dismissed);
-  const items = targetableItems(state, dismissed);
-  if (items.size > 0) {
-    const found = search(state, (i) => items.has(i));
-    if (found) {
-      const itemId = items.get(found.goal)!;
-      if (found.first.dx === 0 && found.first.dy === 0) return { kind: "item", itemId };
-      return { kind: "step", action: moveTo(found.first), toItem: itemId };
-    }
-  }
+  const loot = itemPass(state, memory);
+  if (loot) return loot;
 
   const found = search(state, (_i, x, y) => isFrontier(state, x, y), false);
   if (found) return { kind: "step", action: moveTo(found.first) };
@@ -321,11 +430,14 @@ export function exploreStep(state: GameState, memory: ExploreMemory): ExploreRes
 
 /**
  * Travel to the stairwell — the verb the floor asks for once there is nothing
- * left to find. It stops ON the stairs; taking them stays a deliberate
- * keystroke, because leaving a floor is irreversible in a permadeath run.
+ * left to find. It sweeps up anything still worth collecting on the way, then
+ * stops ON the stairs; taking them stays a deliberate keystroke, because
+ * leaving a floor is irreversible in a permadeath run.
  */
-export function travelStep(state: GameState): ExploreResult {
+export function travelStep(state: GameState, memory: ExploreMemory): ExploreResult {
   if (visibleEnemies(state).length > 0) return { kind: "halt" };
+  const loot = itemPass(state, memory);
+  if (loot) return loot;
   const { map, stairs } = state;
   const goal = idx(map, stairs.x, stairs.y);
   // The stairs are only a destination once the player has found them.
