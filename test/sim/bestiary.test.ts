@@ -69,6 +69,51 @@ describe("damage anchors", () => {
     }
   });
 
+  it("the Exo trades the Fixer's third action for armor, not hidden XM7 rules", () => {
+    const exo = enemyDef("exo");
+    const fixer = enemyDef("fixer");
+    const exoXm7 = weaponDef(exo.weaponId!);
+    const playerXm7 = weaponDef("xm7");
+
+    expect(exo.ap).toBe(2);
+    expect(fixer.ap).toBe(3);
+    expect(exo.armor).toBeGreaterThan(0);
+    expect(exoXm7).toMatchObject({
+      apFire: playerXm7.apFire,
+      apReload: playerXm7.apReload,
+      damage: playerXm7.damage,
+      baseAccuracy: playerXm7.baseAccuracy,
+      bands: playerXm7.bands,
+      magSize: playerXm7.magSize,
+      caliber: playerXm7.caliber,
+      armorPierce: playerXm7.armorPierce,
+    });
+  });
+
+  it("gives the player a decision before the Exo's third XM7 hit", () => {
+    const exo = makeEnemy({
+      defId: "exo",
+      name: "Exo Trooper",
+      x: 7,
+      y: 2,
+      hp: 20,
+      maxHp: 20,
+      ap: 2,
+      maxAp: 2,
+      weaponId: "xm7_exo",
+    });
+    const state = makeState({
+      map: openMap(16, 10),
+      enemies: [exo],
+      player: { hp: 100, maxHp: 100 },
+    });
+
+    const events = applyAction(state, { type: "wait" });
+
+    expect(events.filter((event) => event.kind === "shot" && event.by === exo.id)).toHaveLength(2);
+    expect(exo.ammoInMag).toBe(18);
+  });
+
   it("every enemy is worth XP, and bosses are worth much more", () => {
     for (const id of Object.keys(ENEMIES)) expect(enemyDef(id).xp, id).toBeGreaterThan(0);
     expect(enemyDef("janitor").xp).toBeGreaterThanOrEqual(25);

@@ -285,16 +285,17 @@ menace. The weirdness budget, spent exactly where the lore said it lives.
 ## 6. Tier 4 — floors 7–8 (on-tier hit ~8.5)
 
 ### Exo Trooper *(new)*
-`HP 20 · armor 2 · AP 3 · xm7_exo (~8.5/hit) · sight 9 · pursueAndShoot @5 · XP 14 · human`
+`HP 20 · armor 2 · AP 2 · xm7_exo (10 dmg, ~7.7 expected/shot) · sight 9 · pursueAndShoot @5 · XP 14 · human`
 The human/machine blur and the tier's thesis body: a Meridian contractor in a
-powered frame carrying the company flagship. 3 AP on a *ranged* enemy is the real
-escalation — he shoots twice and still repositions, the first gun-line body that
-plays at the player's tempo. Armor 2 on a human (the frame, not plates — no shield
-bar) makes the FAL/XM7 target-choice math personal. He's what the tower was
-building toward: procurement's answer to you. His XM7 dies with him (biometric
-locks — taking one from the *loot room* on 7 is the rhyme). Drops heavy ammo and
-an executive-grade wallet. Spot line is calm, on-comms, procedural — the scariest
-tone in the building until the CEO's.
+powered frame carrying the company flagship. The frame spends its budget on armor,
+not a third action: he fires the same 1-AP, 10-damage, 20-round XM7 the player can
+find, at most twice per turn. The Fixer keeps the three-shot glass-cannon extreme;
+the Exo is the durable gun-line body. Armor 2 on a human (the frame, not plates —
+no shield bar) makes the FAL/XM7 target-choice math personal. He's what the tower
+was building toward: procurement's answer to you. His XM7 dies with him (biometric
+locks — taking one from the *loot room* on 7 is the rhyme). Drops heavy ammo and an
+executive-grade wallet. Spot line is calm, on-comms, procedural — the scariest tone
+in the building until the CEO's.
 
 ### Fixer *(new)*
 `HP 12 · AP 3 · suppressed pistol (~8/hit, high accuracy) · sight 10 · pursueAndShoot, repositions every turn · XP 13 · human`

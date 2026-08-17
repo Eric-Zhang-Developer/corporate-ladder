@@ -266,8 +266,9 @@ Three arcs; the renderer-only ones land first, being independent of tuning:
       guard that clears the instant everything implicated is dead, so winning a fight
       hands the controls straight back.
 - [ ] **Balance patch set** — work order is `play-test-08-04-26.md`. Headliners:
-      `xm7_exo` burst cap (`apFire: 2`) + mag cut so the punish window exists;
-      same audit for `m4_merc`/`m249_gunner`; shotgun accuracy → 100% throughout
+      Exo burst cap shipped as AP 3 → 2 plus enemy XM7 damage 11 → 10, preserving
+      the shared 1-AP fire rule and realistic 20-round magazine; same audit for
+      `m4_merc`/`m249_gunner`; shotgun accuracy → 100% throughout
       listed range is the first deliberately hot playtest, with harsher damage
       falloff deferred until that result; consumable stacks are uncapped so supply can
       be tuned directly, with the drop-rate cut following as its own balance change;

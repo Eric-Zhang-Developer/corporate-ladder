@@ -806,7 +806,9 @@ export const WEAPONS = {
     name: "XM7",
     apFire: 1,
     apReload: 2,
-    damage: 11,
+    // Same gun, same ballistics as the player's XM7. The Exo's threat is its
+    // armored firing position, not a secretly stronger copy of the weapon.
+    damage: 10,
     baseAccuracy: 0.85,
     bands: [
       { maxDist: 2, accMult: 0.8, dmgMult: 1.0 },

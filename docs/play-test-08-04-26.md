@@ -10,8 +10,15 @@ built out of burst math. Most findings below are symptoms of that one curve.
 The headline breach: an Exo Trooper can fire **3× per consolidated turn** (3 AP,
 `xm7_exo` apFire 1) for 11 a hit — 33 max, ~25 expected in-band, against ~26–30
 maxHp. That kills from full health and breaks the §8 guardrail (player dies in
-3–5 *unanswered* hits). Compounding: `armorPierce: 2` deletes plates, and
-`magSize: 20` means ~6 turns of fire before a reload window ever opens.
+3–5 *unanswered* hits). The 20-round magazine means a reload window does not
+normally occur during the fight. (Audit correction: `armorPierce` reduces entity
+armor; it does not bypass the player's shield pool.)
+
+**Resolved 2026-08-17:** the Exo now has 2 AP and its enemy XM7 matches the
+player's 10 damage, while both versions retain 1-AP fire and a 20-round magazine.
+At the intended band the Exo falls from ~25 to ~15.3 expected damage per turn,
+with a 20-damage ceiling. The Fixer retains the three-action glass-cannon extreme;
+the armored Exo pays for durability with the missing third action.
 
 What's working and should get more investment: the information layer (gun card,
 band strip, ARSENAL panel — "illuminated so much"), the sounds ("so much more
@@ -20,12 +27,13 @@ position. The praise all landed on information + juice work.
 
 ## Do immediately
 
-- [ ] **Burst cap on heavy shooters** — `xm7_exo` to `apFire: 2` (one aimed
-      shot + reposition per turn; per-turn expected drops ~25 → ~8.4, per-hit
-      11 untouched). Audit `m4_merc` (18-dmg turns) and `m249_gunner` the same
-      way. Data-only: enemy lethality is tuned through weapon entries.
-- [ ] **Cut `xm7_exo` mag 20 → ~5** so the punish window exists — and the new
-      target card advertises it (`mag 1/5`, then green `mag 0/5`).
+- [x] **Cap the Exo's consolidated burst** — Exo AP 3 → 2 and `xm7_exo`
+      damage 11 → 10. This preserves the roster-wide 1-AP firing rule and makes
+      the enemy's XM7 match the player's. Audit `m4_merc` and `m249_gunner`
+      separately after the enemy-turn behavior fixes land.
+- [x] **Keep the XM7's 20-round magazine** — the proposed artificial mag cut
+      was rejected. Reload is not every shooter's weakness; the Exo pays for
+      armor through its two-action budget instead.
 - [ ] **Shotgun point-blank accuracy → ~100%** in band 0, paid for with a
       harsher falloff. A shotgun at arm's length that misses 30% of the time
       reads as a dice insult. (Knockback is a *new mechanic* — separate scope

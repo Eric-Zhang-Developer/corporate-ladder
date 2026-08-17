@@ -492,14 +492,14 @@ export const ENEMIES = {
     color: "#ddaa44",
     hp: 20,
     armor: 2,
-    ap: 3,
+    ap: 2,
     xp: 14,
     weaponId: "xm7_exo",
     sightRange: 9,
     preferredRange: 5,
     behavior: "pursueAndShoot",
-    // 3 AP on a RANGED enemy is the real escalation: he shoots twice and still
-    // repositions. Procurement's answer to you.
+    // Armor is his defensive budget, so he does not also get the Fixer's third
+    // shot. The ordinary 1-AP weapon rule stays legible in enemy hands.
     spotLine: `The Exo Trooper speaks on comms, calmly. "I have him."`,
     killVerb: "Put down by",
     drops: [
