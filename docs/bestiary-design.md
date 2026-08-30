@@ -106,7 +106,7 @@ single most important tutorial in the game and no redesign may touch it. Drops s
 ammo and pocket cash: he's salaried, poorly.
 
 ### Baton Guard *(new)*
-`HP 5 · AP 3 · melee 3 · sight 8 · meleeRush · XP 5 · human`
+`HP 7 · AP 3 · melee 3 · sight 8 · meleeRush · XP 5 · human`
 The plain melee statistic — the body that backfills the Janitor's departure from the
 regular pool. Never got firearm certification, carries a collapsible baton and a
 grievance, moves at 3 AP so he genuinely pressures a repositioning player. His job is

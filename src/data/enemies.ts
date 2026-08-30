@@ -223,7 +223,7 @@ export const ENEMIES = {
     name: "Baton Guard",
     glyph: "b",
     color: "#99aacc",
-    hp: 5,
+    hp: 7,
     ap: 3,
     xp: 5,
     sightRange: 8,
