@@ -1,10 +1,15 @@
 import { Path } from "rot-js";
-import { SPARE_PLATE_CAP, carrierCapacity, carrierDef } from "../../src/data/carriers";
+import { carrierCapacity, carrierDef } from "../../src/data/carriers";
 import { HOTBAR_SLOTS, itemDef } from "../../src/data/items";
 import { maxRange, weaponDef } from "../../src/data/weapons";
 import type { Action } from "../../src/sim/actions";
 import type { SimEvent } from "../../src/sim/events";
 import { newGame } from "../../src/sim/floor";
+import {
+  carrierIsUpgrade,
+  hotbarSlotFor,
+  sparePlateCapacity,
+} from "../../src/sim/inventory";
 import { hasLos } from "../../src/sim/los";
 import { applyAction } from "../../src/sim/step";
 import { distance, idx, isFloor, type GameState, type GroundItem } from "../../src/sim/state";
@@ -42,14 +47,14 @@ export interface BotOptions {
 /** Item kinds the bot will detour for, given its current inventory. */
 function wantsItem(state: GameState, item: GroundItem): boolean {
   if (item.kind === "ammo") return true;
-  if (item.kind === "plate") return state.spareplates < SPARE_PLATE_CAP;
+  if (item.kind === "plate") return state.spareplates < sparePlateCapacity(state);
   if (item.kind === "carrier") {
     // Only an upgrade — matching the sim's own rule keeps the bot from
     // re-collecting the carrier it just swapped off.
-    return !state.carrierId || carrierCapacity(state.carrierId) < carrierCapacity(item.carrierId);
+    return carrierIsUpgrade(state, item.carrierId);
   }
   if (item.kind === "consumable") {
-    return state.hotbar.some((s) => s === null || s.itemId === item.itemId);
+    return hotbarSlotFor(state, item.itemId) !== -1;
   }
   if (item.kind === "weapon") {
     // Only take a gun into a genuinely empty slot. Picking one up with all

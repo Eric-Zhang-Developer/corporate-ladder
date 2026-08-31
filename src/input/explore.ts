@@ -15,14 +15,17 @@
  * to loot nobody has seen, is a map hack wearing a convenience feature's hat.
  */
 
-import { SPARE_PLATE_CAP, carrierCapacity, carrierDef } from "../data/carriers";
+import { carrierDef } from "../data/carriers";
 import { itemDef } from "../data/items";
-import { perkDef } from "../data/perks";
 import { weaponDef } from "../data/weapons";
 import type { Action } from "../sim/actions";
 import type { SimEvent } from "../sim/events";
 import {
-  hasPerk,
+  carrierIsUpgrade,
+  hotbarSlotFor,
+  sparePlateCapacity,
+} from "../sim/inventory";
+import {
   idx,
   inBounds,
   isFloor,
@@ -91,23 +94,18 @@ export function itemInterest(state: GameState, item: GroundItem): ItemInterest {
     // Reserves are a per-caliber counter, and ammo is the run's soft clock.
     case "ammo":
       return "free";
-    case "plate": {
-      const cap =
-        SPARE_PLATE_CAP + (hasPerk(state, "deep_pockets") ? (perkDef("deep_pockets").value ?? 0) : 0);
-      return state.spareplates < cap ? "free" : "none";
-    }
-    case "carrier": {
+    case "plate":
+      return state.spareplates < sparePlateCapacity(state) ? "free" : "none";
+    case "carrier":
       // The sim refuses sideways swaps outright, so anything it accepts is a
       // strict upgrade — no judgement call left to make.
-      const worn = state.carrierId;
-      if (worn && carrierCapacity(worn) >= carrierCapacity(item.carrierId)) return "none";
-      return "free";
-    }
+      return carrierIsUpgrade(state, item.carrierId) ? "free" : "none";
     case "consumable": {
       // Stacks are uncapped, so a second medkit is a number going up. A type
       // you do not carry costs one of six slots, which is a real choice.
-      if (state.hotbar.some((s) => s?.itemId === item.itemId)) return "free";
-      return state.hotbar.some((s) => s === null) ? "decision" : "none";
+      const slot = hotbarSlotFor(state, item.itemId);
+      if (slot === -1) return "none";
+      return state.hotbar[slot] === null ? "decision" : "free";
     }
     // Always a decision: an empty slot spent, or the gun in your hands traded.
     case "weapon":

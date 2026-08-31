@@ -1,4 +1,4 @@
-import { carrierCapacity, carrierDef, SPARE_PLATE_CAP } from "../data/carriers";
+import { carrierCapacity, carrierDef } from "../data/carriers";
 import { CALIBERS, floorDef } from "../data/floors";
 import { AP_COSTS } from "../data/costs";
 import { itemDef, type ItemDef } from "../data/items";
@@ -25,6 +25,7 @@ import { applyDebug } from "./debug";
 import { beginEvents, drainEvents, emit, type SimEvent } from "./events";
 import { applyFloor, carriedCalibers, hashSeed, LAST_FLOOR } from "./floor";
 import { recomputeFov } from "./fov";
+import { carrierIsUpgrade, hotbarSlotFor, sparePlateCapacity } from "./inventory";
 import { hasLos } from "./los";
 import { createSimRng, simRngFromState, type SimRNG } from "./rng";
 import {
@@ -342,8 +343,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         return;
       }
       if (item.kind === "plate") {
-        const cap =
-          SPARE_PLATE_CAP + (hasPerk(state, "deep_pockets") ? (perkDef("deep_pockets").value ?? 0) : 0);
+        const cap = sparePlateCapacity(state);
         if (state.spareplates >= cap) {
           pushLog(state, "You cannot carry another plate.");
           return;
@@ -359,7 +359,7 @@ function handlePlayerAction(state: GameState, rng: SimRNG, action: Action): void
         const worn = state.carrierId;
         // Only an upgrade is worth the AP — and refusing sideways swaps keeps
         // the dropped-carrier pickup loop from existing at all.
-        if (worn && carrierCapacity(worn) >= carrierCapacity(item.carrierId)) {
+        if (worn !== null && !carrierIsUpgrade(state, item.carrierId)) {
           pushLog(state, `Your ${carrierDef(worn).name} is already better.`);
           return;
         }
@@ -674,8 +674,7 @@ function handlePurchase(state: GameState, index: number, replaceSlot?: 0 | 1 | 2
   if (entry.kind === "ammo") {
     state.ammo[entry.caliber] += entry.amount;
   } else if (entry.kind === "plate") {
-    const cap =
-      SPARE_PLATE_CAP + (hasPerk(state, "deep_pockets") ? (perkDef("deep_pockets").value ?? 0) : 0);
+    const cap = sparePlateCapacity(state);
     if (state.spareplates >= cap) {
       pushLog(state, "You cannot carry another plate.");
       return;
@@ -691,7 +690,7 @@ function handlePurchase(state: GameState, index: number, replaceSlot?: 0 | 1 | 2
     if (stack) stack.count += 1;
     else state.hotbar[slot] = { itemId: entry.itemId, count: 1 };
   } else if (entry.kind === "carrier") {
-    if (state.carrierId && carrierCapacity(state.carrierId) >= carrierCapacity(entry.carrierId)) {
+    if (!carrierIsUpgrade(state, entry.carrierId)) {
       pushLog(state, "You are already better equipped.");
       return;
     }
@@ -725,13 +724,6 @@ function handlePurchase(state: GameState, index: number, replaceSlot?: 0 | 1 | 2
   shop.sold.push(index);
   emit({ kind: "purchase", ok: true, source: "shop" });
   pushLog(state, `Bought. (-${price} credits, ${state.cash} left)`);
-}
-
-/** An existing stack of this type, else the first empty slot, else -1. */
-function hotbarSlotFor(state: GameState, itemId: string): number {
-  const existing = state.hotbar.findIndex((s) => s?.itemId === itemId);
-  if (existing !== -1) return existing;
-  return state.hotbar.findIndex((s) => s === null);
 }
 
 /**
