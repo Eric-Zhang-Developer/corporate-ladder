@@ -29,6 +29,10 @@ export function runEnemyTurns(state: GameState, rng: SimRNG): void {
     if (state.phase !== "playing") return;
     if (!state.enemies.includes(enemy)) continue;
     const def = enemyDef(enemy.defId);
+    // A drained turn does not happen. Behaviors can't be trusted to police this
+    // themselves: spinup and cameraAlarm never read AP. Cameras are exempt
+    // because `ap: 0` is what bolts them to the wall, not a stun.
+    if (enemy.maxAp > 0 && enemy.ap <= 0) continue;
     BEHAVIORS[def.behavior](state, rng, enemy);
   }
 }
