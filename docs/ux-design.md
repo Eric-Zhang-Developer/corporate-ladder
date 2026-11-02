@@ -34,12 +34,12 @@ early if needed.
 
 ## 3. Start screen / landing page
 
-Currently the game boots straight into a run. A title screen: logo/wordmark, START
-(random seed), seed entry field (replacing raw `?seed=` URL editing as the shared-run
-entry point), controls link, version/build stamp. Post-alpha is right — the alpha
-audience arrives via a sent link and should land *in the game* — but this becomes
-important the moment the game has a public URL audience, and it's where a future
-daily-seed mode would live.
+Currently the game boots straight into a run. Scheduled for v0.3: a title screen inside
+the game rather than a separate page, with a wordmark over a dimmed live floor, NEW RUN
+(random seed), ORIENTATION (the tutorial), a seed entry field (replacing raw `?seed=` URL
+editing as the shared-run entry point), controls, sound, and a version/build stamp. A sent
+`?seed=` link still skips it and lands *in the game*, which keeps shared runs one click.
+It's also where a future daily-seed mode would live.
 
 ## 4. Mouse support
 
@@ -53,16 +53,25 @@ keyboard roguelike is a legitimate identity.
 
 ## 5. Tutorial
 
-Recommendation: never build a scripted tutorial floor. The cheap, genre-proven
-version is **contextual first-time hints** in the log: first bolt gun ("R cycles the
-bolt"), first plate pickup, first camera countdown, first promotion. One
-`seenHints: string[]` on UI-side state (not the sim), a data table of hint lines,
-fired once each. Floor 1 already *is* the tutorial by design — the LOBBY teaches
-spot/close/trade/punish at 2-damage prices. Hints just narrate what the floor is
-already teaching.
+Decided for v0.3, reversing this section's old "never build a scripted tutorial floor":
+**New Hire Orientation**, a hand-built floor 0 of eight rooms, with a skip option. The
+goal is that a stranger can learn the game without its author beside them, and the
+playtest's proof that the old approach falls short is that the game's own designer forgot
+the drop key (`play-test-08-04-26.md:42`).
+
+It **teaches verbs, never numbers** — AP as a budget, bands as positioning, `i` for the
+spreadsheet — so a balance patch can never invalidate it. Lessons live outside the sim, in
+a data table of prompts driven by the event stream and input, the way auto-explore works.
+Dying restarts the current room from a copy of `GameState`. The room list is in
+`alpha-roadmap.md`.
+
+**Contextual first-time hints** in the log remain a good later addition for what
+orientation can't reach: first bolt gun ("R cycles the bolt"), first promotion. One
+`seenHints: string[]` on UI-side state (not the sim), a data table of hint lines, fired
+once each.
 
 ## Priority order
 
-Controls overlay (→ M12 if accepted) · debug panel (→ during Phase C, dev-only) ·
-start screen · contextual hints · mouse support. Each lands independently; none blocks
+Controls overlay and debug panel shipped. Next: orientation and the title screen (both
+v0.3), then contextual hints, then mouse support. Each lands independently; none blocks
 another.
