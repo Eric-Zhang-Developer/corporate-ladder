@@ -1,4 +1,14 @@
+import type { GroundItemPayload } from "../sim/state";
 import type { Caliber } from "./weapons";
+
+/**
+ * A floor drawn by hand. Equal-length rows: `#` wall, `.` floor, `@` entrance,
+ * `>` stairs. Any other glyph is floor with its legend entry standing on it.
+ */
+export interface FloorLayout {
+  rows: string[];
+  legend?: Record<string, { enemy: string } | { item: GroundItemPayload }>;
+}
 
 /**
  * Per-floor spawn/loot contract (§4.6). Encounter generation reads only
@@ -33,6 +43,8 @@ export interface FloorDef {
    * need for comparability.
    */
   boss?: string;
+  /** Replaces generation outright: no dice, so every seed gets this exact floor. */
+  layout?: FloorLayout;
 }
 
 export const FLOORS: FloorDef[] = [
@@ -168,7 +180,32 @@ export const FLOORS: FloorDef[] = [
 /** The top of the tower. The severance package is on the desk. */
 export const LAST_FLOOR = 8;
 
+/** New Hire Orientation: below the lobby, and not a floor of the tower. */
+export const ORIENTATION_FLOOR = 0;
+
+/** Kept out of FLOORS, whose spawn tables and melee quotas it has no part in. */
+const ORIENTATION: FloorDef = {
+  depth: ORIENTATION_FLOOR,
+  name: "ORIENTATION",
+  groups: { min: 0, max: 0 },
+  weights: {},
+  lootWeapons: [],
+  lootAmmo: { min: 0, max: 0 },
+  scatterPiles: 0,
+  scatterAmount: { min: 0, max: 0 },
+  layout: {
+    rows: [
+      "###########",
+      "#.........#",
+      "#.@.....>.#",
+      "#.........#",
+      "###########",
+    ],
+  },
+};
+
 export function floorDef(depth: number): FloorDef {
+  if (depth === ORIENTATION_FLOOR) return ORIENTATION;
   const def = FLOORS.find((f) => f.depth === depth);
   if (!def) throw new Error(`No floor def for depth ${depth}`);
   return def;
