@@ -2,8 +2,8 @@
 
 **Status: alpha shipped; the register below is historical.** M1–M11 all landed
 (marked ✅ with their commits); M12's build half shipped and its balance half moved
-to v0.3 with `play-test-08-04-26.md` as the work order. Current work is the
-[v0.2](#v02--ui-close-out) and [v0.3](#v03--camera--balance) sections at the bottom.
+to `v0.3.x` patches with `play-test-08-04-26.md` as the work order. Current work is the
+[v0.3](#v03--sendable) section at the bottom.
 Two workstreams shipped that this plan never anticipated: the sound layer
 (`sound-design.md` — generator, 88 WAVs, event-driven playback) and the event
 stream itself (`applyAction` returns `SimEvent[]`), plus the information layer
@@ -225,9 +225,11 @@ Scope: immediate bugs + the remaining UI work + the dev panel. Nothing else ride
       `state` on restart. Covered by `test/sim/debug.test.ts` and the option-list
       drift guards in `test/render/debugpanel.test.ts`.
 
-## v0.3 — camera, feel & balance
+## v0.3 — sendable
 
-Three arcs; the renderer-only ones land first, being independent of tuning:
+**Goal: a stranger can open the link and learn to play on their own.** Scope was reset
+on 2026-11-02: the title screen and tutorial level moved in, and the balance work moved
+out to patches so it can be tuned against what real newcomers actually hit.
 
 - [x] **Follow camera + fixed logical viewport** — a pure, tested `ctx.translate`
       camera center-locks and edge-clamps a 34×21-tile view. CSS scales that same
@@ -265,6 +267,28 @@ Three arcs; the renderer-only ones land first, being independent of tuning:
       Refuses to start while anything is on screen or within 3 turns of a threat — a
       guard that clears the instant everything implicated is dead, so winning a fight
       hands the controls straight back.
+- [ ] **Stun that stuns** — `runEnemyTurns` gates on AP so a stunned `spinup` or
+      `cameraAlarm` enemy really loses its turn (`code-health-2026-08-15.md`, finding 1).
+      Cameras are exempt: `ap: 0` is what they are, not a stun.
+- [ ] **Hand-built floors** — an optional `layout` on a floor entry, and floor 0.
+      No dice, so no existing seed moves.
+- [ ] **New Hire Orientation** — a full tutorial floor of eight rooms: reception, firing
+      range, armory, open plan, break room, supply closet, security, stairwell. It
+      **teaches verbs, never numbers**, so a balance patch can never invalidate it.
+      Lessons stay out of the sim, watching the event stream and input from the UI side
+      the way auto-explore does. Checkpoints copy the plain-data `GameState` on entering
+      a room. A room that needs a new sim mechanic gets redesigned, not the engine
+      extended.
+- [ ] **Title screen** — wordmark over a dimmed live floor; NEW RUN, ORIENTATION, ENTER
+      SEED, CONTROLS, SOUND; keyboard and mouse; a version stamp. `?seed=` links skip it
+      and go straight into the run, so the seed is written to the URL when a run starts,
+      not at boot.
+- [ ] **First-run focus** — a path-namespaced `localStorage` flag puts focus on
+      ORIENTATION on a first visit. The boot controls modal was cut: with a title screen
+      and a tutorial it would be a third way to teach the same thing.
+
+## After v0.3.0 — `v0.3.x` patches
+
 - [ ] **Balance patch set** — work order is `play-test-08-04-26.md`. Headliners:
       Exo burst cap shipped as AP 3 → 2 plus enemy XM7 damage 11 → 10, preserving
       the shared 1-AP fire rule and realistic 20-round magazine; same audit for
@@ -276,7 +300,7 @@ Three arcs; the renderer-only ones land first, being independent of tuning:
       supervisor flees while calling (same `cameraAlarm` code — the camera's
       `ap: 0` keeps it bolted down); corridor-mouth spawn guard; snipers
       re-examined only after the burst cap lands.
-- [ ] **Difficulty table** (stretch, rides the balance pass if it fits) —
+- [ ] **Difficulty table** (unscheduled; not in v0.3) —
       `data/difficulty.ts` deltas: INTERN / SALARIED / SENIOR / PIP. Knobs change
       the price of error, never the skill check; SALARIED is the single tuned
       source of truth.
