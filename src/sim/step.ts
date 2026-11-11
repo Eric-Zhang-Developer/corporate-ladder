@@ -1,5 +1,5 @@
 import { carrierCapacity, carrierDef } from "../data/carriers";
-import { CALIBERS, floorDef } from "../data/floors";
+import { CALIBERS, floorDef, ORIENTATION_FLOOR } from "../data/floors";
 import { AP_COSTS } from "../data/costs";
 import { itemDef, type ItemDef } from "../data/items";
 import {
@@ -86,6 +86,14 @@ function applyActionImpl(state: GameState, action: Action): void {
     if (action.type === "buy") handlePurchase(state, action.index, action.replaceSlot);
     if (action.type === "leaveShop") {
       delete state.shop;
+      // Orientation ends here rather than climbing: nothing earned in it may
+      // carry into floor 1, so the real tower is always a fresh newGame.
+      if (state.floor === ORIENTATION_FLOOR) {
+        state.phase = "won";
+        emit({ kind: "win" });
+        pushLog(state, "Orientation complete. Your badge is ready.");
+        return;
+      }
       state.phase = "playing";
       applyFloor(state, state.floor + 1);
       state.player.ap = state.player.maxAp; // fresh floor, fresh turn

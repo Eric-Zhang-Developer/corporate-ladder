@@ -1,6 +1,6 @@
 import { CARRIERS } from "../data/carriers";
 import { enemyDef } from "../data/enemies";
-import { CALIBERS, floorDef, LAST_FLOOR } from "../data/floors";
+import { CALIBERS, floorDef, LAST_FLOOR, type FloorLayout } from "../data/floors";
 import { HOTBAR_SLOTS } from "../data/items";
 import { WEAPONS, weaponDef, type Caliber } from "../data/weapons";
 import { generateMap } from "./mapgen";
@@ -16,6 +16,7 @@ import {
   type GameMap,
   type GameState,
   type GroundItem,
+  type Tile,
 } from "./state";
 
 export { LAST_FLOOR };
@@ -47,6 +48,7 @@ export function buildFloor(
   carriedCalibers: Caliber[],
 ): FloorBuild {
   const def = floorDef(floor);
+  if (def.layout) return buildAuthored(def.layout, startId);
   const gen = generateMap(hashSeed(seed, floor));
   const rng = createSimRng(hashSeed(seed, floor, 1));
   const entrance = gen.playerStart;
@@ -185,6 +187,41 @@ export function buildFloor(
   return { map: gen.map, entrance, stairs, enemies, items, nextId };
 }
 
+/** Reads a hand-drawn floor. Throws on a malformed layout rather than guessing. */
+export function buildAuthored(layout: FloorLayout, startId: number): FloorBuild {
+  const width = layout.rows[0]?.length ?? 0;
+  const tiles: Tile[] = [];
+  const enemies: Entity[] = [];
+  const items: GroundItem[] = [];
+  let entrance: { x: number; y: number } | undefined;
+  let stairs: { x: number; y: number } | undefined;
+  let nextId = startId;
+
+  layout.rows.forEach((row, y) => {
+    if (row.length !== width) throw new Error(`Layout row ${y} is not ${width} wide`);
+    [...row].forEach((glyph, x) => {
+      tiles.push(glyph === "#" ? 0 : 1);
+      if (glyph === "#" || glyph === ".") return;
+      if (glyph === "@") {
+        entrance = { x, y };
+        return;
+      }
+      if (glyph === ">") {
+        stairs = { x, y };
+        return;
+      }
+      const entry = layout.legend?.[glyph];
+      if (!entry) throw new Error(`Layout glyph "${glyph}" has no legend entry`);
+      if ("enemy" in entry) enemies.push(spawnEnemy(nextId++, entry.enemy, x, y));
+      else items.push({ id: nextId++, x, y, ...entry.item });
+    });
+  });
+
+  if (!entrance || !stairs) throw new Error("Layout needs both @ and >");
+  const map: GameMap = { width, height: layout.rows.length, tiles };
+  return { map, entrance, stairs, enemies, items, nextId };
+}
+
 /** First open tile at or near (x,y) that no one has claimed yet. */
 function freeTileNear(
   map: GameMap,
@@ -214,7 +251,7 @@ export function applyFloor(state: GameState, floor: number): void {
   recomputeFov(state);
 }
 
-export function newGame(seed: number): GameState {
+export function newGame(seed: number, startFloor = 1): GameState {
   // XOR keeps the sim stream distinct from the map/spawn streams.
   const rng = createSimRng((seed ^ 0x9e3779b9) >>> 0);
   const player: Entity = {
@@ -267,7 +304,7 @@ export function newGame(seed: number): GameState {
   };
   // Through pushLog, not the literal, so logSeq can never disagree with log.
   pushLog(state, "Find whoever signs the checks.");
-  applyFloor(state, 1);
+  applyFloor(state, startFloor);
   return state;
 }
 
