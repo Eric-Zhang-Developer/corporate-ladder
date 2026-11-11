@@ -77,6 +77,56 @@ describe("the stun rules", () => {
     applyAction(state, { type: "throwItem", slot: 0, x: 5, y: 2 });
     expect(camera.pendingApDrain).toBeUndefined();
   });
+
+  it("freezes a chassis mid-charge: no shot, no wind-up, clock held", () => {
+    const warden = makeEnemy({
+      defId: "warden",
+      x: 3,
+      y: 2,
+      hp: 40,
+      weaponId: "warden_slam",
+      ap: 0,
+      maxAp: 2,
+      alerted: true,
+      chargeTimer: 1,
+    });
+    const state = makeState({ map: openMap(14, 14), enemies: [warden] });
+    const hp = state.player.hp;
+    applyAction(state, { type: "wait" });
+    expect(state.player.hp).toBe(hp);
+    expect(warden.chargeTimer).toBe(1);
+    expect(warden.ap).toBe(warden.maxAp); // back next turn: one turn, never two
+  });
+
+  it("stops a Supervisor's countdown for the turn it is stunned", () => {
+    const supervisor = makeEnemy({
+      defId: "supervisor",
+      x: 3,
+      y: 2,
+      weaponId: null as never,
+      ap: 0,
+      maxAp: 2,
+      alarmTimer: 3,
+    });
+    const state = makeState({ map: openMap(14, 14), enemies: [supervisor] });
+    applyAction(state, { type: "wait" });
+    expect(supervisor.alarmTimer).toBe(3);
+  });
+
+  it("never mistakes a camera's ap: 0 for a stun", () => {
+    const camera = makeEnemy({
+      defId: "camera",
+      x: 3,
+      y: 2,
+      weaponId: null as never,
+      ap: 0,
+      maxAp: 0,
+      alarmTimer: 3,
+    });
+    const state = makeState({ map: openMap(14, 14), enemies: [camera] });
+    applyAction(state, { type: "wait" });
+    expect(camera.alarmTimer).toBe(2);
+  });
 });
 
 describe("the organics / machines split", () => {
